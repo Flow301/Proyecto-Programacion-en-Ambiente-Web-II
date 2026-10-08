@@ -185,6 +185,6 @@ El usuario `admin` tiene el rol Administrador y su contraseña es la que cada un
 
 ## Cómo trabajamos
 
-- `main` siempre está estable; cada funcionalidad se desarrolla en su propia rama y entra por *pull request* que revisa el otro integrante.
+- `main` siempre está estable; cada funcionalidad se desarrolla en su propia rama.
 - Cada uno hace sus propios commits desde su cuenta, con mensajes en español y en presente, por ejemplo `Agrega validación de stock en CrearOrden`.
 - El detalle está en [convenciones](docs/convenciones.md).
