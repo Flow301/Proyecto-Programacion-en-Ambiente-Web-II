@@ -7,7 +7,7 @@
 ## Equipo
 
 - **Integrante A:** Sebastian Araya Mejias
-- **Integrante B:** 
+- **Integrante B:** Rachel Oviedo Carvajal
 
 ## Qué hace el sistema
 
