@@ -6,8 +6,8 @@
 
 ## Equipo
 
-- **Integrante A:** Sebastian Araya Mejias.
-- **Integrante B:** Rachel Oviedo Carvajal.
+- **Integrante A:** pendiente (nombre y usuario de GitHub).
+- **Integrante B:** pendiente (nombre y usuario de GitHub).
 
 ## Qué hace el sistema
 
@@ -185,6 +185,7 @@ El usuario `admin` tiene el rol Administrador y su contraseña es la que cada un
 
 ## Cómo trabajamos
 
-- `main` siempre está estable; cada funcionalidad se desarrolla en su propia rama.
+- Trabajamos los dos en la rama `develop`; `main` solo recibe versiones estables.
+- Cuando terminamos una funcionalidad grande, y como mínimo una vez por semana, integramos `develop` en `main` con un *pull request* que fusionamos con merge commit, sin revisión obligatoria.
 - Cada uno hace sus propios commits desde su cuenta, con mensajes en español y en presente, por ejemplo `Agrega validación de stock en CrearOrden`.
 - El detalle está en [convenciones](docs/convenciones.md).
