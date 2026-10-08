@@ -6,8 +6,8 @@
 
 ## Equipo
 
-- **Integrante A:** pendiente (nombre y usuario de GitHub).
-- **Integrante B:** pendiente (nombre y usuario de GitHub).
+- **Integrante A:** Sebastian Araya Mejias
+- **Integrante B:** 
 
 ## Qué hace el sistema
 
