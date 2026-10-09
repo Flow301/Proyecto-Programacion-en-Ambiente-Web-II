@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using SGMA.Application.Mapper;
 using SGMA.Infrastructure.Data;
+using SGMA.WebAPI.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +28,21 @@ builder.Services.AddSingleton(config);
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 builder.Services.AddMapster();
 
+// Manejo global de excepciones: toda respuesta de error sale como ProblemDetails en español
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        // Título en español para los errores de validación de los DTO (400 automático de [ApiController])
+        if (context.ProblemDetails is HttpValidationProblemDetails)
+            context.ProblemDetails.Title = "Uno o más datos enviados no son válidos";
+    };
+});
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
