@@ -218,6 +218,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Toda orden queda vinculada a un único vehículo existente. *Decisión del equipo:* no se crean órdenes para vehículos Dado de Baja; para vehículos Fuera de Servicio sí, porque así vuelve a operar una unidad dañada.
 - Si el vehículo está En Mantenimiento, solo se puede crear una orden cuyo tipo sea de naturaleza Emergencia.
   - *Decisión del equipo:* el enunciado habla de una "nueva" orden, así que se valida al crear; las órdenes que ya estaban abiertas siguen su curso.
+  - La misma regla se vuelve a validar cada vez que cambia el tipo de una orden (al editar la solicitud o al corregirlo en el diagnóstico). Si no, una orden creada como emergencia sobre un vehículo En Mantenimiento podría pasar a ser correctiva y saltarse el bloqueo.
 - Toda orden nace en estado Solicitada.
 - Cada cambio de estado se valida contra la [matriz de transiciones](matriz-estados.md). Una transición no permitida se rechaza con una excepción de negocio propia, no con un error genérico.
 - Cada cambio de estado genera automáticamente su registro en el historial, con observación opcional.
@@ -241,6 +242,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 - Administrador: crear, consultar todas, editar mientras está Solicitada, aprobar o rechazar, y cancelar.
 - Coordinador/Técnico: consultar todas, diagnosticar, iniciar ejecución, registrar repuestos y horas, reanudar, completar y cancelar. No crea órdenes.
+  - *Decisión del equipo:* la tabla de la sección 11 no lista cancelar para este rol, pero la sección 6 le asigna los "cambios de estado" de la gestión operativa. Cancelar una orden que el taller no puede ejecutar es parte de esa gestión.
 - Solicitante/Consulta: crear y consultar solo las suyas. Ve el estado y el historial, pero no repuestos, horas ni costos.
 
 **Avance.** El modelo completo, crear y consultar van en el Avance 1, con la validación del vehículo, del bloqueo por En Mantenimiento y del código. El resto del ciclo de vida va en el Avance 2.
@@ -339,7 +341,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Coordinador/Técnico: consulta completa.
 - Solicitante/Consulta: solo el historial de sus órdenes y de los vehículos relacionados con ellas.
 
-**Avance.** El historial de vehículos (registro inicial y cambios manuales) y su consulta van en el Avance 1. El historial de órdenes, los cambios automáticos y su vista en el frontend van en el Avance 2.
+**Avance.** El enunciado evalúa el historial en el Avance 2. Adelantamos al Avance 1 el historial de vehículos (registro inicial y cambios manuales) con su consulta, y el registro inicial de cada orden. Las transiciones de la orden, los cambios automáticos del vehículo y la vista en el frontend van en el Avance 2.
 
 ---
 
@@ -365,6 +367,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - *Decisión del equipo:* "bajo demanda" significa que se calcula en cada consulta, sin procesos programados.
 - Se excluyen los vehículos Dado de Baja.
 - Si el vehículo ya tiene una orden preventiva abierta, aparece como "orden en curso" y no se sugiere otra.
+- *Decisión del equipo:* si el vehículo está En Mantenimiento, aparece como "en taller" y no se sugiere la orden: crearla se rechazaría, porque una orden preventiva no es de emergencia (ver 7.5). Se sugiere cuando el vehículo vuelva a Operativo.
 - *Decisión del equipo:* el sistema sugiere y el Administrador confirma. La orden generada nace Solicitada, con un tipo de naturaleza Preventivo y con el Administrador como solicitante.
 - Al completarse una orden preventiva, el contador del vehículo se reinicia (ver 7.5).
 
@@ -445,7 +448,8 @@ Todos los totales, conteos y promedios se calculan en el backend con consultas L
   - Muestra el subtotal de repuestos, el costo de mano de obra y el total.
   - *Decisión del equipo:* como el enunciado no define "lo esperado", junto a cada orden mostramos el costo promedio de las órdenes completadas del mismo tipo y prioridad.
 - **Reporte de historial de un vehículo** (Administrador): línea de tiempo con sus cambios de estado y las órdenes de cada período, desde su registro hasta la fecha de consulta.
-- **Reporte de carga técnica** (Administrador y Coordinador/Técnico): para un período, la cantidad de órdenes distintas por técnico con asignaciones en ese período y el total de horas.
+- **Reporte de carga técnica** (Administrador y Coordinador/Técnico): para un período, la cantidad de órdenes distintas por técnico con asignaciones en ese período.
+  - *Decisión del equipo:* el enunciado solo pide la cantidad de órdenes. No mostramos horas por período porque las horas se guardan acumuladas por asignación, sin la fecha de cada registro.
 
 **Avance.** Avance 2.
 
@@ -503,6 +507,8 @@ Un módulo cuenta como cubierto solo si funciona de punta a punta y sin errores:
 
 ### Avance 1 — semana 7
 
+Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque son historial automático o reglas del flujo de estados. Los hacemos antes porque el modelo ya los soporta, pero no cuentan para la cobertura del Avance 1: si falta tiempo, son los primeros en posponerse.
+
 **Base técnica**
 
 - [ ] Solución con las capas de clase: Domain, Infrastructure, Application, Shared y WebAPI.
@@ -519,7 +525,7 @@ Un módulo cuenta como cubierto solo si funciona de punta a punta y sin errores:
 - [ ] Código `PREFIJO-0001` generado, único e inmutable; placa única.
 - [ ] Carga y actualización de la imagen, con validación de tipo y tamaño.
 - [ ] Cambios manuales del Administrador con sus restricciones.
-- [ ] Historial del vehículo (registro inicial y cambios manuales) y su consulta.
+- [ ] Historial del vehículo (registro inicial y cambios manuales) y su consulta. *(adelanto)*
 - [ ] Kilometraje que nunca disminuye.
 
 **Categorías**
@@ -547,8 +553,9 @@ Un módulo cuenta como cubierto solo si funciona de punta a punta y sin errores:
 
 - [ ] Modelo completo: orden, tipos, prioridades, detalle, pendientes, asignaciones e historial.
 - [ ] Crear solicitud en estado Solicitada con código `OM-AAAA-00001`.
+- [ ] Registro inicial de la orden en su historial. *(adelanto)*
 - [ ] Validación de vehículo existente y no dado de baja, tipo existente y solicitante activo.
-- [ ] Bloqueo por En Mantenimiento, salvo naturaleza Emergencia.
+- [ ] Bloqueo por En Mantenimiento, salvo naturaleza Emergencia. *(adelanto)*
 - [ ] Consulta de órdenes: listado paginado y detalle.
 
 **Usuarios**

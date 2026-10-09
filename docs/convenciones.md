@@ -107,6 +107,8 @@ En la Clean Architecture de libro, Infrastructure depende de Application y no al
 
 Cada entidad principal tiene su par de interfaz e implementación: `IActivoRepository` con `ActivoRepository`, `IActivoService` con `ActivoService` y su `ActivoController`. Repositorios y servicios se registran en `Program.cs` con `AddScoped`.
 
+Los repositorios no llaman a `SaveChangesAsync`. Lo llama el servicio una sola vez, al final de cada operación. Como todos los repositorios de una petición comparten el mismo `AppDbContext` (`AddScoped`), ese único guardado aplica todos los cambios en una sola transacción: la orden, sus asignaciones, el vehículo y los dos historiales se guardan juntos o no se guarda ninguno.
+
 ### Lugares fijos
 
 - **Excepciones de negocio:** `SGMA.Shared/Exceptions`.
@@ -138,6 +140,7 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 - El historial de estados se genera solo, en cada cambio real y dentro de la misma transacción. Es de solo lectura: no hay endpoints para escribirlo.
 - El stock nunca es negativo. Si no alcanza, la orden pasa sola a En Espera de Repuesto.
 - El vehículo pasa a En Mantenimiento y vuelve a Operativo automáticamente según sus órdenes. Fuera de Servicio y Dado de Baja son acciones exclusivas del Administrador.
+- El estado del vehículo cambia en un solo lugar: un método de `ActivoService` que recibe el estado nuevo, el usuario y, si la provocó una orden, la orden. Lo usan tanto las transiciones manuales como las automáticas del servicio de órdenes, y es lo único que escribe `HistorialEstadoActivo`. Si el estado no cambia, no registra nada.
 - Un vehículo En Mantenimiento no admite una orden nueva, salvo de emergencia.
 - Vehículos, usuarios, técnicos, repuestos, proveedores y órdenes nunca se borran físicamente.
 - Un técnico solo se asigna si tiene la especialidad requerida, y las horas solo se registran con la orden En Ejecución.
@@ -307,10 +310,10 @@ Un módulo solo cuenta como terminado, y se marca en la [checklist de cobertura]
 
 El material de clase cubre las consultas, el mapeo con Mapster y los seeders. Para estos temas aplicamos lo descrito en este documento hasta tener el material correspondiente:
 
-- Creación, edición y eliminación: DTO de entrada, códigos 201 y 204, y dónde se llama a `SaveChangesAsync`.
+- Creación, edición y eliminación: DTO de entrada, códigos 201 y 204, y dónde se llama a `SaveChangesAsync` (por ahora, en el servicio).
 - Validaciones: DataAnnotations o la herramienta que se use en clase.
 - Manejo global de excepciones.
-- Transacciones entre varios repositorios.
+- Transacciones entre varios repositorios. Mientras tanto, un solo `SaveChangesAsync` por operación (ver [Recorrido de una petición](#recorrido-de-una-petición)).
 - Subida de imágenes.
 - JWT: dónde se generan los tokens, qué claims llevan y cuánto duran.
 - Estructura del proyecto React y forma de consumir la API.

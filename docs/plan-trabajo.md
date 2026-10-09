@@ -83,7 +83,7 @@ Objetivo: la API completa del Avance 1, probada en Scalar, con más del 50 % de 
   - registro de entradas de stock;
   - consulta de repuestos bajo el mínimo.
 - Tabla `RepuestoProveedor` para asociar, modificar y desasociar, con las 24 asociaciones en el seeder.
-- Proveedor recomendado con el puntaje ponderado de [decisiones técnicas](decisiones-tecnicas.md). Es lo adelantado del Avance 2: se hace después de lo anterior.
+- Proveedor recomendado con el puntaje ponderado de [decisiones técnicas](decisiones-tecnicas.md).
 
 ### Semana 7: orden de mantenimiento y entrega del Avance 1
 

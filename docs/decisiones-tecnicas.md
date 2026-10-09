@@ -82,6 +82,7 @@ El margen se define en kilómetros, no en porcentaje, porque así razona un jefe
 - **Vehículo Dado de Baja:** se excluye de la evaluación.
 - **Vehículo Fuera de Servicio:** se evalúa igual, porque su mantenimiento sigue pendiente.
 - **Vehículo con una orden preventiva abierta:** aparece como "orden en curso" y no se sugiere otra, para no duplicar órdenes.
+- **Vehículo En Mantenimiento:** aparece como "en taller" y no se sugiere la orden, porque crearla se rechazaría por el bloqueo de vehículos en mantenimiento. Se sugiere cuando vuelva a Operativo.
 - **Kilometraje del último preventivo mayor que el actual:** no puede ocurrir. Lo impiden la validación del servicio y la restricción `CHECK` de la tabla.
 
 ---
@@ -218,7 +219,7 @@ Usamos el mismo lenguaje visual que en las órdenes: el mismo significado lleva 
 
 ### Alertas del dashboard
 
-- **Preventivo:** Vencido en rojo, Próximo a vencer en amarillo, Al día en verde y Orden en curso en azul.
+- **Preventivo:** Vencido en rojo, Próximo a vencer en amarillo, Al día en verde, y Orden en curso y En taller en azul.
 - **Stock bajo el mínimo:** rojo.
 
 ### Reglas de uso

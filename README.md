@@ -1,6 +1,6 @@
 # SGMA — Sistema de Gestión de Mantenimiento de Activos
 
-**Contexto: flota vehicular.** Proyecto del curso ISW-621 Programación en Ambiente Web I, carrera de Ingeniería del Software, UTN Sede Central.
+**Contexto: flota vehicular.** Proyecto del curso ISW-621 Programación en Ambiente Web II, carrera de Ingeniería del Software, UTN Sede Central.
 
 > Las partes marcadas como **Pendiente** se completan en el avance indicado. El avance real de cada módulo se registra en la [checklist de cobertura](docs/requerimientos.md#checklist-de-cobertura-por-avance).
 

@@ -53,7 +53,8 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
 - **Acción:** `POST api/OrdenMantenimiento/{id}/diagnosticar`.
 - **Condiciones:**
   - diagnóstico, prioridad y kilometraje obligatorios;
-  - el kilometraje no puede ser menor que el actual del vehículo.
+  - el kilometraje no puede ser menor que el actual del vehículo;
+  - si se corrige el tipo y el vehículo está En Mantenimiento, el nuevo tipo debe ser de naturaleza Emergencia.
 - **Efectos:**
   - se guardan el diagnóstico, la prioridad y el kilometraje;
   - el kilometraje actual del vehículo se actualiza con el registrado;
@@ -135,7 +136,7 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
 
 ### Solicitada, Diagnosticada o Aprobada → Cancelada
 
-- **Rol:** Administrador o Coordinador/Técnico.
+- **Rol:** Administrador o Coordinador/Técnico. *Decisión del equipo:* la sección 11 no lista cancelar para el Coordinador; ver [requerimientos](requerimientos.md), sección 7.5.
 - **Acción:** `POST api/OrdenMantenimiento/{id}/cancelar`, con observación opcional.
 - **Condiciones:** ninguna adicional.
 - **Efectos:** se registran la fecha de cierre y la transición en el historial de la orden. El vehículo conserva su estado, porque todavía no había entrado a mantenimiento por esta orden.
@@ -158,7 +159,7 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
 
 ### Acciones que no cambian el estado
 
-- **Editar la solicitud:** solo el Administrador y solo en Solicitada. Puede cambiar el motivo y el tipo de mantenimiento; el vehículo de una orden no se cambia.
+- **Editar la solicitud:** solo el Administrador y solo en Solicitada. Puede cambiar el motivo y el tipo de mantenimiento; el vehículo de una orden no se cambia. Si el vehículo está En Mantenimiento, el nuevo tipo debe ser de naturaleza Emergencia.
 - **Registrar horas:** solo el Coordinador/Técnico y solo En Ejecución.
 - **Agregar técnicos:** solo el Coordinador/Técnico y solo En Ejecución.
 - **Registrar repuestos con stock suficiente:** solo el Coordinador/Técnico y solo En Ejecución.

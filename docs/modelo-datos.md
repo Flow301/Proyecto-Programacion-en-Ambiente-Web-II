@@ -348,9 +348,11 @@ Seguimos los tres niveles del material:
 
 1. **`CatalogSeeder` (`HasData`):** catálogos, categorías, especialidades y tipos de mantenimiento. Llegan a todos los ambientes dentro de las migraciones.
 2. **`MasterSeeder` (`UseSeeding`):** el usuario `admin`, con la contraseña tomada de `Seed:AdminPassword` en User Secrets. Llega a todos los ambientes.
-3. **`DevelopmentSeeder` (`UseAsyncSeeding`, solo en Development):** usuarios de demostración, vehículos, técnicos, proveedores, repuestos, asociaciones y órdenes.
+3. **`DevelopmentSeeder` (`UseSeeding`, solo en Development):** usuarios de demostración, vehículos, técnicos, proveedores, repuestos, asociaciones y órdenes.
    - Corre dentro de una transacción.
-   - No hace nada si ya existen vehículos.
+   - Cada bloque revisa su propia tabla y solo siembra si está vacía (por ejemplo, los técnicos si no hay ningún `Tecnico`). Así se puede volver a ejecutar mientras el seeder crece semana a semana, sin duplicar ni chocar con los índices únicos.
+
+Los dos seeders usan `UseSeeding`, porque es el que ejecuta `dotnet ef database update`; el `MasterSeeder` corre primero. Si la API también aplica las migraciones al arrancar con `MigrateAsync`, se registra además `UseAsyncSeeding` con la misma lógica.
    - Como las llaves son IDENTITY, resuelve las relaciones por clave natural: código, placa, identificación o login.
 
 Todos los nombres de personas y empresas son ficticios. Las marcas y modelos de vehículos son reales, las placas siguen el formato costarricense y los correos usan el dominio reservado `.test`.
