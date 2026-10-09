@@ -266,6 +266,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 **Validaciones y reglas de negocio.**
 
 - Solo se registran repuestos con la orden En Ejecución. El repuesto debe estar activo y la cantidad debe ser mayor que cero.
+- Si una misma petición trae varias líneas del mismo repuesto, se suman en una sola antes de procesarlas.
 - Antes de registrar se valida el stock disponible.
 - Si alcanza, se crea la línea con el costo unitario vigente y se descuenta el stock en la misma operación.
 - Si no alcanza:
@@ -402,6 +403,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Los usuarios nunca se eliminan físicamente, solo se desactivan, porque tienen actividad registrada (órdenes, cambios de estado).
 - Un usuario inactivo no puede iniciar sesión aunque sus credenciales sean correctas.
   - Caso borde: un token emitido antes de la desactivación sigue siendo válido hasta que expira.
+  - Caso borde: si se cambia el rol de un usuario con sesión abierta, su token conserva el rol anterior hasta que expira. El nuevo rol aplica desde su siguiente inicio de sesión.
 - Todo endpoint protegido valida el rol del token: responde 401 si no hay token o es inválido, y 403 si el rol no tiene permiso.
 - El seeder crea al menos un Administrador (`admin`).
 - *Decisión del equipo:* no se puede desactivar ni quitarle el rol al último Administrador activo, para que el sistema nunca quede sin acceso administrativo.

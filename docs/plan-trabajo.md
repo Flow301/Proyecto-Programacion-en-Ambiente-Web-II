@@ -2,8 +2,6 @@
 
 Plan semanal desde la semana 4 hasta la entrega final en la semana 13. Las tareas están repartidas entre Integrante A e Integrante B para que los dos tengamos commits propios todas las semanas, y están ordenadas para terminar cada módulo de punta a punta antes de empezar el siguiente.
 
-**Pendiente:** definir quién es Integrante A y quién Integrante B, y anotarlo en el README.
-
 ## Cómo usamos este plan
 
 - **Una viñeta, al menos un commit.** Cada viñeta es una tarea que termina en uno o más commits del responsable, siguiendo las [convenciones](convenciones.md).
@@ -28,9 +26,9 @@ Objetivo: la API completa del Avance 1, probada en Scalar, con más del 50 % de 
 
 **Integrante B**
 
-- Subir `docs/requerimientos.md`.
-- Crear las excepciones de negocio en `SGMA.Shared/Exceptions` y el manejador global con `IExceptionHandler` y ProblemDetails en español.
-- Crear `PagedResult<T>` en `Domain/DTO` y probar el manejador con un endpoint de prueba que luego se elimina.
+- Copiar del material `Result<T>` y `BaseResult` en `Domain/DTO/PatternResult`.
+- Crear las excepciones de negocio en `SGMA.Shared/Exceptions` y el manejador global con `IExceptionHandler`, que responde con `Result<T>.Failure` en español (ver [convenciones](convenciones.md#respuestas-y-errores)).
+- Probar el manejador con un endpoint de prueba que luego se elimina.
 
 **Juntos**
 
@@ -102,7 +100,7 @@ Objetivo: la API completa del Avance 1, probada en Scalar, con más del 50 % de 
 **Integrante B**
 
 - Las órdenes en el `DevelopmentSeeder`, coherentes con sus historiales, asignaciones y detalle. Como mínimo las órdenes 1 a 7 y 12; el resto, si alcanza el tiempo.
-- Revisar que todos los listados paginen con total y que todos los errores respondan con ProblemDetails en español.
+- Revisar que todos los listados paginen con `Result<T>.Paged` y que todos los errores respondan con `Result<T>` en español.
 - Recorrer la checklist del Avance 1 en Scalar sobre una base recreada desde cero, y anotar lo que falle.
 
 **Juntos**
@@ -210,5 +208,4 @@ Objetivo: el ciclo de vida completo de la orden, la seguridad con JWT, el fronte
 ## Pendientes que no son código
 
 - Conseguir las 12 fotos de los vehículos (semana 6, Integrante A).
-- Pedir al profesor el material de escritura en el CRUD, validaciones, manejo de excepciones, JWT y React (lo antes posible).
-- Definir quién es Integrante A y quién Integrante B (semana 4).
+- Pedir al profesor el material de manejo global de excepciones, JWT y React (lo antes posible). El CRUD, las validaciones y los seeders ya están en el proyecto ERP de clase.

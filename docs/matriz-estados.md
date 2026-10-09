@@ -189,15 +189,15 @@ Cada método del servicio que cambia el estado sigue este orden:
 3. Verifica las condiciones propias de la transición (técnicos, stock, horas, fechas). Si alguna falla, lanza `ReglaNegocioException`, también con **409**.
 4. Aplica todos los efectos y el historial en una sola transacción.
 
-Las excepciones viven en `SGMA.Shared/Exceptions`. El manejador global de excepciones de `SGMA.WebAPI` las traduce a una respuesta ProblemDetails con un mensaje en español, nunca a un error genérico. Por ejemplo:
+Las excepciones viven en `SGMA.Shared/Exceptions`. El manejador global de excepciones de `SGMA.WebAPI` las traduce a la respuesta estándar `Result<T>` con un mensaje en español, nunca a un error genérico. Por ejemplo:
 
 ```json
 {
-  "title": "Transición no permitida",
+  "isSuccess": false,
   "status": 409,
+  "title": "Transición no permitida",
   "detail": "La orden OM-2026-00003 está Diagnosticada y no puede pasar a Completada.",
-  "estadoActual": "Diagnosticada",
-  "estadoDestino": "Completada"
+  "data": null
 }
 ```
 

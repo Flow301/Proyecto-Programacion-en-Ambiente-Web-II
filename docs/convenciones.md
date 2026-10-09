@@ -28,12 +28,14 @@ Versiones verificadas en NuGet el 8 de octubre de 2026. Todas son estables, tien
 - **`SGMA.WebAPI`:**
   - `Microsoft.AspNetCore.OpenApi` 10.0.12
   - `Microsoft.EntityFrameworkCore.Design` 10.0.12, con `PrivateAssets` en `all`
-  - `Microsoft.Extensions.Identity.Core` 10.0.12
   - `Mapster.DependencyInjection` 10.0.13
   - `Scalar.AspNetCore` 2.17.14
   - `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.12. **Pendiente (Avance 2).**
 
-Es la misma distribución de paquetes del material de clase. La única diferencia es Scalar: el material usa la 2.17.4 y nosotros la 2.17.14, el último parche de la misma versión.
+Es la misma distribución de paquetes del material de clase, con dos diferencias:
+
+- Scalar: el material usa la 2.17.4 y nosotros la 2.17.14, el último parche de la misma versión.
+- `SGMA.WebAPI` no referencia `Microsoft.Extensions.Identity.Core`: ASP.NET Core ya lo incluye y el SDK lo marca como sobrante (advertencia `NU1510`).
 
 ### Frontend
 
@@ -67,7 +69,7 @@ backend/
 ├── SGMA.slnx
 ├── SGMA.Domain/
 │   ├── Entities/          Entidades (record class)
-│   └── DTO/               DTO de lista, detalle, creación, edición y reportes
+│   └── DTO/               DTO de lista, detalle, creación, edición y reportes, y PatternResult/ (Result y BaseResult)
 ├── SGMA.Infrastructure/
 │   ├── Data/              AppDbContext y configuración de tablas
 │   ├── Data/Seed/         CatalogSeeder, MasterSeeder, DevelopmentSeeder, DemoData, SeedIds
@@ -100,14 +102,22 @@ En la Clean Architecture de libro, Infrastructure depende de Application y no al
 
 ### Recorrido de una petición
 
-1. **Controlador** (`WebAPI/Controllers`). Recibe la petición, valida el DTO de entrada y llama al servicio. Si el resultado es correcto, devuelve 200, 201 o 204. No tiene lógica de negocio.
-2. **Servicio** (`Application/Implementation`). Aplica las reglas de negocio, lanza las excepciones propias y convierte entidades en DTO con Mapster. Recibe el usuario responsable como parámetro: en el Avance 1 viene del cuerpo de la petición y desde el Avance 2, del token.
-3. **Repositorio** (`Infrastructure/Implementation`). Consulta y guarda con EF Core. Devuelve entidades, salvo en agregaciones (`GroupBy`, reportes, dashboard), que devuelven el DTO de resultado directamente, igual que en el material.
-4. **`AppDbContext`** (`Infrastructure/Data`). Configura tablas, relaciones, índices y restricciones, y aplica los seeders.
+1. **Controlador** (`WebAPI/Controllers`). Recibe la petición, llama al servicio y responde con `StatusCode(result.Status, result)`. Al crear responde 201 con `CreatedAtRoute`, que agrega el encabezado `Location`. Documenta cada código posible con `[ProducesResponseType]` y `[EndpointSummary]` para que se vea en Scalar. No tiene lógica de negocio.
+2. **Servicio** (`Application/Implementation`). Aplica las reglas de negocio y convierte entidades en DTO con Mapster. Devuelve siempre un `Result<T>`: `Success`, `Paged` o `Failure` con 400, 404 o 409 para los errores esperados del CRUD. Recibe el usuario responsable como parámetro: en el Avance 1 viene del cuerpo de la petición y desde el Avance 2, del token.
+3. **Repositorio** (`Infrastructure/Implementation`). Consulta y guarda con EF Core. Devuelve entidades, salvo en agregaciones (`GroupBy`, reportes, dashboard), que devuelven el DTO de resultado directamente. Cada método de escritura termina con un solo `SaveChangesAsync`, y los borrados físicos usan `ExecuteDeleteAsync`, igual que en el material.
+4. **`AppDbContext`** (`Infrastructure/Data`). Configura tablas, relaciones, índices y restricciones en `OnModelCreating`, y aplica los seeders.
 
 Cada entidad principal tiene su par de interfaz e implementación: `IActivoRepository` con `ActivoRepository`, `IActivoService` con `ActivoService` y su `ActivoController`. Repositorios y servicios se registran en `Program.cs` con `AddScoped`.
 
-Los repositorios no llaman a `SaveChangesAsync`. Lo llama el servicio una sola vez, al final de cada operación. Como todos los repositorios de una petición comparten el mismo `AppDbContext` (`AddScoped`), ese único guardado aplica todos los cambios en una sola transacción: la orden, sus asignaciones, el vehículo y los dos historiales se guardan juntos o no se guarda ninguno.
+**Operaciones que tocan varias entidades.** Por ejemplo, iniciar una orden cambia la orden, crea asignaciones, cambia el vehículo y escribe dos historiales. Los pasos intermedios solo modifican entidades rastreadas por EF, sin guardar, y el último paso guarda una sola vez. Como todos los repositorios de una petición comparten el mismo `AppDbContext` (`AddScoped`), ese único `SaveChangesAsync` aplica todo en una sola transacción: se guarda todo o nada.
+
+### Respuestas y errores
+
+- **Forma única de respuesta:** `Result<T>` y `BaseResult`, en `SGMA.Domain/DTO/PatternResult`, copiados del material. El código HTTP se repite en `status` dentro del body.
+- **Errores esperados del CRUD** (no existe, nombre repetido, tiene relaciones): el servicio devuelve `Result<T>.Failure`, como en el material. El orden de las verificaciones es 404 y después 409.
+- **Reglas del flujo de estados:** el servicio lanza una excepción de negocio propia, porque el enunciado lo exige (sección 9). El manejador global la convierte en la misma forma `Result<T>`, así el cliente nunca ve dos formatos.
+- **Validación de formato:** la hace `[ApiController]` con las DataAnnotations del DTO y responde 400 con `ValidationProblemDetails`. Es la única respuesta con otra forma, igual que en el material.
+- **Errores inesperados:** el manejador global responde 500 con un mensaje genérico en español, sin detalles internos.
 
 ### Lugares fijos
 
@@ -115,7 +125,8 @@ Los repositorios no llaman a `SaveChangesAsync`. Lo llama el servicio una sola v
   - `RecursoNoEncontradoException` → 404.
   - `TransicionNoPermitidaException` → 409.
   - `ReglaNegocioException` → 409.
-- **Manejador global:** `SGMA.WebAPI/Handlers`. Implementa `IExceptionHandler` y responde ProblemDetails con mensajes en español.
+- **Respuesta estándar:** `SGMA.Domain/DTO/PatternResult/Result.cs` y `BaseResult.cs`.
+- **Manejador global:** `SGMA.WebAPI/Handlers`. Implementa `IExceptionHandler` y responde con `Result<T>.Failure` y mensajes en español.
 - **Matriz de transiciones:** `SGMA.Application/Implementation/MatrizTransicionesOrden.cs`.
 - **Ids de catálogos sembrados:** constantes en `SGMA.Infrastructure/Data/Seed/SeedIds.cs`. Nunca escribimos números sueltos en el código.
 
@@ -132,7 +143,7 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 - La API nunca devuelve entidades, siempre DTO.
 - Las lecturas usan `AsNoTracking()` y todo acceso a datos es asíncrono, con el sufijo `Async`.
 - Los listados devuelven 200 con una lista vacía si no hay datos. El 404 solo se usa cuando no existe un recurso pedido por id.
-- Los listados extensos se paginan y devuelven también el total de registros.
+- Los listados extensos se paginan con `Result<T>.Paged`, que devuelve también el total de registros y de páginas. La paginación ordena siempre por la llave y acepta como máximo 50 registros por página (`MaxPageSize`); fuera de ese rango responde 400, como en el material.
 
 ### Reglas de negocio
 
@@ -158,7 +169,7 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 - Las contraseñas se guardan como hash con `PasswordHasher`, nunca en texto plano.
 - Un usuario inactivo no inicia sesión.
 - El seeder siempre crea al menos un Administrador.
-- Ningún secreto va al repositorio. La cadena de conexión, la contraseña del administrador inicial y la clave del JWT viven en User Secrets.
+- Ningún secreto va al repositorio. La cadena de conexión, la contraseña del administrador inicial y la clave del JWT viven en User Secrets. La contraseña común de los usuarios de demostración no cuenta como secreto: es pública y solo existe en Development (ver [modelo de datos](modelo-datos.md)).
 
 ---
 
@@ -171,9 +182,11 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
   - interfaces: `IActivoRepository`, `IActivoService`;
   - implementaciones: `ActivoRepository`, `ActivoService`;
   - controladores: `ActivoController`.
-- **DTO:** `ActivoListDto` (listas), `ActivoDetailDto` (detalle), `ActivoCreateDto` y `ActivoUpdateDto` (entrada), y nombres descriptivos para reportes, como `CostoOrdenDto` o `CargaTecnicaDto`.
+- **DTO:** `ActivoListDto` (listas), `ActivoDetailDto` (detalle), `ActivoCreateDto` y `ActivoUpdateDto` (entrada), y nombres descriptivos para reportes, como `CostoOrdenDto` o `CargaTecnicaDto`. Si la entidad es pequeña, basta un solo DTO de salida (`EspecialidadDto`), como `WarehouseDto` en el material.
+  - Los DTO de entrada no llevan la llave: al crear la asigna la base y al editar viene de la ruta.
+  - Sus DataAnnotations usan los mismos largos que las columnas, para que el error sea un 400 y no una excepción de SQL Server.
 - **Métodos:**
-  - las operaciones genéricas del CRUD usan los nombres del material: `GetAllAsync`, `GetByIdAsync`, `GetPaginationAsync`, `CreateAsync`, `UpdateAsync` y `DeleteAsync`;
+  - las operaciones genéricas del CRUD usan los nombres del material: `GetAllAsync`, `GetByIdAsync`, `GetPaginationAsync`, `CountAsync`, `AddAsync`, `UpdateAsync` y `DeleteAsync`, más las verificaciones `ExistsAsync` y `ExistsByNameAsync`;
   - las acciones del negocio van en español: `DiagnosticarAsync`, `AprobarAsync`, `RegistrarEntradaAsync`, `EvaluarPreventivoAsync`.
 - Sin tildes ni ñ en los identificadores: `Categoria`, `Anio`, `Tecnico`, `ClaveHash`.
 - **Mayúsculas y prefijos:**
@@ -308,12 +321,10 @@ Un módulo solo cuenta como terminado, y se marca en la [checklist de cobertura]
 
 ## 8. Pendiente de confirmar con el profesor
 
-El material de clase cubre las consultas, el mapeo con Mapster y los seeders. Para estos temas aplicamos lo descrito en este documento hasta tener el material correspondiente:
+El material de clase (proyecto ERP) cubre las consultas, el CRUD completo con `Result<T>`, las DataAnnotations, el mapeo con Mapster y los seeders. Para estos temas aplicamos lo descrito en este documento hasta tener el material correspondiente:
 
-- Creación, edición y eliminación: DTO de entrada, códigos 201 y 204, y dónde se llama a `SaveChangesAsync` (por ahora, en el servicio).
-- Validaciones: DataAnnotations o la herramienta que se use en clase.
-- Manejo global de excepciones.
-- Transacciones entre varios repositorios. Mientras tanto, un solo `SaveChangesAsync` por operación (ver [Recorrido de una petición](#recorrido-de-una-petición)).
+- Manejo global de excepciones con `IExceptionHandler`.
+- Transacciones entre varios repositorios. Mientras tanto, un solo `SaveChangesAsync` al final de cada operación (ver [Recorrido de una petición](#recorrido-de-una-petición)).
 - Subida de imágenes.
 - JWT: dónde se generan los tokens, qué claims llevan y cuánto duran.
 - Estructura del proyecto React y forma de consumir la API.

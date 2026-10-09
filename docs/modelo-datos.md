@@ -116,7 +116,7 @@ Se siembra con `HasData`, como la categoría del material.
 - `IdEstadoActivo` (int): obligatorio, FK a `EstadoActivo`.
 - `FechaAdquisicion` (date): obligatorio.
 - `ValorReferencia` (decimal(18,2)): obligatorio.
-- `Imagen` (nvarchar(200)): opcional; ruta relativa del archivo, por ejemplo `imagenes/activos/PKP-0001.jpg`.
+- `Imagen` (nvarchar(200)): opcional; ruta relativa del archivo, con el código del vehículo y la extensión del archivo subido (JPG, PNG o WebP), por ejemplo `imagenes/activos/PKP-0001.jpg`.
 - `Placa` (varchar(10)): obligatorio y único.
 - `Marca` (nvarchar(40)): obligatorio.
 - `Modelo` (nvarchar(40)): obligatorio.
@@ -347,12 +347,12 @@ Son la última defensa en la base; las mismas reglas se validan antes en los ser
 Seguimos los tres niveles del material:
 
 1. **`CatalogSeeder` (`HasData`):** catálogos, categorías, especialidades y tipos de mantenimiento. Llegan a todos los ambientes dentro de las migraciones.
-2. **`MasterSeeder` (`UseSeeding`):** el usuario `admin`, con la contraseña tomada de `Seed:AdminPassword` en User Secrets. Llega a todos los ambientes.
-3. **`DevelopmentSeeder` (`UseSeeding`, solo en Development):** usuarios de demostración, vehículos, técnicos, proveedores, repuestos, asociaciones y órdenes.
+2. **`MasterSeeder`:** el usuario `admin`, con la contraseña tomada de `Seed:AdminPassword` en User Secrets. Llega a todos los ambientes.
+3. **`DevelopmentSeeder` (solo en Development):** usuarios de demostración, vehículos, técnicos, proveedores, repuestos, asociaciones y órdenes.
    - Corre dentro de una transacción.
    - Cada bloque revisa su propia tabla y solo siembra si está vacía (por ejemplo, los técnicos si no hay ningún `Tecnico`). Así se puede volver a ejecutar mientras el seeder crece semana a semana, sin duplicar ni chocar con los índices únicos.
 
-Los dos seeders usan `UseSeeding`, porque es el que ejecuta `dotnet ef database update`; el `MasterSeeder` corre primero. Si la API también aplica las migraciones al arrancar con `MigrateAsync`, se registra además `UseAsyncSeeding` con la misma lógica.
+Igual que en el material, `MasterSeeder` y `DevelopmentSeeder` tienen una versión síncrona (`Seed`) y una asíncrona (`SeedAsync`), y `Program.cs` registra las dos: `UseSeeding` la usa `dotnet ef database update`, y `UseAsyncSeeding` la usa la aplicación con `Database.MigrateAsync`. En ambas corre primero el `MasterSeeder`.
    - Como las llaves son IDENTITY, resuelve las relaciones por clave natural: código, placa, identificación o login.
 
 Todos los nombres de personas y empresas son ficticios. Las marcas y modelos de vehículos son reales, las placas siguen el formato costarricense y los correos usan el dominio reservado `.test`.
@@ -407,7 +407,7 @@ Cada tipo indica su naturaleza y la especialidad que requiere.
 
 ### Usuarios (8)
 
-`admin` lo crea el `MasterSeeder`; los demás, el `DevelopmentSeeder`, con una contraseña común de desarrollo definida en `DemoData`, como en el material.
+`admin` lo crea el `MasterSeeder`; los demás, el `DevelopmentSeeder`, con una contraseña común de desarrollo definida en `DemoData`, como en el material. Esa contraseña es pública a propósito: solo existe en ambiente Development y sirve para probar los roles, así que no es un secreto. La del `admin`, que llega a todos los ambientes, sí vive en User Secrets.
 
 1. `admin` — Administrador General — Administrador.
 2. `lvargas` — Luis Vargas Mora, jefe de taller — Coordinador/Técnico.
@@ -435,7 +435,7 @@ Formato de cada línea: código — unidad — placa — año — km actual / km
 11. `VAN-0001` — Hyundai H100 — CL-296470 — 2017 — 214 900 / 210 000 — Operativo.
 12. `ADM-0001` — Toyota RAV4 — BKL-482 — 2012 — 241 000 / 236 000 — Dado de Baja (unidad vendida).
 
-Cada vehículo lleva también su descripción, su fecha de adquisición y su valor de referencia en colones. Las imágenes se guardan como `imagenes/activos/<código>.jpg` dentro de `wwwroot`.
+Cada vehículo lleva también su descripción, su fecha de adquisición y su valor de referencia en colones. Las imágenes se guardan como `imagenes/activos/<código>.<extensión>` dentro de `wwwroot`.
 
 **Pendiente:** conseguir las 12 fotos, propias o con licencia libre.
 
@@ -532,7 +532,7 @@ Formato de cada orden: código — vehículo — tipo — solicitante — estado
 1. `OM-2026-00001` — `PKP-0003` — Servicio preventivo por kilometraje — `admin` — **Solicitada**. Se generó desde la evaluación preventiva porque el vehículo superó el intervalo.
 2. `OM-2026-00002` — `BUS-0001` — Reparación de aire acondicionado — `cjimenez` — **Solicitada**. Los pasajeros reportan que el aire no enfría.
 3. `OM-2026-00003` — `CML-0002` — Reparación de frenos — `jchaves` — **Diagnosticada**. Prioridad Alta, 142 650 km; ruido metálico al frenar por desgaste de las zapatas traseras.
-4. `OM-2026-00004` — `TRC-0001` — Cambio y alineamiento de llantas — `jchaves` — **Aprobada**. Prioridad Media, 538 600 km, programada para el 20 de octubre de 2026; desgaste irregular en el eje delantero.
+4. `OM-2026-00004` — `TRC-0001` — Cambio y alineamiento de llantas — `jchaves` — **Aprobada**. Prioridad Media, 538 600 km, programada para 14 días después de la fecha en que corre el seeder, para que nunca aparezca vencida en una demostración; desgaste irregular en el eje delantero.
 5. `OM-2026-00005` — `PKP-0002` — Reparación del sistema eléctrico — `mcastro` — **Rechazada**. Prioridad Baja; la falla la causa un accesorio instalado sin autorización y se retira sin orden.
 6. `OM-2026-00006` — `CMP-0001` — Reparación de motor diésel — `jchaves` — **En Ejecución**.
    - Prioridad Alta, 412 800 km.
