@@ -1,13 +1,13 @@
 # SGMA — Sistema de Gestión de Mantenimiento de Activos
 
-**Contexto: flota vehicular.** Proyecto del curso ISW-621 Programación en Ambiente Web I, carrera de Ingeniería del Software, UTN Sede Central.
+**Contexto: flota vehicular.** Proyecto del curso ISW-621 Programación en Ambiente Web II, carrera de Ingeniería del Software, UTN Sede Central.
 
 > Las partes marcadas como **Pendiente** se completan en el avance indicado. El avance real de cada módulo se registra en la [checklist de cobertura](docs/requerimientos.md#checklist-de-cobertura-por-avance).
 
 ## Equipo
 
-- **Integrante A:** Sebastian Araya Mejias.
-- **Integrante B:** Rachel Oviedo Carvajal.
+- **Integrante A:** Sebastian Araya Mejias
+- **Integrante B:** Rachel Oviedo Carvajal
 
 ## Qué hace el sistema
 
@@ -185,6 +185,7 @@ El usuario `admin` tiene el rol Administrador y su contraseña es la que cada un
 
 ## Cómo trabajamos
 
-- `main` siempre está estable; cada funcionalidad se desarrolla en su propia rama.
+- Trabajamos los dos en la rama `develop`; `main` solo recibe versiones estables.
+- Cuando terminamos una funcionalidad grande, y como mínimo una vez por semana, integramos `develop` en `main` con un *pull request* que fusionamos con merge commit, sin revisión obligatoria.
 - Cada uno hace sus propios commits desde su cuenta, con mensajes en español y en presente, por ejemplo `Agrega validación de stock en CrearOrden`.
 - El detalle está en [convenciones](docs/convenciones.md).

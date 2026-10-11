@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SGMA.Application/SGMA.Application.csproj" />
+  <Project Path="SGMA.Domain/SGMA.Domain.csproj" />
+  <Project Path="SGMA.Infrastructure/SGMA.Infrastructure.csproj" />
+  <Project Path="SGMA.Shared/SGMA.Shared.csproj" />
+  <Project Path="SGMA.WebAPI/SGMA.WebAPI.csproj" />
+</Solution>
