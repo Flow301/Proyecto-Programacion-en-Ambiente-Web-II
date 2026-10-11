@@ -28,7 +28,7 @@ builder.Services.AddSingleton(config);
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 builder.Services.AddMapster();
 
-// Manejo global de excepciones: toda respuesta de error sale como ProblemDetails en español
+// Manejo global de excepciones: los errores responden con Result<T> en español; solo la validación de DTO (400) usa ValidationProblemDetails
 builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
