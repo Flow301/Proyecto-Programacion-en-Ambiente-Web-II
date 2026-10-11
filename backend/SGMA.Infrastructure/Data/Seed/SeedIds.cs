@@ -37,4 +37,15 @@ public static class SeedIds
     public const int NivelCertificacionIntermedio = 2;
     public const int NivelCertificacionAvanzado = 3;
     public const int NivelCertificacionExperto = 4;
+
+    public const int CategoriaPickup = 1;
+    public const int CategoriaCamionLiviano = 2;
+    public const int CategoriaCamionPesado = 3;
+    public const int CategoriaTractocamion = 4;
+    public const int CategoriaBusUrbano = 5;
+    public const int CategoriaBusInterurbano = 6;
+    public const int CategoriaMicrobus = 7;
+    public const int CategoriaVanDeCarga = 8;
+    public const int CategoriaVehiculoAdministrativo = 9;
+    public const int CategoriaMotocicleta = 10;
 }
