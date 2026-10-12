@@ -5,40 +5,40 @@ namespace SGMA.Domain.DTO;
 // Sin IdActivo, Codigo ni estado: los asignan la base y el servicio. La imagen se sube aparte.
 public record class ActivoCreateDto
 {
-    [Required, StringLength(100)]
+    [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(100, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
     public string? Nombre { get; set; }
 
-    [StringLength(250)]
+    [StringLength(250, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
     public string? Descripcion { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int IdCategoria { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "El campo {0} es obligatorio.")]
     public DateTime? FechaAdquisicion { get; set; }
 
-    [Range(0, double.MaxValue)]
+    [Range(0, double.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public decimal ValorReferencia { get; set; }
 
-    [Required, StringLength(10)]
+    [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(10, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
     public string? Placa { get; set; }
 
-    [Required, StringLength(40)]
+    [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(40, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
     public string? Marca { get; set; }
 
-    [Required, StringLength(40)]
+    [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(40, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
     public string? Modelo { get; set; }
 
-    [Range(1950, 2100)]
+    [Range(1950, 2100, ErrorMessage = "El campo {0} debe estar entre {1} y {2}.")]
     public short Anio { get; set; }
 
-    [Range(0, int.MaxValue)]
+    [Range(0, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int KilometrajeActual { get; set; }
 
     // Que no supere al kilometraje actual lo valida el servicio
-    [Range(0, int.MaxValue)]
+    [Range(0, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int KilometrajeUltimoPreventivo { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int? IntervaloKmPropio { get; set; }
 }
