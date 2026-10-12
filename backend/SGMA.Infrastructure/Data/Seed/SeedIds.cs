@@ -48,4 +48,15 @@ public static class SeedIds
     public const int CategoriaVanDeCarga = 8;
     public const int CategoriaVehiculoAdministrativo = 9;
     public const int CategoriaMotocicleta = 10;
+
+    public const int EspecialidadMecanicaGeneral = 1;
+    public const int EspecialidadMotoresDiesel = 2;
+    public const int EspecialidadMotoresGasolina = 3;
+    public const int EspecialidadFrenos = 4;
+    public const int EspecialidadSuspensionDireccion = 5;
+    public const int EspecialidadSistemaElectrico = 6;
+    public const int EspecialidadTransmisionEmbrague = 7;
+    public const int EspecialidadAireAcondicionado = 8;
+    public const int EspecialidadLlantasAlineamiento = 9;
+    public const int EspecialidadCarroceriaPintura = 10;
 }

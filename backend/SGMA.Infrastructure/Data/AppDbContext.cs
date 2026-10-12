@@ -202,6 +202,22 @@ public class AppDbContext : DbContext
                 .HasConstraintName("FK_Activo_EstadoActivo");
         });
 
+        // Especialidad
+        modelBuilder.Entity<Especialidad>(entity =>
+        {
+            entity.HasKey(e => e.IdEspecialidad)
+                .HasName("PK_Especialidad");
+
+            entity.HasIndex(e => e.Nombre, "UQ_Especialidad_Nombre")
+                .IsUnique();
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(60);
+
+            entity.Property(e => e.Descripcion)
+                .HasMaxLength(250);
+        });
+
         // Seed maestro de catálogos (HasData)
         modelBuilder.SeedCatalogs();
     }

@@ -248,6 +248,94 @@ namespace SGMA.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Especialidad", b =>
+                {
+                    b.Property<int>("IdEspecialidad")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdEspecialidad"));
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("IdEspecialidad")
+                        .HasName("PK_Especialidad");
+
+                    b.HasIndex(new[] { "Nombre" }, "UQ_Especialidad_Nombre")
+                        .IsUnique();
+
+                    b.ToTable("Especialidad");
+
+                    b.HasData(
+                        new
+                        {
+                            IdEspecialidad = 1,
+                            Descripcion = "Revisión y reparación general del vehículo.",
+                            Nombre = "Mecánica general"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 2,
+                            Descripcion = "Diagnóstico y reparación de motores diésel.",
+                            Nombre = "Motores diésel"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 3,
+                            Descripcion = "Diagnóstico y reparación de motores de gasolina.",
+                            Nombre = "Motores de gasolina"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 4,
+                            Descripcion = "Sistema de frenos: pastillas, discos, tambores y circuito hidráulico o neumático.",
+                            Nombre = "Frenos"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 5,
+                            Descripcion = "Amortiguadores, muelles, rótulas y sistema de dirección.",
+                            Nombre = "Suspensión y dirección"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 6,
+                            Descripcion = "Batería, alternador, cableado, sensores y módulos electrónicos.",
+                            Nombre = "Sistema eléctrico y electrónica"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 7,
+                            Descripcion = "Caja de cambios, embrague y tren motriz.",
+                            Nombre = "Transmisión y embrague"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 8,
+                            Descripcion = "Sistema de climatización y refrigerante.",
+                            Nombre = "Aire acondicionado"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 9,
+                            Descripcion = "Cambio y reparación de llantas, alineamiento y balanceo.",
+                            Nombre = "Llantas y alineamiento"
+                        },
+                        new
+                        {
+                            IdEspecialidad = 10,
+                            Descripcion = "Reparación de carrocería, enderezado y pintura.",
+                            Nombre = "Carrocería y pintura"
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.EstadoActivo", b =>
                 {
                     b.Property<int>("IdEstadoActivo")

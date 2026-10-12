@@ -75,5 +75,20 @@ public static class CatalogSeeder
             new CategoriaActivo { IdCategoria = SeedIds.CategoriaVehiculoAdministrativo, Nombre = "Vehículo administrativo", Prefijo = "ADM", IntervaloKm = 10000, MargenAvisoKm = 1000 },
             new CategoriaActivo { IdCategoria = SeedIds.CategoriaMotocicleta, Nombre = "Motocicleta", Prefijo = "MOT", IntervaloKm = 5000, MargenAvisoKm = 500 }
         );
+
+        // Especialidad
+        modelBuilder.Entity<Especialidad>().HasData(
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadMecanicaGeneral, Nombre = "Mecánica general", Descripcion = "Revisión y reparación general del vehículo." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadMotoresDiesel, Nombre = "Motores diésel", Descripcion = "Diagnóstico y reparación de motores diésel." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadMotoresGasolina, Nombre = "Motores de gasolina", Descripcion = "Diagnóstico y reparación de motores de gasolina." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadFrenos, Nombre = "Frenos", Descripcion = "Sistema de frenos: pastillas, discos, tambores y circuito hidráulico o neumático." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadSuspensionDireccion, Nombre = "Suspensión y dirección", Descripcion = "Amortiguadores, muelles, rótulas y sistema de dirección." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadSistemaElectrico, Nombre = "Sistema eléctrico y electrónica", Descripcion = "Batería, alternador, cableado, sensores y módulos electrónicos." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadTransmisionEmbrague, Nombre = "Transmisión y embrague", Descripcion = "Caja de cambios, embrague y tren motriz." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadAireAcondicionado, Nombre = "Aire acondicionado", Descripcion = "Sistema de climatización y refrigerante." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadLlantasAlineamiento, Nombre = "Llantas y alineamiento", Descripcion = "Cambio y reparación de llantas, alineamiento y balanceo." },
+            new Especialidad { IdEspecialidad = SeedIds.EspecialidadCarroceriaPintura, Nombre = "Carrocería y pintura", Descripcion = "Reparación de carrocería, enderezado y pintura." }
+        );
+
     }
 }
