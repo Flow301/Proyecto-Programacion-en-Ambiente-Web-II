@@ -2,8 +2,12 @@ using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using SGMA.Application.Implementation;
+using SGMA.Application.Interfaces;
 using SGMA.Application.Mapper;
 using SGMA.Infrastructure.Data;
+using SGMA.Infrastructure.Implementation;
+using SGMA.Infrastructure.Interfaces;
 using SGMA.WebAPI.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +31,12 @@ var config = TypeAdapterConfig.GlobalSettings;
 builder.Services.AddSingleton(config);
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 builder.Services.AddMapster();
+
+// Repositorios y servicios
+builder.Services.AddScoped<ICategoriaActivoRepository, CategoriaActivoRepository>();
+builder.Services.AddScoped<IActivoRepository, ActivoRepository>();
+builder.Services.AddScoped<ICategoriaActivoService, CategoriaActivoService>();
+builder.Services.AddScoped<IActivoService, ActivoService>();
 
 // Manejo global de excepciones: los errores responden con Result<T> en español; solo la validación de DTO (400) usa ValidationProblemDetails
 builder.Services.AddProblemDetails(options =>
