@@ -37,6 +37,8 @@ builder.Services.AddScoped<ICategoriaActivoRepository, CategoriaActivoRepository
 builder.Services.AddScoped<IActivoRepository, ActivoRepository>();
 builder.Services.AddScoped<ICategoriaActivoService, CategoriaActivoService>();
 builder.Services.AddScoped<IActivoService, ActivoService>();
+builder.Services.AddScoped<IEspecialidadRepository, EspecialidadRepository>();
+builder.Services.AddScoped<IEspecialidadService, EspecialidadService>();
 
 // Manejo global de excepciones: los errores responden con Result<T> en español; solo la validación de DTO (400) usa ValidationProblemDetails
 builder.Services.AddProblemDetails(options =>

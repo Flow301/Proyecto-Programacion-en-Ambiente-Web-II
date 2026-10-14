@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<NivelCertificacion> NivelCertificacion { get; set; }
     public DbSet<CategoriaActivo> CategoriaActivo { get; set; }
     public DbSet<Activo> Activo { get; set; }
+    public DbSet<Especialidad> Especialidad { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
