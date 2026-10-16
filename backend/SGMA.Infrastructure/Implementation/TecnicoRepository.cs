@@ -60,11 +60,36 @@ public class TecnicoRepository : ITecnicoRepository
             .AnyAsync(t => t.Identificacion == identificacion && t.IdTecnico != excludeId);
     }
 
+    // Llaves foráneas de TecnicoEspecialidad: AnyAsync responde sí o no sin traer filas
+    public async Task<bool> EspecialidadExistsAsync(int idEspecialidad)
+    {
+        return await _context.Especialidad.AnyAsync(e => e.IdEspecialidad == idEspecialidad);
+    }
+
+    public async Task<bool> NivelCertificacionExistsAsync(int idNivelCertificacion)
+    {
+        return await _context.NivelCertificacion.AnyAsync(n => n.IdNivelCertificacion == idNivelCertificacion);
+    }
+
     // Escritura (sin AsNoTracking: el ChangeTracker detecta qué cambió)
     public async Task<Tecnico?> GetForUpdateAsync(int id)
     {
         return await _context.Tecnico
             .FirstOrDefaultAsync(t => t.IdTecnico == id && t.Estado);
+    }
+
+    // Asociar y desasociar: incluye solo la colección que se va a modificar
+    public async Task<Tecnico?> GetWithEspecialidadesForUpdateAsync(int id)
+    {
+        return await _context.Tecnico
+            .Include(t => t.TecnicoEspecialidades)
+            .FirstOrDefaultAsync(t => t.IdTecnico == id && t.Estado);
+    }
+
+    // Marca la fila de la tabla puente como Deleted (el DELETE se envía en SaveChangesAsync)
+    public void RemoveEspecialidad(TecnicoEspecialidad tecnicoEspecialidad)
+    {
+        _context.TecnicoEspecialidad.Remove(tecnicoEspecialidad);
     }
 
     public async Task AddAsync(Tecnico tecnico)
@@ -79,4 +104,3 @@ public class TecnicoRepository : ITecnicoRepository
         await _context.SaveChangesAsync();
     }
 }
-

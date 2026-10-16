@@ -12,9 +12,13 @@ public interface ITecnicoRepository
 
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsByIdentificacionAsync(string identificacion, int? excludeId = null);
+    Task<bool> EspecialidadExistsAsync(int idEspecialidad);
+    Task<bool> NivelCertificacionExistsAsync(int idNivelCertificacion);
 
     // Escritura
     Task<Tecnico?> GetForUpdateAsync(int id);
+    Task<Tecnico?> GetWithEspecialidadesForUpdateAsync(int id);
+    void RemoveEspecialidad(TecnicoEspecialidad tecnicoEspecialidad);
     Task AddAsync(Tecnico tecnico);
     Task SaveChangesAsync();
 }

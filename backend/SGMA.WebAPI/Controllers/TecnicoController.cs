@@ -87,5 +87,29 @@ public class TecnicoController : ControllerBase
         var result = await _service.DeleteAsync(id);
         return StatusCode(result.Status, result);
     }
+
+    // POST api/Tecnico/{id}/especialidades
+    [HttpPost("{id:int}/especialidades")]
+    [EndpointSummary("Asocia una especialidad al técnico, con su nivel y fecha de certificación")]
+    [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AsociarEspecialidadAsync([FromRoute] int id, [FromBody] TecnicoEspecialidadCreateDto especialidad)
+    {
+        var result = await _service.AsociarEspecialidadAsync(id, especialidad);
+        return StatusCode(result.Status, result);
+    }
+
+    // DELETE api/Tecnico/{id}/especialidades/{idEspecialidad}
+    [HttpDelete("{id:int}/especialidades/{idEspecialidad:int}")]
+    [EndpointSummary("Desasocia una especialidad del técnico")]
+    [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DesasociarEspecialidadAsync(int id, int idEspecialidad)
+    {
+        var result = await _service.DesasociarEspecialidadAsync(id, idEspecialidad);
+        return StatusCode(result.Status, result);
+    }
 }
 

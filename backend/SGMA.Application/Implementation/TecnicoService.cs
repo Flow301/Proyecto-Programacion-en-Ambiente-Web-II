@@ -111,6 +111,74 @@ public class TecnicoService : ITecnicoService
         return Result<int>.Success(id, 200, "OK", "Técnico inactivado.");
     }
 
+    // Agrega una fila a TecnicoEspecialidad sobre el técnico rastreado.
+    // Un id de especialidad o de nivel que no existe responde 400: lo inválido es el cuerpo, no el técnico.
+    public async Task<Result<TecnicoDetailDto>> AsociarEspecialidadAsync(int id, TecnicoEspecialidadCreateDto especialidad)
+    {
+        var entity = await _repository.GetWithEspecialidadesForUpdateAsync(id);
+
+        if (entity is null)
+            return NoExiste<TecnicoDetailDto>(id);
+
+        if (!await _repository.EspecialidadExistsAsync(especialidad.IdEspecialidad))
+            return Result<TecnicoDetailDto>.Failure(400, "Solicitud inválida",
+                $"La especialidad {especialidad.IdEspecialidad} no existe.");
+
+        if (!await _repository.NivelCertificacionExistsAsync(especialidad.IdNivelCertificacion))
+            return Result<TecnicoDetailDto>.Failure(400, "Solicitud inválida",
+                $"El nivel de certificación {especialidad.IdNivelCertificacion} no existe.");
+
+        var fecha = especialidad.FechaCertificacion!.Value.Date;
+
+        if (fecha > DateTime.Today)
+            return Result<TecnicoDetailDto>.Failure(400, "Solicitud inválida",
+                "La fecha de certificación no puede ser futura.");
+
+        if (entity.TecnicoEspecialidades.Any(te => te.IdEspecialidad == especialidad.IdEspecialidad))
+            return Result<TecnicoDetailDto>.Failure(409, "Conflicto",
+                $"El técnico {id} ya tiene asociada la especialidad {especialidad.IdEspecialidad}.");
+
+        entity.TecnicoEspecialidades.Add(new TecnicoEspecialidad
+        {
+            IdTecnico = id,
+            IdEspecialidad = especialidad.IdEspecialidad,
+            IdNivelCertificacion = especialidad.IdNivelCertificacion,
+            FechaCertificacion = fecha
+        });
+
+        await _repository.SaveChangesAsync();   // INSERT en TecnicoEspecialidad
+
+        return await DetalleAsync(id, "Especialidad asociada.");
+    }
+
+    public async Task<Result<TecnicoDetailDto>> DesasociarEspecialidadAsync(int id, int idEspecialidad)
+    {
+        var entity = await _repository.GetWithEspecialidadesForUpdateAsync(id);
+
+        if (entity is null)
+            return NoExiste<TecnicoDetailDto>(id);
+
+        var asociacion = entity.TecnicoEspecialidades.FirstOrDefault(te => te.IdEspecialidad == idEspecialidad);
+
+        if (asociacion is null)
+            return Result<TecnicoDetailDto>.Failure(404, "Recurso no encontrado",
+                $"El técnico {id} no tiene asociada la especialidad {idEspecialidad}.");
+
+        _repository.RemoveEspecialidad(asociacion);
+        await _repository.SaveChangesAsync();   // DELETE en TecnicoEspecialidad
+
+        return await DetalleAsync(id, "Especialidad desasociada.");
+    }
+
+    // Vuelve a leer el técnico para responder con sus especialidades y sus nombres
+    private async Task<Result<TecnicoDetailDto>> DetalleAsync(int id, string detalle)
+    {
+        var tecnico = await _repository.GetByIdAsync(id);
+        var data = _mapper.Map<TecnicoDetailDto>(tecnico!);
+
+        return Result<TecnicoDetailDto>.Success(data, 200, "OK", detalle);
+    }
+
     private static void Normalizar(Tecnico entity)
     {
         entity.NombreCompleto = entity.NombreCompleto.Trim();

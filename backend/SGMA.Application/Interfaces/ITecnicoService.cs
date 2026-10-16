@@ -11,4 +11,6 @@ public interface ITecnicoService
     Task<Result<TecnicoDetailDto>> AddAsync(TecnicoCreateDto tecnico);
     Task<Result<TecnicoDetailDto>> UpdateAsync(int id, TecnicoUpdateDto tecnico);
     Task<Result<int>> DeleteAsync(int id);
+    Task<Result<TecnicoDetailDto>> AsociarEspecialidadAsync(int id, TecnicoEspecialidadCreateDto especialidad);
+    Task<Result<TecnicoDetailDto>> DesasociarEspecialidadAsync(int id, int idEspecialidad);
 }
