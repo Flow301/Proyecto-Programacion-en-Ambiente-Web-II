@@ -94,6 +94,10 @@ public class EspecialidadService : IEspecialidadService
         if (!await _repository.ExistsAsync(id))
             return NoExiste<int>(id);
 
+        if (await _repository.HasTecnicosAsync(id))
+            return Result<int>.Failure(409, "Conflicto",
+                $"La especialidad {id} tiene técnicos asociados y no se puede eliminar.");
+
         await _repository.DeleteAsync(id);
 
         return Result<int>.Success(id, 200, "OK", "Especialidad eliminada.");
@@ -117,4 +121,6 @@ public class EspecialidadService : IEspecialidadService
     private static Result<T> NoExiste<T>(int id) =>
         Result<T>.Failure(404, "Recurso no encontrado", $"La especialidad {id} no existe.");
 }
+
+
 

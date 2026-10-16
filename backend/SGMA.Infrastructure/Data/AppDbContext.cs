@@ -19,6 +19,8 @@ public class AppDbContext : DbContext
     public DbSet<CategoriaActivo> CategoriaActivo { get; set; }
     public DbSet<Activo> Activo { get; set; }
     public DbSet<Especialidad> Especialidad { get; set; }
+    public DbSet<Tecnico> Tecnico { get; set; }
+    public DbSet<TecnicoEspecialidad> TecnicoEspecialidad { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -217,6 +219,64 @@ public class AppDbContext : DbContext
 
             entity.Property(e => e.Descripcion)
                 .HasMaxLength(250);
+        });
+
+        // Tecnico
+        modelBuilder.Entity<Tecnico>(entity =>
+        {
+            entity.HasKey(e => e.IdTecnico)
+                .HasName("PK_Tecnico");
+
+            entity.ToTable(t => t.HasCheckConstraint("CK_Tecnico_TarifaHora", "[TarifaHora] > 0"));
+
+            entity.HasIndex(e => e.Identificacion, "UQ_Tecnico_Identificacion")
+                .IsUnique();
+
+            entity.Property(e => e.NombreCompleto)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Identificacion)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Telefono)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Correo)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.TarifaHora)
+                .HasColumnType("decimal(10, 2)");
+        });
+
+        // TecnicoEspecialidad (Tecnico N:N Especialidad)
+        modelBuilder.Entity<TecnicoEspecialidad>(entity =>
+        {
+            // Llave compuesta: impide asociar la misma especialidad dos veces al mismo técnico
+            entity.HasKey(e => new { e.IdTecnico, e.IdEspecialidad })
+                .HasName("PK_TecnicoEspecialidad");
+
+            entity.Property(e => e.FechaCertificacion)
+                .HasColumnType("date");
+
+            entity.HasOne(d => d.Tecnico)
+                .WithMany(p => p.TecnicoEspecialidades)
+                .HasForeignKey(d => d.IdTecnico)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_TecnicoEspecialidad_Tecnico");
+
+            entity.HasOne(d => d.Especialidad)
+                .WithMany(p => p.TecnicoEspecialidades)
+                .HasForeignKey(d => d.IdEspecialidad)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_TecnicoEspecialidad_Especialidad");
+
+            entity.HasOne(d => d.NivelCertificacion)
+                .WithMany(p => p.TecnicoEspecialidades)
+                .HasForeignKey(d => d.IdNivelCertificacion)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_TecnicoEspecialidad_NivelCertificacion");
         });
 
         // Seed maestro de catálogos (HasData)

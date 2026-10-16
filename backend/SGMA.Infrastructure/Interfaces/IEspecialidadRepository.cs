@@ -13,10 +13,10 @@ public interface IEspecialidadRepository
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsAsync(int id);
     Task<bool> ExistsByNameAsync(string nombre, int? excludeId = null);
+    Task<bool> HasTecnicosAsync(int id);
 
     // Escritura
     Task AddAsync(Especialidad especialidad);
     Task UpdateAsync(Especialidad especialidad);
     Task DeleteAsync(int id);
 }
-

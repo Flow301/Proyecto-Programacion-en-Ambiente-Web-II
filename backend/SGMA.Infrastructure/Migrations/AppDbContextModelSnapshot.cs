@@ -628,6 +628,81 @@ namespace SGMA.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Tecnico", b =>
+                {
+                    b.Property<int>("IdTecnico")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdTecnico"));
+
+                    b.Property<string>("Correo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("Disponible")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Identificacion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("NombreCompleto")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("TarifaHora")
+                        .HasColumnType("decimal(10, 2)");
+
+                    b.Property<string>("Telefono")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.HasKey("IdTecnico")
+                        .HasName("PK_Tecnico");
+
+                    b.HasIndex(new[] { "Identificacion" }, "UQ_Tecnico_Identificacion")
+                        .IsUnique();
+
+                    b.ToTable("Tecnico", t =>
+                        {
+                            t.HasCheckConstraint("CK_Tecnico_TarifaHora", "[TarifaHora] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.TecnicoEspecialidad", b =>
+                {
+                    b.Property<int>("IdTecnico")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdEspecialidad")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaCertificacion")
+                        .HasColumnType("date");
+
+                    b.Property<int>("IdNivelCertificacion")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdTecnico", "IdEspecialidad")
+                        .HasName("PK_TecnicoEspecialidad");
+
+                    b.HasIndex("IdEspecialidad");
+
+                    b.HasIndex("IdNivelCertificacion");
+
+                    b.ToTable("TecnicoEspecialidad");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Activo", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.CategoriaActivo", "Categoria")
@@ -649,14 +724,59 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("EstadoActivo");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.TecnicoEspecialidad", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Especialidad", "Especialidad")
+                        .WithMany("TecnicoEspecialidades")
+                        .HasForeignKey("IdEspecialidad")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_TecnicoEspecialidad_Especialidad");
+
+                    b.HasOne("SGMA.Domain.Entities.NivelCertificacion", "NivelCertificacion")
+                        .WithMany("TecnicoEspecialidades")
+                        .HasForeignKey("IdNivelCertificacion")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_TecnicoEspecialidad_NivelCertificacion");
+
+                    b.HasOne("SGMA.Domain.Entities.Tecnico", "Tecnico")
+                        .WithMany("TecnicoEspecialidades")
+                        .HasForeignKey("IdTecnico")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_TecnicoEspecialidad_Tecnico");
+
+                    b.Navigation("Especialidad");
+
+                    b.Navigation("NivelCertificacion");
+
+                    b.Navigation("Tecnico");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.CategoriaActivo", b =>
                 {
                     b.Navigation("Activos");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Especialidad", b =>
+                {
+                    b.Navigation("TecnicoEspecialidades");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.EstadoActivo", b =>
                 {
                     b.Navigation("Activos");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.NivelCertificacion", b =>
+                {
+                    b.Navigation("TecnicoEspecialidades");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Tecnico", b =>
+                {
+                    b.Navigation("TecnicoEspecialidades");
                 });
 #pragma warning restore 612, 618
         }

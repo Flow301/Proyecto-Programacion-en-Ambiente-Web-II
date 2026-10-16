@@ -77,6 +77,15 @@ public class EspecialidadRepository : IEspecialidadRepository
         return result;
     }
 
+    // Cuenta también los técnicos inactivos: su historial de especialidades se conserva
+    public async Task<bool> HasTecnicosAsync(int id)
+    {
+        var result = await _context.TecnicoEspecialidad
+            .AnyAsync(te => te.IdEspecialidad == id);
+
+        return result;
+    }
+
     // =====================================================================
     // Escritura (un solo SaveChangesAsync por operación)
     // =====================================================================
@@ -101,4 +110,3 @@ public class EspecialidadRepository : IEspecialidadRepository
             .ExecuteDeleteAsync();
     }
 }
-
