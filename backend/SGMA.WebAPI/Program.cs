@@ -72,6 +72,12 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 var app = builder.Build();
 
+// Aplica las migraciones pendientes y dispara UseAsyncSeeding (ver docs/modelo-datos.md, "Seeders")
+using (var scope = app.Services.CreateScope())
+{
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+
 app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
