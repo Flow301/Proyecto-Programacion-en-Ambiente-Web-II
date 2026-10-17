@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<Especialidad> Especialidad { get; set; }
     public DbSet<Tecnico> Tecnico { get; set; }
     public DbSet<TecnicoEspecialidad> TecnicoEspecialidad { get; set; }
+    public DbSet<Usuario> Usuario { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -277,6 +278,41 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdNivelCertificacion)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_TecnicoEspecialidad_NivelCertificacion");
+        });
+
+        // Usuario
+        modelBuilder.Entity<Usuario>(entity =>
+        {
+            entity.HasKey(e => e.IdUsuario)
+                .HasName("PK_Usuario");
+
+            entity.HasIndex(e => e.Login, "UQ_Usuario_Login")
+                .IsUnique();
+
+            entity.HasIndex(e => e.Correo, "UQ_Usuario_Correo")
+                .IsUnique();
+
+            entity.Property(e => e.NombreCompleto)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Login)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Correo)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ClaveHash)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.FechaCreacion)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.HasOne(d => d.Rol)
+                .WithMany(p => p.Usuarios)
+                .HasForeignKey(d => d.IdRol)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Usuario_Rol");
         });
 
         // Seed maestro de catálogos (HasData)

@@ -17,7 +17,7 @@ namespace SGMA.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -703,6 +703,63 @@ namespace SGMA.Infrastructure.Migrations
                     b.ToTable("TecnicoEspecialidad");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Usuario", b =>
+                {
+                    b.Property<int>("IdUsuario")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdUsuario"));
+
+                    b.Property<string>("ClaveHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Correo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysdatetime())");
+
+                    b.Property<int>("IdRol")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Login")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("NombreCompleto")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UltimoAcceso")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("IdUsuario")
+                        .HasName("PK_Usuario");
+
+                    b.HasIndex("IdRol");
+
+                    b.HasIndex(new[] { "Correo" }, "UQ_Usuario_Correo")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "Login" }, "UQ_Usuario_Login")
+                        .IsUnique();
+
+                    b.ToTable("Usuario");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Activo", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.CategoriaActivo", "Categoria")
@@ -754,6 +811,18 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("Tecnico");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Usuario", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Rol", "Rol")
+                        .WithMany("Usuarios")
+                        .HasForeignKey("IdRol")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_Usuario_Rol");
+
+                    b.Navigation("Rol");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.CategoriaActivo", b =>
                 {
                     b.Navigation("Activos");
@@ -772,6 +841,11 @@ namespace SGMA.Infrastructure.Migrations
             modelBuilder.Entity("SGMA.Domain.Entities.NivelCertificacion", b =>
                 {
                     b.Navigation("TecnicoEspecialidades");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Rol", b =>
+                {
+                    b.Navigation("Usuarios");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.Tecnico", b =>
