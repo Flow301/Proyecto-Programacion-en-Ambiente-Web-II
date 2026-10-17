@@ -7,6 +7,9 @@ public interface IActivoService
 {
     Task<Result<IEnumerable<ActivoListDto>>> GetPaginationAsync(int pageNumber, int pageSize);
     Task<Result<ActivoDetailDto>> GetByIdAsync(int id);
-    Task<Result<ActivoDetailDto>> AddAsync(ActivoCreateDto activo);
+    Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id);
+    Task<Result<ActivoDetailDto>> AddAsync(ActivoCreateDto activo, int idUsuario);
     Task<Result<ActivoDetailDto>> UpdateAsync(int id, ActivoUpdateDto activo);
+    Task<Result<ActivoDetailDto>> CambiarEstadoAsync(int id, int idEstadoNuevo, int idUsuario, string? observacion);
+    Task<Result<ActivoDetailDto>> DarDeBajaAsync(int id, int idUsuario, string? observacion);
 }

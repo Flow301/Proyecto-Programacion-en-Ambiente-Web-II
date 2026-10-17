@@ -51,12 +51,47 @@ public class ActivoRepository : IActivoRepository
         return ultimo is null ? 0 : int.Parse(ultimo[(prefijo.Length + 1)..]);
     }
 
+    // Del más antiguo al más reciente: es la línea de tiempo del vehículo
+    public async Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo)
+    {
+        return await _context.HistorialEstadoActivo
+            .AsNoTracking()
+            .Include(h => h.EstadoAnterior)
+            .Include(h => h.EstadoNuevo)
+            .Include(h => h.Usuario)
+            .Where(h => h.IdActivo == idActivo)
+            .OrderBy(h => h.FechaCambio)
+            .ThenBy(h => h.IdHistorial)
+            .ToListAsync();
+    }
+
+    public async Task<EstadoActivo?> GetEstadoAsync(int idEstadoActivo)
+    {
+        return await _context.EstadoActivo
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.IdEstadoActivo == idEstadoActivo);
+    }
+
+    public async Task<bool> ExistsAsync(int id)
+    {
+        return await _context.Activo.AnyAsync(a => a.IdActivo == id);
+    }
+
     public async Task<bool> ExistsByPlacaAsync(string placa, int? excludeId = null)
     {
         return await _context.Activo
             .AnyAsync(a => a.Placa == placa && a.IdActivo != excludeId);
     }
 
+    // Rastreada (sin AsNoTracking) para cambiar el estado; trae el estado actual para los mensajes
+    public async Task<Activo?> GetForUpdateAsync(int id)
+    {
+        return await _context.Activo
+            .Include(a => a.EstadoActivo)
+            .FirstOrDefaultAsync(a => a.IdActivo == id);
+    }
+
+    // Inserta el vehículo y su registro inicial de historial con un solo SaveChangesAsync
     public async Task AddAsync(Activo activo)
     {
         _context.Activo.Add(activo);
@@ -67,6 +102,12 @@ public class ActivoRepository : IActivoRepository
     {
         // Update marca todas las columnas como modificadas (PUT = reemplazo completo)
         _context.Activo.Update(activo);
+        await _context.SaveChangesAsync();
+    }
+
+    // Guarda los cambios de una entidad rastreada: estado e historial en una sola transacción
+    public async Task SaveChangesAsync()
+    {
         await _context.SaveChangesAsync();
     }
 }

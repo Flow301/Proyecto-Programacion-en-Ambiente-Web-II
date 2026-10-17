@@ -39,6 +39,17 @@ public class ActivoController : ControllerBase
         return StatusCode(result.Status, result);
     }
 
+    // GET api/Activo/{id}/historial
+    [HttpGet("{id:int}/historial")]
+    [EndpointSummary("Consulta el historial de estados de un vehículo")]
+    [ProducesResponseType<Result<IEnumerable<HistorialEstadoActivoDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<IEnumerable<HistorialEstadoActivoDto>>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetHistorialAsync(int id)
+    {
+        var result = await _service.GetHistorialAsync(id);
+        return StatusCode(result.Status, result);
+    }
+
     // POST api/Activo
     [HttpPost]
     [EndpointSummary("Registra un vehículo y genera su código")]
@@ -48,7 +59,8 @@ public class ActivoController : ControllerBase
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AddAsync([FromBody] ActivoCreateDto activo)
     {
-        var result = await _service.AddAsync(activo);
+        // Avance 1: el usuario viene del cuerpo; desde el Avance 2, del token (solo cambia esta línea)
+        var result = await _service.AddAsync(activo, activo.IdUsuario);
         if (!result.IsSuccess)
             return StatusCode(result.Status, result);
         // 201 Created + encabezado Location: /api/Activo/{id}
@@ -65,6 +77,32 @@ public class ActivoController : ControllerBase
     public async Task<IActionResult> UpdateAsync([FromRoute] int id, [FromBody] ActivoUpdateDto activo)
     {
         var result = await _service.UpdateAsync(id, activo);
+        return StatusCode(result.Status, result);
+    }
+
+    // POST api/Activo/{id}/estado
+    [HttpPost("{id:int}/estado")]
+    [EndpointSummary("Cambia manualmente el estado de un vehículo (solo Administrador)")]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CambiarEstadoAsync([FromRoute] int id, [FromBody] ActivoEstadoDto estado)
+    {
+        var result = await _service.CambiarEstadoAsync(id, estado.IdEstadoActivo, estado.IdUsuario, estado.Observacion);
+        return StatusCode(result.Status, result);
+    }
+
+    // DELETE api/Activo/{id}
+    [HttpDelete("{id:int}")]
+    [EndpointSummary("Da de baja un vehículo (baja lógica: pasa a Dado de Baja)")]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DarDeBajaAsync([FromRoute] int id, [FromBody] ActivoBajaDto baja)
+    {
+        var result = await _service.DarDeBajaAsync(id, baja.IdUsuario, baja.Observacion);
         return StatusCode(result.Status, result);
     }
 }

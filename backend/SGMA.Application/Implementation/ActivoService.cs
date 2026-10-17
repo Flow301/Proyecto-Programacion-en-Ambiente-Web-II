@@ -7,6 +7,7 @@ using SGMA.Domain.Entities;
 using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Interfaces;
 using SGMA.Shared.Constants;
+using SGMA.Shared.Exceptions;
 
 namespace SGMA.Application.Implementation;
 
@@ -15,14 +16,25 @@ public class ActivoService : IActivoService
     // Cuatro dígitos por prefijo: PKP-0001 a PKP-9999
     private const int MaxConsecutivo = 9999;
 
+    // Transiciones manuales del Administrador (docs/matriz-estados.md). En Mantenimiento no tiene salida
+    // manual (la controlan las órdenes) y Dado de Baja es final.
+    private static readonly Dictionary<int, int[]> TransicionesManuales = new()
+    {
+        [SeedIds.EstadoActivoOperativo] = [SeedIds.EstadoActivoFueraDeServicio, SeedIds.EstadoActivoDadoDeBaja],
+        [SeedIds.EstadoActivoFueraDeServicio] = [SeedIds.EstadoActivoOperativo, SeedIds.EstadoActivoDadoDeBaja]
+    };
+
     private readonly IActivoRepository _repository;
     private readonly ICategoriaActivoRepository _categoriaRepository;
+    private readonly IUsuarioRepository _usuarioRepository;
     private readonly IMapper _mapper;
 
-    public ActivoService(IActivoRepository repository, ICategoriaActivoRepository categoriaRepository, IMapper mapper)
+    public ActivoService(IActivoRepository repository, ICategoriaActivoRepository categoriaRepository,
+        IUsuarioRepository usuarioRepository, IMapper mapper)
     {
         _repository = repository;
         _categoriaRepository = categoriaRepository;
+        _usuarioRepository = usuarioRepository;
         _mapper = mapper;
     }
 
@@ -52,7 +64,20 @@ public class ActivoService : IActivoService
         return Result<ActivoDetailDto>.Success(data);
     }
 
-    public async Task<Result<ActivoDetailDto>> AddAsync(ActivoCreateDto activo)
+    public async Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id)
+    {
+        if (!await _repository.ExistsAsync(id))
+            return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(404, "Recurso no encontrado",
+                $"El vehículo {id} no existe.");
+
+        var historial = await _repository.GetHistorialAsync(id);
+
+        var data = _mapper.Map<IEnumerable<HistorialEstadoActivoDto>>(historial);
+
+        return Result<IEnumerable<HistorialEstadoActivoDto>>.Success(data);
+    }
+
+    public async Task<Result<ActivoDetailDto>> AddAsync(ActivoCreateDto activo, int idUsuario)
     {
         var entity = _mapper.Map<Activo>(activo);
 
@@ -60,9 +85,12 @@ public class ActivoService : IActivoService
         if (error is not null)
             return error;
 
+        await ValidarAdministradorAsync(idUsuario);
+
         var categoria = (await _categoriaRepository.GetByIdAsync(entity.IdCategoria))!;
 
-        entity.IdEstadoActivo = SeedIds.EstadoActivoOperativo;   // todo vehículo nace Operativo
+        // Todo vehículo nace Operativo, con su registro inicial en el historial (estado anterior vacío)
+        AplicarEstado(entity, SeedIds.EstadoActivoOperativo, idUsuario, null);
 
         // Si otro registro simultáneo toma el mismo código, el índice UQ_Activo_Codigo lo rechaza
         // y se reintenta una vez con el siguiente número (docs/decisiones-tecnicas.md, sección 3)
@@ -121,6 +149,72 @@ public class ActivoService : IActivoService
         var data = _mapper.Map<ActivoDetailDto>(actualizado!);
 
         return Result<ActivoDetailDto>.Success(data, 200, "OK", "Vehículo actualizado.");
+    }
+
+    // Cambio manual del Administrador. Sigue el orden de docs/matriz-estados.md, "Cómo se rechaza":
+    // 404 si no existe, 409 si la transición no está permitida, 409 si falla una condición.
+    public async Task<Result<ActivoDetailDto>> CambiarEstadoAsync(int id, int idEstadoNuevo, int idUsuario, string? observacion)
+    {
+        var activo = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"El vehículo {id} no existe.");
+
+        var destino = await _repository.GetEstadoAsync(idEstadoNuevo)
+            ?? throw new RecursoNoEncontradoException($"El estado de vehículo {idEstadoNuevo} no existe.");
+
+        await ValidarAdministradorAsync(idUsuario);
+
+        var actual = activo.EstadoActivo.Nombre;
+
+        if (!TransicionesManuales.TryGetValue(activo.IdEstadoActivo, out var permitidos) || !permitidos.Contains(idEstadoNuevo))
+            throw new TransicionNoPermitidaException(
+                $"El vehículo {activo.Codigo} está {actual} y no puede pasar a {destino.Nombre}.", actual, destino.Nombre);
+
+        // Las condiciones que dependen de las órdenes (no dar de baja con órdenes abiertas) llegan con OrdenMantenimiento
+
+        AplicarEstado(activo, idEstadoNuevo, idUsuario, observacion);
+        await _repository.SaveChangesAsync();
+
+        var actualizado = await _repository.GetByIdAsync(id);
+        var data = _mapper.Map<ActivoDetailDto>(actualizado!);
+
+        return Result<ActivoDetailDto>.Success(data, 200, "OK",
+            $"El vehículo {activo.Codigo} pasó de {actual} a {destino.Nombre}.");
+    }
+
+    // Dar de baja es la misma transición manual hacia Dado de Baja: nunca se borra el vehículo
+    public Task<Result<ActivoDetailDto>> DarDeBajaAsync(int id, int idUsuario, string? observacion) =>
+        CambiarEstadoAsync(id, SeedIds.EstadoActivoDadoDeBaja, idUsuario, observacion);
+
+    // Único punto que cambia el estado del vehículo y escribe HistorialEstadoActivo (docs/convenciones.md).
+    // No guarda: quien lo llama hace un solo SaveChangesAsync. Al crear, el estado anterior queda vacío.
+    private static void AplicarEstado(Activo activo, int idEstadoNuevo, int idUsuario, string? observacion)
+    {
+        var esNuevo = activo.IdActivo == 0;
+
+        if (!esNuevo && activo.IdEstadoActivo == idEstadoNuevo)
+            return;                                // sin cambio real no hay historial
+
+        activo.HistorialEstados.Add(new HistorialEstadoActivo
+        {
+            IdEstadoAnterior = esNuevo ? null : activo.IdEstadoActivo,
+            IdEstadoNuevo = idEstadoNuevo,
+            IdUsuario = idUsuario,
+            Observacion = string.IsNullOrWhiteSpace(observacion) ? null : observacion.Trim()
+        });
+
+        activo.IdEstadoActivo = idEstadoNuevo;
+    }
+
+    // Avance 1: el usuario responsable viaja en el cuerpo. Desde el Avance 2 lo valida el token con [Authorize].
+    private async Task ValidarAdministradorAsync(int idUsuario)
+    {
+        var usuario = await _usuarioRepository.GetByIdAsync(idUsuario);
+
+        if (usuario is null || !usuario.Estado)
+            throw new RecursoNoEncontradoException($"El usuario {idUsuario} no existe o está inactivo.");
+
+        if (usuario.IdRol != SeedIds.RolAdministrador)
+            throw new ReglaNegocioException("Solo el Administrador puede registrar vehículos o cambiar su estado.");
     }
 
     // Normaliza los textos y aplica las reglas comunes del POST y el PUT
