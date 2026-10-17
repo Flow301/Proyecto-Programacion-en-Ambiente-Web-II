@@ -455,6 +455,49 @@ namespace SGMA.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.HistorialEstadoActivo", b =>
+                {
+                    b.Property<int>("IdHistorial")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdHistorial"));
+
+                    b.Property<DateTime>("FechaCambio")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysdatetime())");
+
+                    b.Property<int>("IdActivo")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdEstadoAnterior")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdEstadoNuevo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdUsuario")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("IdHistorial")
+                        .HasName("PK_HistorialEstadoActivo");
+
+                    b.HasIndex("IdActivo");
+
+                    b.HasIndex("IdEstadoAnterior");
+
+                    b.HasIndex("IdEstadoNuevo");
+
+                    b.HasIndex("IdUsuario");
+
+                    b.ToTable("HistorialEstadoActivo");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.NaturalezaMantenimiento", b =>
                 {
                     b.Property<int>("IdNaturaleza")
@@ -781,6 +824,44 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("EstadoActivo");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.HistorialEstadoActivo", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Activo", "Activo")
+                        .WithMany("HistorialEstados")
+                        .HasForeignKey("IdActivo")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_HistorialEstadoActivo_Activo");
+
+                    b.HasOne("SGMA.Domain.Entities.EstadoActivo", "EstadoAnterior")
+                        .WithMany()
+                        .HasForeignKey("IdEstadoAnterior")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_HistorialEstadoActivo_EstadoAnterior");
+
+                    b.HasOne("SGMA.Domain.Entities.EstadoActivo", "EstadoNuevo")
+                        .WithMany()
+                        .HasForeignKey("IdEstadoNuevo")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_HistorialEstadoActivo_EstadoNuevo");
+
+                    b.HasOne("SGMA.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("IdUsuario")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_HistorialEstadoActivo_Usuario");
+
+                    b.Navigation("Activo");
+
+                    b.Navigation("EstadoAnterior");
+
+                    b.Navigation("EstadoNuevo");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.TecnicoEspecialidad", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.Especialidad", "Especialidad")
@@ -821,6 +902,11 @@ namespace SGMA.Infrastructure.Migrations
                         .HasConstraintName("FK_Usuario_Rol");
 
                     b.Navigation("Rol");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Activo", b =>
+                {
+                    b.Navigation("HistorialEstados");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.CategoriaActivo", b =>

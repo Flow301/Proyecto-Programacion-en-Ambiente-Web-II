@@ -22,6 +22,7 @@ public class AppDbContext : DbContext
     public DbSet<Tecnico> Tecnico { get; set; }
     public DbSet<TecnicoEspecialidad> TecnicoEspecialidad { get; set; }
     public DbSet<Usuario> Usuario { get; set; }
+    public DbSet<HistorialEstadoActivo> HistorialEstadoActivo { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -313,6 +314,44 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdRol)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Usuario_Rol");
+        });
+
+        // HistorialEstadoActivo
+        modelBuilder.Entity<HistorialEstadoActivo>(entity =>
+        {
+            entity.HasKey(e => e.IdHistorial)
+                .HasName("PK_HistorialEstadoActivo");
+
+            entity.Property(e => e.FechaCambio)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.Property(e => e.Observacion)
+                .HasMaxLength(500);
+
+            entity.HasOne(d => d.Activo)
+                .WithMany(p => p.HistorialEstados)
+                .HasForeignKey(d => d.IdActivo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_Activo");
+
+            // Dos FK a EstadoActivo: el nombre de la restricción dice cuál es cuál
+            entity.HasOne(d => d.EstadoAnterior)
+                .WithMany()
+                .HasForeignKey(d => d.IdEstadoAnterior)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_EstadoAnterior");
+
+            entity.HasOne(d => d.EstadoNuevo)
+                .WithMany()
+                .HasForeignKey(d => d.IdEstadoNuevo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_EstadoNuevo");
+
+            entity.HasOne(d => d.Usuario)
+                .WithMany()
+                .HasForeignKey(d => d.IdUsuario)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_Usuario");
         });
 
         // Seed maestro de catálogos (HasData)
