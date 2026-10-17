@@ -42,6 +42,21 @@ public class TecnicoService : ITecnicoService
         return Result<IEnumerable<TecnicoListDto>>.Paged(data, pageNumber, pageSize, totalRecords);
     }
 
+    // La especialidad viene en la ruta, si no existe es 404. Si existe pero nadie
+    // está disponible, la respuesta es 200 con la lista vacía.
+    public async Task<Result<IEnumerable<TecnicoDisponibleDto>>> GetDisponiblesPorEspecialidadAsync(int idEspecialidad)
+    {
+        if (!await _repository.EspecialidadExistsAsync(idEspecialidad))
+            return Result<IEnumerable<TecnicoDisponibleDto>>.Failure(404, "Recurso no encontrado",
+                $"La especialidad {idEspecialidad} no existe.");
+
+        var disponibles = await _repository.GetDisponiblesPorEspecialidadAsync(idEspecialidad);
+
+        var data = _mapper.Map<IEnumerable<TecnicoDisponibleDto>>(disponibles);
+
+        return Result<IEnumerable<TecnicoDisponibleDto>>.Success(data);
+    }
+
     public async Task<Result<TecnicoDetailDto>> GetByIdAsync(int id)
     {
         var tecnico = await _repository.GetByIdAsync(id);

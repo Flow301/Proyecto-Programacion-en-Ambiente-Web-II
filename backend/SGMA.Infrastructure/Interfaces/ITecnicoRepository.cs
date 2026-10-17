@@ -9,6 +9,7 @@ public interface ITecnicoRepository
     Task<IEnumerable<Tecnico>> GetPaginationAsync(int pageNumber, int pageSize);
     Task<int> CountAsync();
     Task<Tecnico?> GetByIdAsync(int id);
+    Task<IEnumerable<TecnicoEspecialidad>> GetDisponiblesPorEspecialidadAsync(int idEspecialidad);
 
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsByIdentificacionAsync(string identificacion, int? excludeId = null);

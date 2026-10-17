@@ -38,6 +38,17 @@ public class TecnicoController : ControllerBase
         return StatusCode(result.Status, result);
     }
 
+    // GET api/Tecnico/disponibles/{idEspecialidad}
+    [HttpGet("disponibles/{idEspecialidad:int}")]
+    [EndpointSummary("Lista los técnicos activos y disponibles que tienen una especialidad")]
+    [ProducesResponseType<Result<IEnumerable<TecnicoDisponibleDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<IEnumerable<TecnicoDisponibleDto>>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDisponiblesPorEspecialidadAsync(int idEspecialidad)
+    {
+        var result = await _service.GetDisponiblesPorEspecialidadAsync(idEspecialidad);
+        return StatusCode(result.Status, result);
+    }
+
     // GET api/Tecnico/{id}
     [HttpGet("{id:int}", Name = "GetTecnicoById")]
     [EndpointSummary("Obtiene el detalle de un técnico con sus especialidades")]
@@ -112,4 +123,3 @@ public class TecnicoController : ControllerBase
         return StatusCode(result.Status, result);
     }
 }
-

@@ -8,6 +8,7 @@ public interface ITecnicoService
     Task<Result<IEnumerable<TecnicoListDto>>> GetAllAsync();
     Task<Result<IEnumerable<TecnicoListDto>>> GetPaginationAsync(int pageNumber, int pageSize);
     Task<Result<TecnicoDetailDto>> GetByIdAsync(int id);
+    Task<Result<IEnumerable<TecnicoDisponibleDto>>> GetDisponiblesPorEspecialidadAsync(int idEspecialidad);
     Task<Result<TecnicoDetailDto>> AddAsync(TecnicoCreateDto tecnico);
     Task<Result<TecnicoDetailDto>> UpdateAsync(int id, TecnicoUpdateDto tecnico);
     Task<Result<int>> DeleteAsync(int id);

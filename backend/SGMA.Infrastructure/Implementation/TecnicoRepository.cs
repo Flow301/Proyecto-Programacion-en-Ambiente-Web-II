@@ -52,6 +52,23 @@ public class TecnicoRepository : ITecnicoRepository
             .FirstOrDefaultAsync(t => t.IdTecnico == id && t.Estado);
     }
 
+    // Técnicos que se pueden asignar: activos, disponibles y con la especialidad.
+    // Se consulta la tabla puente para traer también el nivel y la fecha de esa especialidad.
+    // Orden: primero el nivel más alto (Experto) y luego por nombre.
+    public async Task<IEnumerable<TecnicoEspecialidad>> GetDisponiblesPorEspecialidadAsync(int idEspecialidad)
+    {
+        return await _context.TecnicoEspecialidad
+            .AsNoTracking()
+            .Include(te => te.Tecnico)
+            .Include(te => te.NivelCertificacion)
+            .Where(te => te.IdEspecialidad == idEspecialidad
+                      && te.Tecnico.Estado
+                      && te.Tecnico.Disponible)
+            .OrderByDescending(te => te.IdNivelCertificacion)
+            .ThenBy(te => te.Tecnico.NombreCompleto)
+            .ToListAsync();
+    }
+
     // Verificaciones
     // Incluye los inactivos: la cédula es única en toda la tabla (UQ_Tecnico_Identificacion)
     public async Task<bool> ExistsByIdentificacionAsync(string identificacion, int? excludeId = null)
