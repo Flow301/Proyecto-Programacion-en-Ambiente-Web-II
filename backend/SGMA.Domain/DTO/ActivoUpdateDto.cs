@@ -17,7 +17,8 @@ public record class ActivoUpdateDto
     [Required(ErrorMessage = "El campo {0} es obligatorio.")]
     public DateTime? FechaAdquisicion { get; set; }
 
-    [Range(0, double.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
+    // decimal(18,2): como máximo 9 999 999 999 999 999,99
+    [Range(typeof(decimal), "0", "9999999999999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "El campo {0} debe estar entre {1} y {2}.")]
     public decimal ValorReferencia { get; set; }
 
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(10, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]

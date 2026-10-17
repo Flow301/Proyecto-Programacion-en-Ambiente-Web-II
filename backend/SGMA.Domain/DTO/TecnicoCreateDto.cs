@@ -20,7 +20,7 @@ public record class TecnicoCreateDto
     public bool Disponible { get; set; } = true;
 
     // decimal(10,2), como máximo 99 999 999,99
-    [Range(typeof(decimal), "0.01", "99999999.99", ErrorMessage = "El campo {0} debe estar entre {1} y {2}.")]
+    [Range(typeof(decimal), "0.01", "99999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "El campo {0} debe estar entre {1} y {2}.")]
     public decimal TarifaHora { get; set; }
 }
 
