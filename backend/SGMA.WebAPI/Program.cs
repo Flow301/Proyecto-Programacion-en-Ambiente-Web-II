@@ -6,6 +6,7 @@ using SGMA.Application.Implementation;
 using SGMA.Application.Interfaces;
 using SGMA.Application.Mapper;
 using SGMA.Infrastructure.Data;
+using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Implementation;
 using SGMA.Infrastructure.Interfaces;
 using SGMA.WebAPI.Handlers;
@@ -18,9 +19,24 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// Seeders en tiempo de ejecución, ver docs/modelo-datos.md
+// El DevelopmentSeeder solo corre en Development. Cuando exista el MasterSeeder (admin),
+// va primero en los dos bloques, con la contraseña de Seed:AdminPassword.
+var isDevelopment = builder.Environment.IsDevelopment();
+
 // La cadena de conexión vive en User Secrets (ver README, paso 2)
 builder.Services.AddDbContext<AppDbContext>(options => options
-    .UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    .UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    // Las herramientas de EF (dotnet ef database update) usan la versión síncrona
+    .UseSeeding((context, _) =>
+    {
+        if (isDevelopment) DevelopmentSeeder.Seed(context);
+    })
+    // La aplicación (Database.MigrateAsync) usa la versión asíncrona
+    .UseAsyncSeeding(async (context, _, ct) =>
+    {
+        if (isDevelopment) await DevelopmentSeeder.SeedAsync(context, ct);
+    }));
 
 // Mapster: Pattern Mapper
 // 1. Trigger custom configurations
