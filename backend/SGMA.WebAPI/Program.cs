@@ -62,7 +62,9 @@ app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    // Menú y búsqueda de Scalar muestran la ruta en lugar del EndpointSummary
+    app.MapScalarApiReference(options => options
+        .WithOperationTitleSource(OperationTitleSource.Path));
 }
 
 app.UseHttpsRedirection();
