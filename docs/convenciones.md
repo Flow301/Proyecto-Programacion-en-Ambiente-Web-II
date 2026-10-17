@@ -19,22 +19,24 @@ Versiones verificadas en NuGet el 8 de octubre de 2026. Todas son estables, tien
 - **`SGMA.Domain`:** ninguno.
 - **`SGMA.Shared`:** ninguno.
 - **`SGMA.Infrastructure`:**
-  - `Microsoft.EntityFrameworkCore` 10.0.12
-  - `Microsoft.EntityFrameworkCore.SqlServer` 10.0.12
-  - `Microsoft.EntityFrameworkCore.Design` 10.0.12, con `PrivateAssets` en `all`
-  - `Microsoft.Extensions.Identity.Core` 10.0.12, para `PasswordHasher`
+  - `Microsoft.EntityFrameworkCore` 10.0.13
+  - `Microsoft.EntityFrameworkCore.SqlServer` 10.0.13
+  - `Microsoft.EntityFrameworkCore.Design` 10.0.13, con `PrivateAssets` en `all`
+  - `Microsoft.Extensions.Identity.Core` 10.0.13, para `PasswordHasher`
+  - `System.Security.Cryptography.Pkcs` 10.0.13, para corregir una vulnerabilidad de la versión que trae SqlServer
 - **`SGMA.Application`:**
   - `Mapster` 10.0.13
 - **`SGMA.WebAPI`:**
-  - `Microsoft.AspNetCore.OpenApi` 10.0.12
-  - `Microsoft.EntityFrameworkCore.Design` 10.0.12, con `PrivateAssets` en `all`
+  - `Microsoft.AspNetCore.OpenApi` 10.0.13
+  - `Microsoft.EntityFrameworkCore.Design` 10.0.13, con `PrivateAssets` en `all`
   - `Mapster.DependencyInjection` 10.0.13
-  - `Scalar.AspNetCore` 2.17.14
-  - `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.12. **Pendiente (Avance 2).**
+  - `Scalar.AspNetCore` 2.18.0
+  - `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.13. **Pendiente (Avance 2).**
 
-Es la misma distribución de paquetes del material de clase, con dos diferencias:
+Es la misma distribución de paquetes del material de clase, con tres diferencias:
 
-- Scalar: el material usa la 2.17.4 y nosotros la 2.17.14, el último parche de la misma versión.
+- Scalar: el material usa la 2.17.4 y nosotros la 2.18.0, el último parche de la misma versión.
+- `SGMA.Infrastructure` agrega `System.Security.Cryptography.Pkcs` para corregir una vulnerabilidad que Visual Studio reporta en la versión que trae `Microsoft.EntityFrameworkCore.SqlServer`.
 - `SGMA.WebAPI` no referencia `Microsoft.Extensions.Identity.Core`: ASP.NET Core ya lo incluye y el SDK lo marca como sobrante (advertencia `NU1510`).
 
 ### Frontend
@@ -221,9 +223,9 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 ### Ramas
 
 - **`develop`:** donde trabajamos los dos todos los días, con commits directos.
-- **`main`:** solo versiones estables. Recibe `develop` por pull request.
+- **`main`:** solo versiones estables. Recibe `develop` con un merge directo (ver [Integrar `develop` en `main`](#integrar-develop-en-main)).
 
-No usamos ramas por funcionalidad ni revisiones obligatorias: quien abre el pull request lo fusiona.
+No usamos ramas por funcionalidad, pull requests ni revisiones obligatorias: quien integra hace el merge.
 
 ### El día a día
 
@@ -252,14 +254,19 @@ git push
 
 **Cómo:**
 
-1. En GitHub, **Pull requests → New pull request**, con *base* `main` y *compare* `develop`.
-2. **Create pull request** y luego **Merge pull request** con merge commit.
-3. La rama `develop` nunca se borra.
+Merge directo desde la terminal, sin pull request:
 
-**Configuración del repositorio en GitHub:**
+```powershell
+git switch main
+git pull
+git merge --no-ff develop -m "Integra develop en main: <qué se integra>"
+git push
+git switch develop
+```
 
-- Solo está permitido **Allow merge commits**; squash y rebase están desactivados para que cada commit llegue a `main` con su autor y su fecha.
-- **Automatically delete head branches** está desactivado para que GitHub no borre `develop`.
+- Siempre con `--no-ff`, para que quede un merge commit y cada commit llegue a `main` con su autor y su fecha. Nunca `--squash` ni `rebase`.
+- Si el merge da conflicto, se resuelve en `develop` primero y se vuelve a integrar.
+- La rama `develop` nunca se borra.
 
 **Entregas:** después de integrar la versión entregada, marcamos el commit de `main` con una etiqueta:
 

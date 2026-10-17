@@ -57,7 +57,7 @@ Objetivo: la API completa del Avance 1, probada en Scalar, con más del 50 % de 
   - entidad, CRUD con inactivación e identificación única;
   - tabla `TecnicoEspecialidad` para asociar y desasociar, con nivel y fecha y sin duplicados;
   - consulta de técnicos disponibles por especialidad;
-  - los 10 técnicos y sus 21 asociaciones en el `DevelopmentSeeder`.
+  - los 10 técnicos y sus 20 asociaciones en el `DevelopmentSeeder`.
 
 ### Semana 6: vehículos, repuestos y proveedores
 

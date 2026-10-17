@@ -186,6 +186,6 @@ El usuario `admin` tiene el rol Administrador y su contraseña es la que cada un
 ## Cómo trabajamos
 
 - Trabajamos los dos en la rama `develop`; `main` solo recibe versiones estables.
-- Cuando terminamos una funcionalidad grande, y como mínimo una vez por semana, integramos `develop` en `main` con un *pull request* que fusionamos con merge commit, sin revisión obligatoria.
+- Cuando terminamos una funcionalidad grande, y como mínimo una vez por semana, integramos `develop` en `main` con un merge directo (`git merge --no-ff develop`), sin pull request ni revisión obligatoria.
 - Cada uno hace sus propios commits desde su cuenta, con mensajes en español y en presente, por ejemplo `Agrega validación de stock en CrearOrden`.
 - El detalle está en [convenciones](docs/convenciones.md).

@@ -2,8 +2,13 @@ using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using SGMA.Application.Implementation;
+using SGMA.Application.Interfaces;
 using SGMA.Application.Mapper;
 using SGMA.Infrastructure.Data;
+using SGMA.Infrastructure.Data.Seed;
+using SGMA.Infrastructure.Implementation;
+using SGMA.Infrastructure.Interfaces;
 using SGMA.WebAPI.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,9 +19,24 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// Seeders en tiempo de ejecución, ver docs/modelo-datos.md
+// El DevelopmentSeeder solo corre en Development. Cuando exista el MasterSeeder (admin),
+// va primero en los dos bloques, con la contraseña de Seed:AdminPassword.
+var isDevelopment = builder.Environment.IsDevelopment();
+
 // La cadena de conexión vive en User Secrets (ver README, paso 2)
 builder.Services.AddDbContext<AppDbContext>(options => options
-    .UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    .UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    // Las herramientas de EF (dotnet ef database update) usan la versión síncrona
+    .UseSeeding((context, _) =>
+    {
+        if (isDevelopment) DevelopmentSeeder.Seed(context);
+    })
+    // La aplicación (Database.MigrateAsync) usa la versión asíncrona
+    .UseAsyncSeeding(async (context, _, ct) =>
+    {
+        if (isDevelopment) await DevelopmentSeeder.SeedAsync(context, ct);
+    }));
 
 // Mapster: Pattern Mapper
 // 1. Trigger custom configurations
@@ -27,6 +47,16 @@ var config = TypeAdapterConfig.GlobalSettings;
 builder.Services.AddSingleton(config);
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 builder.Services.AddMapster();
+
+// Repositorios y servicios
+builder.Services.AddScoped<ICategoriaActivoRepository, CategoriaActivoRepository>();
+builder.Services.AddScoped<IActivoRepository, ActivoRepository>();
+builder.Services.AddScoped<ICategoriaActivoService, CategoriaActivoService>();
+builder.Services.AddScoped<IActivoService, ActivoService>();
+builder.Services.AddScoped<IEspecialidadRepository, EspecialidadRepository>();
+builder.Services.AddScoped<IEspecialidadService, EspecialidadService>();
+builder.Services.AddScoped<ITecnicoRepository, TecnicoRepository>();
+builder.Services.AddScoped<ITecnicoService, TecnicoService>();
 
 // Manejo global de excepciones: los errores responden con Result<T> en español; solo la validación de DTO (400) usa ValidationProblemDetails
 builder.Services.AddProblemDetails(options =>
@@ -42,13 +72,21 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 var app = builder.Build();
 
+// Aplica las migraciones pendientes y dispara UseAsyncSeeding (ver docs/modelo-datos.md, "Seeders")
+using (var scope = app.Services.CreateScope())
+{
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+
 app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    // Menú y búsqueda de Scalar muestran la ruta en lugar del EndpointSummary
+    app.MapScalarApiReference(options => options
+        .WithOperationTitleSource(OperationTitleSource.Path));
 }
 
 app.UseHttpsRedirection();

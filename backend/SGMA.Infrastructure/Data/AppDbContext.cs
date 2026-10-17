@@ -16,6 +16,11 @@ public class AppDbContext : DbContext
     public DbSet<Prioridad> Prioridad { get; set; }
     public DbSet<NaturalezaMantenimiento> NaturalezaMantenimiento { get; set; }
     public DbSet<NivelCertificacion> NivelCertificacion { get; set; }
+    public DbSet<CategoriaActivo> CategoriaActivo { get; set; }
+    public DbSet<Activo> Activo { get; set; }
+    public DbSet<Especialidad> Especialidad { get; set; }
+    public DbSet<Tecnico> Tecnico { get; set; }
+    public DbSet<TecnicoEspecialidad> TecnicoEspecialidad { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -100,6 +105,178 @@ public class AppDbContext : DbContext
 
             entity.Property(e => e.Nombre)
                 .HasMaxLength(20);
+        });
+
+        // CategoriaActivo
+        modelBuilder.Entity<CategoriaActivo>(entity =>
+        {
+            entity.HasKey(e => e.IdCategoria)
+                .HasName("PK_CategoriaActivo");
+
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_CategoriaActivo_IntervaloKm", "[IntervaloKm] > 0");
+                t.HasCheckConstraint("CK_CategoriaActivo_MargenAvisoKm",
+                    "[MargenAvisoKm] >= 0 AND [MargenAvisoKm] < [IntervaloKm]");
+            });
+
+            entity.HasIndex(e => e.Nombre, "UQ_CategoriaActivo_Nombre")
+                .IsUnique();
+
+            entity.HasIndex(e => e.Prefijo, "UQ_CategoriaActivo_Prefijo")
+                .IsUnique();
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(60);
+
+            entity.Property(e => e.Descripcion)
+                .HasMaxLength(250);
+
+            entity.Property(e => e.Prefijo)
+                .HasMaxLength(3)
+                .IsUnicode(false)
+                .IsFixedLength();
+        });
+
+        // Activo
+        modelBuilder.Entity<Activo>(entity =>
+        {
+            entity.HasKey(e => e.IdActivo)
+                .HasName("PK_Activo");
+
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Activo_KilometrajeActual", "[KilometrajeActual] >= 0");
+                t.HasCheckConstraint("CK_Activo_KilometrajeUltimoPreventivo",
+                    "[KilometrajeUltimoPreventivo] BETWEEN 0 AND [KilometrajeActual]");
+                t.HasCheckConstraint("CK_Activo_ValorReferencia", "[ValorReferencia] >= 0");
+                t.HasCheckConstraint("CK_Activo_IntervaloKmPropio",
+                    "[IntervaloKmPropio] IS NULL OR [IntervaloKmPropio] > 0");
+            });
+
+            entity.HasIndex(e => e.Codigo, "UQ_Activo_Codigo")
+                .IsUnique();
+
+            entity.HasIndex(e => e.Placa, "UQ_Activo_Placa")
+                .IsUnique();
+
+            entity.Property(e => e.Codigo)
+                .HasMaxLength(10)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Descripcion)
+                .HasMaxLength(250);
+
+            entity.Property(e => e.FechaAdquisicion)
+                .HasColumnType("date");
+
+            entity.Property(e => e.ValorReferencia)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.Property(e => e.Imagen)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Placa)
+                .HasMaxLength(10)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Marca)
+                .HasMaxLength(40);
+
+            entity.Property(e => e.Modelo)
+                .HasMaxLength(40);
+
+            entity.Property(e => e.FechaRegistro)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.HasOne(d => d.Categoria)
+                .WithMany(p => p.Activos)
+                .HasForeignKey(d => d.IdCategoria)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Activo_CategoriaActivo");
+
+            entity.HasOne(d => d.EstadoActivo)
+                .WithMany(p => p.Activos)
+                .HasForeignKey(d => d.IdEstadoActivo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Activo_EstadoActivo");
+        });
+
+        // Especialidad
+        modelBuilder.Entity<Especialidad>(entity =>
+        {
+            entity.HasKey(e => e.IdEspecialidad)
+                .HasName("PK_Especialidad");
+
+            entity.HasIndex(e => e.Nombre, "UQ_Especialidad_Nombre")
+                .IsUnique();
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(60);
+
+            entity.Property(e => e.Descripcion)
+                .HasMaxLength(250);
+        });
+
+        // Tecnico
+        modelBuilder.Entity<Tecnico>(entity =>
+        {
+            entity.HasKey(e => e.IdTecnico)
+                .HasName("PK_Tecnico");
+
+            entity.ToTable(t => t.HasCheckConstraint("CK_Tecnico_TarifaHora", "[TarifaHora] > 0"));
+
+            entity.HasIndex(e => e.Identificacion, "UQ_Tecnico_Identificacion")
+                .IsUnique();
+
+            entity.Property(e => e.NombreCompleto)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Identificacion)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Telefono)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Correo)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.TarifaHora)
+                .HasColumnType("decimal(10, 2)");
+        });
+
+        // TecnicoEspecialidad (Tecnico N:N Especialidad)
+        modelBuilder.Entity<TecnicoEspecialidad>(entity =>
+        {
+            // Llave compuesta: impide asociar la misma especialidad dos veces al mismo técnico
+            entity.HasKey(e => new { e.IdTecnico, e.IdEspecialidad })
+                .HasName("PK_TecnicoEspecialidad");
+
+            entity.Property(e => e.FechaCertificacion)
+                .HasColumnType("date");
+
+            entity.HasOne(d => d.Tecnico)
+                .WithMany(p => p.TecnicoEspecialidades)
+                .HasForeignKey(d => d.IdTecnico)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_TecnicoEspecialidad_Tecnico");
+
+            entity.HasOne(d => d.Especialidad)
+                .WithMany(p => p.TecnicoEspecialidades)
+                .HasForeignKey(d => d.IdEspecialidad)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_TecnicoEspecialidad_Especialidad");
+
+            entity.HasOne(d => d.NivelCertificacion)
+                .WithMany(p => p.TecnicoEspecialidades)
+                .HasForeignKey(d => d.IdNivelCertificacion)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_TecnicoEspecialidad_NivelCertificacion");
         });
 
         // Seed maestro de catálogos (HasData)

@@ -461,7 +461,7 @@ Cada técnico tiene su cédula, su tarifa por hora y sus especialidades, con el 
 9. Gabriela Castro Zúñiga — 5-0321-0554 — ₡4 600/h — Carrocería y pintura (Avanzado, 2016), Llantas y alineamiento (Básico, 2023).
 10. Randall Porras Sibaja — 6-0244-0198 — ₡3 900/h — Mecánica general (Intermedio, 2013). **Inactivo.**
 
-Son 21 asociaciones técnico–especialidad. Cada especialidad tiene al menos un técnico activo y disponible.
+Son 20 asociaciones técnico–especialidad. Cada especialidad tiene al menos un técnico activo y disponible.
 
 ### Proveedores (10)
 
