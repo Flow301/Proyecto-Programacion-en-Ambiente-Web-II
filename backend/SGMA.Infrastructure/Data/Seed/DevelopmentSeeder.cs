@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using SGMA.Domain.Entities;
 
 namespace SGMA.Infrastructure.Data.Seed;
@@ -24,10 +25,28 @@ public static class DevelopmentSeeder
             ? await context.Database.BeginTransactionAsync(ct)
             : null;
 
+        await SeedUsuariosAsync(context, ct);
         await SeedTecnicosAsync(context, ct);
 
         if (transaction is not null)
             await transaction.CommitAsync(ct);
+    }
+
+    // ---------- Usuarios de demostración ----------
+    private static async Task SeedUsuariosAsync(DbContext context, CancellationToken ct)
+    {
+        // admin ya existe (MasterSeeder): el bloque solo revisa los usuarios de demostración
+        if (await context.Set<Usuario>().AnyAsync(u => u.Login != MasterSeeder.LoginAdmin, ct))
+            return;
+
+        var hasher = new PasswordHasher<Usuario>();
+        var usuarios = DemoData.Usuarios();
+
+        foreach (var usuario in usuarios)
+            usuario.ClaveHash = hasher.HashPassword(usuario, DemoData.ClaveDemo);
+
+        context.Set<Usuario>().AddRange(usuarios);
+        await context.SaveChangesAsync(ct);
     }
 
     // ---------- Técnicos y sus especialidades ----------

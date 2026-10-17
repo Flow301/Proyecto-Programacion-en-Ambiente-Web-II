@@ -20,21 +20,24 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 // Seeders en tiempo de ejecución, ver docs/modelo-datos.md
-// El DevelopmentSeeder solo corre en Development. Cuando exista el MasterSeeder (admin),
-// va primero en los dos bloques, con la contraseña de Seed:AdminPassword.
+// Primero el MasterSeeder (admin, con la contraseña de Seed:AdminPassword) y después,
+// solo en Development, el DevelopmentSeeder.
 var isDevelopment = builder.Environment.IsDevelopment();
+var adminPassword = builder.Configuration["Seed:AdminPassword"];
 
-// La cadena de conexión vive en User Secrets (ver README, paso 2)
+// La cadena de conexión y la contraseña del admin viven en User Secrets (ver README, paso 2)
 builder.Services.AddDbContext<AppDbContext>(options => options
     .UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
     // Las herramientas de EF (dotnet ef database update) usan la versión síncrona
     .UseSeeding((context, _) =>
     {
+        MasterSeeder.Seed(context, adminPassword);
         if (isDevelopment) DevelopmentSeeder.Seed(context);
     })
     // La aplicación (Database.MigrateAsync) usa la versión asíncrona
     .UseAsyncSeeding(async (context, _, ct) =>
     {
+        await MasterSeeder.SeedAsync(context, adminPassword, ct);
         if (isDevelopment) await DevelopmentSeeder.SeedAsync(context, ct);
     }));
 

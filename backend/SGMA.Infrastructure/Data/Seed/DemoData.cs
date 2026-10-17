@@ -11,6 +11,22 @@ namespace SGMA.Infrastructure.Data.Seed;
 /// </summary>
 public static class DemoData
 {
+    // ---------- Usuarios de demostración (7) ----------
+    // Contraseña común solo de Development, pública a propósito: no es un secreto (docs/modelo-datos.md, "Usuarios").
+    public const string ClaveDemo = "Demo2026!";
+
+    // admin lo crea MasterSeeder. Daniela Rojas está inactiva: prueba que un usuario inactivo no inicia sesión.
+    public static List<Usuario> Usuarios() =>
+    [
+        new() { NombreCompleto = "Luis Vargas Mora", Login = "lvargas", Correo = "luis.vargas@sgma.test", IdRol = SeedIds.RolCoordinadorTecnico, Estado = true },
+        new() { NombreCompleto = "Andrea Solís Rojas", Login = "asolis", Correo = "andrea.solis@sgma.test", IdRol = SeedIds.RolCoordinadorTecnico, Estado = true },
+        new() { NombreCompleto = "Carlos Jiménez Araya", Login = "cjimenez", Correo = "carlos.jimenez@sgma.test", IdRol = SeedIds.RolSolicitanteConsulta, Estado = true },
+        new() { NombreCompleto = "María Fernanda Castro Quesada", Login = "mcastro", Correo = "maria.castro@sgma.test", IdRol = SeedIds.RolSolicitanteConsulta, Estado = true },
+        new() { NombreCompleto = "José Pablo Chaves Vega", Login = "jchaves", Correo = "jose.chaves@sgma.test", IdRol = SeedIds.RolSolicitanteConsulta, Estado = true },
+        new() { NombreCompleto = "Roberto Méndez Solano", Login = "rmendez", Correo = "roberto.mendez@sgma.test", IdRol = SeedIds.RolSolicitanteConsulta, Estado = true },
+        new() { NombreCompleto = "Daniela Rojas Hernández", Login = "drojas", Correo = "daniela.rojas@sgma.test", IdRol = SeedIds.RolSolicitanteConsulta, Estado = false }
+    ];
+
     // ---------- Técnicos (10) ----------
     // Óscar Herrera no está disponible (vacaciones) y Randall Porras está inactivo.
     public static List<Tecnico> Tecnicos() =>

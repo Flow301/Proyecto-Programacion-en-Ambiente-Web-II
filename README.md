@@ -165,7 +165,11 @@ La documentación interactiva queda en `https://localhost:<puerto>/scalar/v1`. E
 
 El usuario `admin` tiene el rol Administrador y su contraseña es la que cada uno configuró en `Seed:AdminPassword`.
 
-> **Pendiente (Avance 1):** usuarios de demostración de los tres roles, cuando exista el `DevelopmentSeeder`.
+En ambiente Development, el `DevelopmentSeeder` crea además estos usuarios, todos con la contraseña de desarrollo `Demo2026!` (definida en `DemoData`; es pública a propósito y no existe fuera de Development):
+
+- `lvargas` y `asolis`: Coordinador/Técnico.
+- `cjimenez`, `mcastro`, `jchaves` y `rmendez`: Solicitante/Consulta.
+- `drojas`: Solicitante/Consulta, **inactiva**, para probar que un usuario inactivo no inicia sesión.
 
 ### Problemas frecuentes
 
