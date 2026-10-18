@@ -205,7 +205,7 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
   - `PascalCase` para tipos, métodos y propiedades;
   - `camelCase` para variables locales y parámetros;
   - `_camelCase` para campos privados, como el `_repository` del material.
-- Una clase por archivo, con el mismo nombre del archivo.
+- Una clase por archivo, con el mismo nombre del archivo. La excepción es `DemoData`: es `partial` y se divide por tema (`DemoData.Tecnicos.cs`, `DemoData.Activos.cs`), como `DemoData.MoreSuppliers.cs` en el material.
 - **Comentarios:** pocos, breves y solo donde aportan algo que el código no dice. No comentamos cada línea ni escribimos frases como "Este método se encarga de…".
 
 ### Base de datos
