@@ -284,14 +284,6 @@ public class ActivoService : IActivoService
         entity.Marca = entity.Marca.Trim();
         entity.Modelo = entity.Modelo.Trim();
 
-        if (entity.KilometrajeUltimoPreventivo > entity.KilometrajeActual)
-            return Result<ActivoDetailDto>.Failure(400, "Solicitud inválida",
-                "El kilometraje del último preventivo no puede ser mayor que el kilometraje actual.");
-
-        if (entity.FechaAdquisicion.Date > DateTime.Today)
-            return Result<ActivoDetailDto>.Failure(400, "Solicitud inválida",
-                "La fecha de adquisición no puede ser futura.");
-
         if (!await _categoriaRepository.ExistsAsync(entity.IdCategoria))
             return Result<ActivoDetailDto>.Failure(404, "Recurso no encontrado",
                 $"La categoría {entity.IdCategoria} no existe.");

@@ -116,10 +116,6 @@ public class CategoriaActivoService : ICategoriaActivoService
         entity.Descripcion = entity.Descripcion?.Trim();
         entity.Prefijo = entity.Prefijo.ToUpperInvariant();
 
-        if (entity.MargenAvisoKm >= entity.IntervaloKm)
-            return Result<CategoriaActivoDto>.Failure(400, "Solicitud inválida",
-                "El margen de aviso debe ser menor que el intervalo de mantenimiento.");
-
         int? excludeId = entity.IdCategoria == 0 ? null : entity.IdCategoria;
 
         if (await _repository.ExistsByNameAsync(entity.Nombre, excludeId))

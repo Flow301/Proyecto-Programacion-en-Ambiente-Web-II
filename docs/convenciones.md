@@ -171,7 +171,7 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 ### Validación
 
 - Doble validación:
-  - **Formato:** DataAnnotations en los DTO de entrada, que ASP.NET responde con 400.
+  - **Formato:** DataAnnotations en los DTO de entrada, que ASP.NET responde con 400. Las reglas que comparan campos del mismo DTO o no dependen de la base (el margen menor que el intervalo, una fecha que no puede ser futura) van en el propio DTO con `IValidatableObject`, como en el material.
   - **Negocio:** en el servicio, con excepciones propias.
   - La base tiene además restricciones `UNIQUE` y `CHECK` como última defensa.
 - En el Avance 2 se suma la validación en el cliente, que no reemplaza la del servidor.

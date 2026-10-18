@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace SGMA.Domain.DTO;
 
 // Sin IdActivo (viene de la ruta). El código no cambia nunca y el estado tiene sus propias acciones.
-public record class ActivoUpdateDto
+public record class ActivoUpdateDto : IValidatableObject
 {
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(100, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
     public string? Nombre { get; set; }
@@ -36,10 +36,23 @@ public record class ActivoUpdateDto
     [Range(0, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int KilometrajeActual { get; set; }
 
-    // Que no supere al kilometraje actual lo valida el servicio
+    // Que no supere al kilometraje actual lo valida Validate
     [Range(0, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int KilometrajeUltimoPreventivo { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int? IntervaloKmPropio { get; set; }
+
+    // Reglas que comparan campos del mismo DTO (como en el material).
+    // ASP.NET Core solo llama a Validate si todos los atributos de las propiedades pasaron.
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (KilometrajeUltimoPreventivo > KilometrajeActual)
+            yield return new ValidationResult(
+                "El kilometraje del último preventivo no puede ser mayor que el kilometraje actual.",
+                [nameof(KilometrajeUltimoPreventivo)]);
+
+        if (FechaAdquisicion?.Date > DateTime.Today)
+            yield return new ValidationResult("La fecha de adquisición no puede ser futura.", [nameof(FechaAdquisicion)]);
+    }
 }

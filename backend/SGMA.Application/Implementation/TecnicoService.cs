@@ -143,12 +143,6 @@ public class TecnicoService : ITecnicoService
             return Result<TecnicoDetailDto>.Failure(400, "Solicitud inválida",
                 $"El nivel de certificación {especialidad.IdNivelCertificacion} no existe.");
 
-        var fecha = especialidad.FechaCertificacion!.Value.Date;
-
-        if (fecha > DateTime.Today)
-            return Result<TecnicoDetailDto>.Failure(400, "Solicitud inválida",
-                "La fecha de certificación no puede ser futura.");
-
         if (entity.TecnicoEspecialidades.Any(te => te.IdEspecialidad == especialidad.IdEspecialidad))
             return Result<TecnicoDetailDto>.Failure(409, "Conflicto",
                 $"El técnico {id} ya tiene asociada la especialidad {especialidad.IdEspecialidad}.");
@@ -158,7 +152,7 @@ public class TecnicoService : ITecnicoService
             IdTecnico = id,
             IdEspecialidad = especialidad.IdEspecialidad,
             IdNivelCertificacion = especialidad.IdNivelCertificacion,
-            FechaCertificacion = fecha
+            FechaCertificacion = especialidad.FechaCertificacion!.Value.Date
         });
 
         await _repository.SaveChangesAsync();   // INSERT en TecnicoEspecialidad
