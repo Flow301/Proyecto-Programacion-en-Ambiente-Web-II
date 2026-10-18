@@ -27,6 +27,7 @@ public static class DevelopmentSeeder
 
         await SeedUsuariosAsync(context, ct);
         await SeedTecnicosAsync(context, ct);
+        await SeedActivosAsync(context, ct);
 
         if (transaction is not null)
             await transaction.CommitAsync(ct);
@@ -74,6 +75,51 @@ public static class DevelopmentSeeder
             });
 
         context.Set<TecnicoEspecialidad>().AddRange(tecnicoEspecialidades);
+        await context.SaveChangesAsync(ct);
+    }
+
+    // ---------- Vehículos y su historial de estados ----------
+    private static async Task SeedActivosAsync(DbContext context, CancellationToken ct)
+    {
+        if (await context.Set<Activo>().AnyAsync(ct))
+            return;
+
+        // El IdUsuario generado se resuelve por el login (incluido admin, del MasterSeeder)
+        var usuarioIds = await context.Set<Usuario>()
+            .ToDictionaryAsync(u => u.Login, u => u.IdUsuario, ct);
+
+        // Fechas relativas al día de la siembra, para que la demostración nunca se vea vieja
+        var hoy = DateTime.Today;
+        var activos = DemoData.Activos();
+
+        foreach (var activo in activos)
+        {
+            // Del cambio más antiguo al más reciente; el primero es el registro inicial (sin estado anterior)
+            var cambios = DemoData.HistorialActivos
+                .Where(h => h.Codigo == activo.Codigo)
+                .OrderByDescending(h => h.DiasAtras);
+
+            int? estadoAnterior = null;
+
+            foreach (var cambio in cambios)
+            {
+                activo.HistorialEstados.Add(new HistorialEstadoActivo
+                {
+                    IdEstadoAnterior = estadoAnterior,
+                    IdEstadoNuevo = cambio.IdEstadoNuevo,
+                    FechaCambio = hoy.AddDays(-cambio.DiasAtras).AddHours(8),
+                    IdUsuario = usuarioIds[cambio.Login],
+                    Observacion = cambio.Observacion
+                });
+                estadoAnterior = cambio.IdEstadoNuevo;
+            }
+
+            // El estado actual es el del último cambio; la fecha de registro, la del primero
+            activo.IdEstadoActivo = estadoAnterior!.Value;
+            activo.FechaRegistro = activo.HistorialEstados.First().FechaCambio;
+        }
+
+        context.Set<Activo>().AddRange(activos);
         await context.SaveChangesAsync(ct);
     }
 }
