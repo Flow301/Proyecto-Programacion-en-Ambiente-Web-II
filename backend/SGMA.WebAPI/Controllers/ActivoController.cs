@@ -12,10 +12,12 @@ namespace SGMA.WebAPI.Controllers;
 public class ActivoController : ControllerBase
 {
     private readonly IActivoService _service;
+    private readonly IWebHostEnvironment _env;
 
-    public ActivoController(IActivoService service)
+    public ActivoController(IActivoService service, IWebHostEnvironment env)
     {
         _service = service;
+        _env = env;
     }
 
     // GET api/Activo/{pageNumber}/{pageSize}
@@ -92,11 +94,10 @@ public class ActivoController : ControllerBase
         [Required(ErrorMessage = "El campo {0} es obligatorio.")] IFormFile imagen,
         // Avance 1: el usuario viene del formulario; desde el Avance 2, del token
         [FromForm, Required(ErrorMessage = "El campo {0} es obligatorio."),
-         Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")] int? idUsuario,
-        [FromServices] IWebHostEnvironment env)
+         Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")] int? idUsuario)
     {
         await using var contenido = imagen.OpenReadStream();
-        var result = await _service.ActualizarImagenAsync(id, contenido, imagen.Length, idUsuario!.Value, env.WebRootPath);
+        var result = await _service.ActualizarImagenAsync(id, contenido, imagen.Length, idUsuario!.Value, _env.WebRootPath);
         return StatusCode(result.Status, result);
     }
 
