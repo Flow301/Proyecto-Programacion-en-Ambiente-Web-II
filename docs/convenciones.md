@@ -118,7 +118,17 @@ Cada entidad principal tiene su par de interfaz e implementación: `IActivoRepos
 - **Forma única de respuesta:** `Result<T>` y `BaseResult`, en `SGMA.Domain/DTO/PatternResult`, copiados del material. El código HTTP se repite en `status` dentro del body.
 - **Errores esperados del CRUD** (no existe, nombre repetido, tiene relaciones): el servicio devuelve `Result<T>.Failure`, como en el material. El orden de las verificaciones es 404 y después 409.
 - **Reglas del flujo de estados:** el servicio lanza una excepción de negocio propia, porque el enunciado lo exige (sección 9). El manejador global la convierte en la misma forma `Result<T>`, así el cliente nunca ve dos formatos.
-- **Validación de formato:** la hace `[ApiController]` con las DataAnnotations del DTO y responde 400 con `ValidationProblemDetails`. Es la única respuesta con otra forma, igual que en el material.
+- **Validación de formato:** la hace `[ApiController]` con las DataAnnotations del DTO y responde 400. Como en el material, `InvalidModelStateResponseFactory` (en `Program.cs`) la devuelve también como `Result<T>`, con los errores de cada campo en `data`:
+
+  ```json
+  {
+    "isSuccess": false,
+    "status": 400,
+    "title": "Solicitud inválida",
+    "detail": "Uno o más datos enviados no son válidos.",
+    "data": { "Nombre": ["El campo Nombre es obligatorio."] }
+  }
+  ```
 - **Errores inesperados:** el manejador global responde 500 con un mensaje genérico en español, sin detalles internos.
 
 ### Lugares fijos

@@ -53,7 +53,7 @@ public class CategoriaActivoController : ControllerBase
     [HttpPost]
     [EndpointSummary("Crea una categoría")]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AddAsync([FromBody] CategoriaActivoCreateDto categoria)
     {
@@ -68,7 +68,7 @@ public class CategoriaActivoController : ControllerBase
     [HttpPut("{id:int}")]
     [EndpointSummary("Actualiza una categoría")]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateAsync([FromRoute] int id, [FromBody] CategoriaActivoUpdateDto categoria)

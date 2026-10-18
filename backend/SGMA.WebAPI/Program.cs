@@ -1,10 +1,12 @@
 using Mapster;
 using MapsterMapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using SGMA.Application.Implementation;
 using SGMA.Application.Interfaces;
 using SGMA.Application.Mapper;
+using SGMA.Domain.DTO.PatternResult;
 using SGMA.Infrastructure.Data;
 using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Implementation;
@@ -15,7 +17,25 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // El 400 automático de [ApiController] usa la misma forma Result<T> que el resto de la API (como en el material)
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(entry => entry.Value!.Errors.Count > 0)
+                .ToDictionary(
+                    entry => entry.Key,
+                    entry => entry.Value!.Errors.Select(error => error.ErrorMessage).ToArray());
+
+            var result = Result<Dictionary<string, string[]>>.Failure(400, "Solicitud inválida",
+                "Uno o más datos enviados no son válidos.");
+            result.Data = errors;
+
+            return new BadRequestObjectResult(result);
+        };
+    });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -62,16 +82,9 @@ builder.Services.AddScoped<ITecnicoRepository, TecnicoRepository>();
 builder.Services.AddScoped<ITecnicoService, TecnicoService>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
-// Manejo global de excepciones: los errores responden con Result<T> en español; solo la validación de DTO (400) usa ValidationProblemDetails
-builder.Services.AddProblemDetails(options =>
-{
-    options.CustomizeProblemDetails = context =>
-    {
-        // Título en español para los errores de validación de los DTO (400 automático de [ApiController])
-        if (context.ProblemDetails is HttpValidationProblemDetails)
-            context.ProblemDetails.Title = "Uno o más datos enviados no son válidos";
-    };
-});
+// Manejo global de excepciones: los errores responden con Result<T> en español.
+// UseExceptionHandler() sin ruta exige AddProblemDetails, aunque GlobalExceptionHandler siempre responde primero.
+builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 var app = builder.Build();

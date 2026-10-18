@@ -64,7 +64,7 @@ public class TecnicoController : ControllerBase
     [HttpPost]
     [EndpointSummary("Registra un técnico")]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AddAsync([FromBody] TecnicoCreateDto tecnico)
     {
@@ -79,7 +79,7 @@ public class TecnicoController : ControllerBase
     [HttpPut("{id:int}")]
     [EndpointSummary("Actualiza los datos de un técnico")]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateAsync([FromRoute] int id, [FromBody] TecnicoUpdateDto tecnico)

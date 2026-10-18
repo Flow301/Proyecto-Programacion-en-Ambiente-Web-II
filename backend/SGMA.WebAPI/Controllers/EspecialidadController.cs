@@ -56,7 +56,7 @@ public class EspecialidadController : ControllerBase
     [HttpPost]
     [EndpointSummary("Registra una especialidad")]
     [ProducesResponseType<Result<EspecialidadDto>>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<EspecialidadDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AddAsync([FromBody] EspecialidadCreateDto especialidad)
     {
@@ -73,7 +73,7 @@ public class EspecialidadController : ControllerBase
     [HttpPut("{id:int}")]
     [EndpointSummary("Actualiza una especialidad")]
     [ProducesResponseType<Result<EspecialidadDto>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<EspecialidadDto>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<EspecialidadDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateAsync([FromRoute] int id, [FromBody] EspecialidadUpdateDto especialidad)

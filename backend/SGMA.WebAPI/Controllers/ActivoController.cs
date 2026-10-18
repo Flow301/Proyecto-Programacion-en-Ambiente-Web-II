@@ -57,7 +57,7 @@ public class ActivoController : ControllerBase
     [HttpPost]
     [EndpointSummary("Registra un vehículo y genera su código")]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AddAsync([FromBody] ActivoCreateDto activo)
@@ -74,7 +74,7 @@ public class ActivoController : ControllerBase
     [HttpPut("{id:int}")]
     [EndpointSummary("Actualiza un vehículo (el código no cambia)")]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateAsync([FromRoute] int id, [FromBody] ActivoUpdateDto activo)
@@ -105,7 +105,7 @@ public class ActivoController : ControllerBase
     [HttpPost("{id:int}/estado")]
     [EndpointSummary("Cambia manualmente el estado de un vehículo (solo Administrador)")]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CambiarEstadoAsync([FromRoute] int id, [FromBody] ActivoEstadoDto estado)
@@ -118,7 +118,7 @@ public class ActivoController : ControllerBase
     [HttpDelete("{id:int}")]
     [EndpointSummary("Da de baja un vehículo (baja lógica: pasa a Dado de Baja)")]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DarDeBajaAsync([FromRoute] int id, [FromBody] ActivoBajaDto baja)
