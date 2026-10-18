@@ -16,6 +16,9 @@ public class ActivoService : IActivoService
     // Cuatro dígitos por prefijo: PKP-0001 a PKP-9999
     private const int MaxConsecutivo = 9999;
 
+    // docs/requerimientos.md: la imagen pesa como máximo 2 MB
+    public const long MaxBytesImagen = 2 * 1024 * 1024;
+
     // Transiciones manuales del Administrador (docs/matriz-estados.md). En Mantenimiento no tiene salida
     // manual (la controlan las órdenes) y Dado de Baja es final.
     private static readonly Dictionary<int, int[]> TransicionesManuales = new()
@@ -184,6 +187,61 @@ public class ActivoService : IActivoService
     // Dar de baja es la misma transición manual hacia Dado de Baja: nunca se borra el vehículo
     public Task<Result<ActivoDetailDto>> DarDeBajaAsync(int id, int idUsuario, string? observacion) =>
         CambiarEstadoAsync(id, SeedIds.EstadoActivoDadoDeBaja, idUsuario, observacion);
+
+    // Guarda la imagen como imagenes/activos/<código>.<ext> dentro de carpetaWeb (wwwroot).
+    // El tipo se decide por los primeros bytes del archivo, no por el nombre ni el Content-Type que manda el cliente.
+    public async Task<Result<ActivoDetailDto>> ActualizarImagenAsync(int id, Stream contenido, long tamano, int idUsuario, string carpetaWeb)
+    {
+        var activo = await _repository.GetForUpdateAsync(id);
+
+        if (activo is null)
+            return NoExiste(id);
+
+        await ValidarAdministradorAsync(idUsuario);
+
+        if (tamano == 0 || tamano > MaxBytesImagen)
+            return Result<ActivoDetailDto>.Failure(400, "Solicitud inválida",
+                "La imagen no puede estar vacía y debe pesar como máximo 2 MB.");
+
+        using var memoria = new MemoryStream();
+        await contenido.CopyToAsync(memoria);
+        var bytes = memoria.ToArray();
+
+        var extension = DetectarExtension(bytes);
+        if (extension is null)
+            return Result<ActivoDetailDto>.Failure(400, "Solicitud inválida",
+                "La imagen debe ser JPG, PNG o WebP.");
+
+        var anterior = activo.Imagen;
+        activo.Imagen = $"imagenes/activos/{activo.Codigo}.{extension}";
+
+        var carpeta = Path.Combine(carpetaWeb, "imagenes", "activos");
+        Directory.CreateDirectory(carpeta);
+        await File.WriteAllBytesAsync(Path.Combine(carpetaWeb, activo.Imagen), bytes);
+
+        await _repository.SaveChangesAsync();
+
+        // Si cambió la extensión (p. ej. de .jpg a .png), el archivo viejo queda huérfano: se borra
+        if (anterior is not null && anterior != activo.Imagen)
+            File.Delete(Path.Combine(carpetaWeb, anterior));
+
+        var actualizado = await _repository.GetByIdAsync(id);
+        var data = _mapper.Map<ActivoDetailDto>(actualizado!);
+
+        return Result<ActivoDetailDto>.Success(data, 200, "OK", $"Imagen del vehículo {activo.Codigo} actualizada.");
+    }
+
+    // Firmas de archivo: JPG FF D8 FF, PNG 89 50 4E 47 0D 0A 1A 0A, WebP "RIFF" + 4 bytes + "WEBP"
+    private static string? DetectarExtension(byte[] b)
+    {
+        if (b.Length >= 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF)
+            return "jpg";
+        if (b.AsSpan().StartsWith((byte[])[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+            return "png";
+        if (b.Length >= 12 && b.AsSpan(0, 4).SequenceEqual("RIFF"u8) && b.AsSpan(8, 4).SequenceEqual("WEBP"u8))
+            return "webp";
+        return null;
+    }
 
     // Único punto que cambia el estado del vehículo y escribe HistorialEstadoActivo (docs/convenciones.md).
     // No guarda: quien lo llama hace un solo SaveChangesAsync. Al crear, el estado anterior queda vacío.

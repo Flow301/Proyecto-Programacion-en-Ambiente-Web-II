@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
@@ -77,6 +78,25 @@ public class ActivoController : ControllerBase
     public async Task<IActionResult> UpdateAsync([FromRoute] int id, [FromBody] ActivoUpdateDto activo)
     {
         var result = await _service.UpdateAsync(id, activo);
+        return StatusCode(result.Status, result);
+    }
+
+    // PUT api/Activo/{id}/imagen (multipart/form-data)
+    [HttpPut("{id:int}/imagen")]
+    [EndpointSummary("Carga o reemplaza la imagen de un vehículo (JPG, PNG o WebP, máximo 2 MB)")]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ActualizarImagenAsync([FromRoute] int id,
+        [Required(ErrorMessage = "El campo {0} es obligatorio.")] IFormFile imagen,
+        // Avance 1: el usuario viene del formulario; desde el Avance 2, del token
+        [FromForm, Required(ErrorMessage = "El campo {0} es obligatorio."),
+         Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")] int? idUsuario,
+        [FromServices] IWebHostEnvironment env)
+    {
+        await using var contenido = imagen.OpenReadStream();
+        var result = await _service.ActualizarImagenAsync(id, contenido, imagen.Length, idUsuario!.Value, env.WebRootPath);
         return StatusCode(result.Status, result);
     }
 

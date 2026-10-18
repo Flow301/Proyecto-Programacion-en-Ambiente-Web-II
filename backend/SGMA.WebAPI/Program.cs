@@ -95,6 +95,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Sirve las imágenes subidas: /imagenes/activos/<código>.<ext> (wwwroot)
+app.UseStaticFiles();
+
 app.UseAuthorization();
 
 app.MapControllers();
