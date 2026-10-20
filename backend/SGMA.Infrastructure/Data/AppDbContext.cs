@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<TecnicoEspecialidad> TecnicoEspecialidad { get; set; }
     public DbSet<Usuario> Usuario { get; set; }
     public DbSet<HistorialEstadoActivo> HistorialEstadoActivo { get; set; }
+    public DbSet<Proveedor> Proveedor { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -352,6 +353,39 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdUsuario)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_HistorialEstadoActivo_Usuario");
+        });
+
+        // Proveedor
+        modelBuilder.Entity<Proveedor>(entity =>
+        {
+            entity.HasKey(e => e.IdProveedor)
+                .HasName("PK_Proveedor");
+
+            entity.HasIndex(e => e.CedulaJuridica, "UQ_Proveedor_CedulaJuridica")
+                .IsUnique();
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.CedulaJuridica)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.PersonaContacto)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Telefono)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Correo)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Direccion)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.CondicionesGenerales)
+                .HasMaxLength(300);
         });
 
         // Seed maestro de catálogos (HasData)
