@@ -688,6 +688,58 @@ namespace SGMA.Infrastructure.Migrations
                     b.ToTable("Proveedor");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Repuesto", b =>
+                {
+                    b.Property<int>("IdRepuesto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdRepuesto"));
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<decimal>("CostoUnitario")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("StockActual")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StockMinimo")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UnidadMedida")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("IdRepuesto")
+                        .HasName("PK_Repuesto");
+
+                    b.HasIndex(new[] { "Codigo" }, "UQ_Repuesto_Codigo")
+                        .IsUnique();
+
+                    b.ToTable("Repuesto", t =>
+                        {
+                            t.HasCheckConstraint("CK_Repuesto_CostoUnitario", "[CostoUnitario] > 0");
+
+                            t.HasCheckConstraint("CK_Repuesto_StockActual", "[StockActual] >= 0");
+
+                            t.HasCheckConstraint("CK_Repuesto_StockMinimo", "[StockMinimo] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Rol", b =>
                 {
                     b.Property<int>("IdRol")
