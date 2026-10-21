@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<Usuario> Usuario { get; set; }
     public DbSet<HistorialEstadoActivo> HistorialEstadoActivo { get; set; }
     public DbSet<Proveedor> Proveedor { get; set; }
+    public DbSet<Repuesto> Repuesto { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -386,6 +387,37 @@ public class AppDbContext : DbContext
 
             entity.Property(e => e.CondicionesGenerales)
                 .HasMaxLength(300);
+        });
+
+        // Repuesto
+        modelBuilder.Entity<Repuesto>(entity =>
+        {
+            entity.HasKey(e => e.IdRepuesto)
+                .HasName("PK_Repuesto");
+
+            // El CHECK de StockActual es la última defensa: el stock nunca puede quedar negativo
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Repuesto_StockActual", "[StockActual] >= 0");
+                t.HasCheckConstraint("CK_Repuesto_StockMinimo", "[StockMinimo] >= 0");
+                t.HasCheckConstraint("CK_Repuesto_CostoUnitario", "[CostoUnitario] > 0");
+            });
+
+            entity.HasIndex(e => e.Codigo, "UQ_Repuesto_Codigo")
+                .IsUnique();
+
+            entity.Property(e => e.Codigo)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.UnidadMedida)
+                .HasMaxLength(20);
+
+            entity.Property(e => e.CostoUnitario)
+                .HasColumnType("decimal(18, 2)");
         });
 
         // Seed maestro de catálogos (HasData)
