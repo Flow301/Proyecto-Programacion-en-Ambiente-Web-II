@@ -1,7 +1,7 @@
 ﻿namespace SGMA.Domain.Entities;
 
 // Tabla puente Tecnico N:N Especialidad, con el nivel y la fecha de certificación
-public record class TecnicoEspecialidad
+public class TecnicoEspecialidad
 {
     public int IdTecnico { get; set; }
     public int IdEspecialidad { get; set; }

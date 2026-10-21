@@ -1,6 +1,6 @@
 ﻿namespace SGMA.Domain.Entities;
 
-public record class Proveedor
+public class Proveedor
 {
     public int IdProveedor { get; set; }
     public string Nombre { get; set; } = null!;

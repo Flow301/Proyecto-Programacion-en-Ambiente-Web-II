@@ -1,6 +1,6 @@
 namespace SGMA.Domain.Entities;
 
-public record class CategoriaActivo
+public class CategoriaActivo
 {
     public int IdCategoria { get; set; }
     public string Nombre { get; set; } = null!;

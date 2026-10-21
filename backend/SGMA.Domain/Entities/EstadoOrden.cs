@@ -1,6 +1,6 @@
 namespace SGMA.Domain.Entities;
 
-public record class EstadoOrden
+public class EstadoOrden
 {
     public int IdEstadoOrden { get; set; }
     public string Nombre { get; set; } = null!;

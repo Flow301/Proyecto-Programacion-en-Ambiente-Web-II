@@ -1,6 +1,6 @@
 ﻿namespace SGMA.Domain.Entities;
 
-public record class Especialidad
+public class Especialidad
 {
     public int IdEspecialidad { get; set; }
     public string Nombre { get; set; } = null!;
