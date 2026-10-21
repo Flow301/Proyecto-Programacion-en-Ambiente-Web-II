@@ -77,5 +77,19 @@ public static class MapsterConfig
             .Ignore(dest => dest.IdTecnico,
                 dest => dest.Estado,                // se cambia con DELETE (inactivar)
                 dest => dest.TecnicoEspecialidades);
+
+        // =====================================================================
+        // Proveedor
+        // =====================================================================
+        TypeAdapterConfig<ProveedorCreateDto, Proveedor>
+            .NewConfig()
+            .Ignore(dest => dest.IdProveedor,       // lo asigna la base
+                dest => dest.Estado);               // todo proveedor nuevo nace activo (lo pone el servicio)
+
+        // El PUT copia el DTO sobre la entidad rastreada: lo ignorado conserva su valor actual
+        TypeAdapterConfig<ProveedorUpdateDto, Proveedor>
+            .NewConfig()
+            .Ignore(dest => dest.IdProveedor,
+                dest => dest.Estado);               // se cambia con DELETE (inactivar)
     }
 }
