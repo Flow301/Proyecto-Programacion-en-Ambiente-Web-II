@@ -83,6 +83,8 @@ builder.Services.AddScoped<ITecnicoService, TecnicoService>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProveedorRepository, ProveedorRepository>();
 builder.Services.AddScoped<IProveedorService, ProveedorService>();
+builder.Services.AddScoped<IRepuestoRepository, RepuestoRepository>();
+builder.Services.AddScoped<IRepuestoService, RepuestoService>();
 
 // Manejo global de excepciones: los errores responden con Result<T> en español.
 // UseExceptionHandler() sin ruta exige AddProblemDetails, aunque GlobalExceptionHandler siempre responde primero.

@@ -91,5 +91,21 @@ public static class MapsterConfig
             .NewConfig()
             .Ignore(dest => dest.IdProveedor,
                 dest => dest.Estado);               // se cambia con DELETE (inactivar)
+
+        // =====================================================================
+        // Repuesto
+        // =====================================================================
+        TypeAdapterConfig<RepuestoCreateDto, Repuesto>
+            .NewConfig()
+            .Ignore(dest => dest.IdRepuesto,        // lo asigna la base
+                dest => dest.Estado);               // todo repuesto nuevo nace activo (lo pone el servicio)
+
+        // El PUT copia el DTO sobre la entidad rastreada: lo ignorado conserva su valor actual.
+        // StockActual no está en RepuestoUpdateDto: solo cambia con entradas y consumo en órdenes.
+        TypeAdapterConfig<RepuestoUpdateDto, Repuesto>
+            .NewConfig()
+            .Ignore(dest => dest.IdRepuesto,
+                dest => dest.StockActual,
+                dest => dest.Estado);               // se cambia con DELETE (inactivar)
     }
 }
