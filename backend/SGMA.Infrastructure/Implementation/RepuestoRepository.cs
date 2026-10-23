@@ -58,6 +58,17 @@ public class RepuestoRepository : IRepuestoRepository
             .ToListAsync();
     }
 
+    // Proveedores del repuesto con el nombre y el estado de cada uno (también los inactivos)
+    public async Task<IEnumerable<RepuestoProveedor>> GetProveedoresAsync(int idRepuesto)
+    {
+        return await _context.RepuestoProveedor
+            .AsNoTracking()
+            .Include(rp => rp.Proveedor)
+            .Where(rp => rp.IdRepuesto == idRepuesto)
+            .OrderBy(rp => rp.Proveedor.Nombre)
+            .ToListAsync();
+    }
+
     // Verificaciones
     // Incluye los inactivos: el código es único en toda la tabla (UQ_Repuesto_Codigo)
     public async Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId = null)
@@ -66,11 +77,31 @@ public class RepuestoRepository : IRepuestoRepository
             .AnyAsync(p => p.Codigo == codigo && p.IdRepuesto != excludeId);
     }
 
+    // Solo se asocian proveedores activos
+    public async Task<bool> ProveedorActivoExistsAsync(int idProveedor)
+    {
+        return await _context.Proveedor.AnyAsync(p => p.IdProveedor == idProveedor && p.Estado);
+    }
+
     // Escritura (sin AsNoTracking: el ChangeTracker detecta qué cambió)
     public async Task<Repuesto?> GetForUpdateAsync(int id)
     {
         return await _context.Repuesto
             .FirstOrDefaultAsync(p => p.IdRepuesto == id && p.Estado);
+    }
+
+    // Asociar, modificar y desasociar: incluye solo la colección que se va a modificar
+    public async Task<Repuesto?> GetWithProveedoresForUpdateAsync(int id)
+    {
+        return await _context.Repuesto
+            .Include(r => r.RepuestoProveedores)
+            .FirstOrDefaultAsync(r => r.IdRepuesto == id && r.Estado);
+    }
+
+    // Marca la fila de la tabla puente como Deleted (el DELETE se envía en SaveChangesAsync)
+    public void RemoveProveedor(RepuestoProveedor repuestoProveedor)
+    {
+        _context.RepuestoProveedor.Remove(repuestoProveedor);
     }
 
     public async Task AddAsync(Repuesto repuesto)
@@ -95,4 +126,3 @@ public class RepuestoRepository : IRepuestoRepository
         await _context.SaveChangesAsync();
     }
 }
-

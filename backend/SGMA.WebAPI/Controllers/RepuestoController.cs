@@ -109,4 +109,51 @@ public class RepuestoController : ControllerBase
         var result = await _service.RegistrarEntradaAsync(id, entrada);
         return StatusCode(result.Status, result);
     }
+
+    // GET api/Repuesto/{id}/proveedores
+    [HttpGet("{id:int}/proveedores")]
+    [EndpointSummary("Lista los proveedores del repuesto con su precio y tiempo de entrega")]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProveedoresAsync(int id)
+    {
+        var result = await _service.GetProveedoresAsync(id);
+        return StatusCode(result.Status, result);
+    }
+
+    // POST api/Repuesto/{id}/proveedores
+    [HttpPost("{id:int}/proveedores")]
+    [EndpointSummary("Asocia un proveedor al repuesto con su precio y tiempo de entrega")]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AsociarProveedorAsync([FromRoute] int id, [FromBody] RepuestoProveedorCreateDto proveedor)
+    {
+        var result = await _service.AsociarProveedorAsync(id, proveedor);
+        return StatusCode(result.Status, result);
+    }
+
+    // PUT api/Repuesto/{id}/proveedores/{idProveedor}
+    [HttpPut("{id:int}/proveedores/{idProveedor:int}")]
+    [EndpointSummary("Modifica el precio y el tiempo de entrega de un proveedor del repuesto")]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ActualizarProveedorAsync([FromRoute] int id, [FromRoute] int idProveedor, [FromBody] RepuestoProveedorUpdateDto condiciones)
+    {
+        var result = await _service.ActualizarProveedorAsync(id, idProveedor, condiciones);
+        return StatusCode(result.Status, result);
+    }
+
+    // DELETE api/Repuesto/{id}/proveedores/{idProveedor}
+    [HttpDelete("{id:int}/proveedores/{idProveedor:int}")]
+    [EndpointSummary("Desasocia un proveedor del repuesto")]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DesasociarProveedorAsync(int id, int idProveedor)
+    {
+        var result = await _service.DesasociarProveedorAsync(id, idProveedor);
+        return StatusCode(result.Status, result);
+    }
 }

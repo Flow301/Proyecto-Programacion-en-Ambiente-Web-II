@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<HistorialEstadoActivo> HistorialEstadoActivo { get; set; }
     public DbSet<Proveedor> Proveedor { get; set; }
     public DbSet<Repuesto> Repuesto { get; set; }
+    public DbSet<RepuestoProveedor> RepuestoProveedor { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -418,6 +419,36 @@ public class AppDbContext : DbContext
 
             entity.Property(e => e.CostoUnitario)
                 .HasColumnType("decimal(18, 2)");
+        });
+
+        // RepuestoProveedor (Repuesto N:N Proveedor)
+        modelBuilder.Entity<RepuestoProveedor>(entity =>
+        {
+            // Llave compuesta: impide asociar el mismo proveedor dos veces al mismo repuesto
+            entity.HasKey(e => new { e.IdRepuesto, e.IdProveedor })
+                .HasName("PK_RepuestoProveedor");
+
+            // Con estos CHECK la fórmula del proveedor recomendado nunca divide entre cero
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_RepuestoProveedor_PrecioOfrecido", "[PrecioOfrecido] > 0");
+                t.HasCheckConstraint("CK_RepuestoProveedor_TiempoEntregaDias", "[TiempoEntregaDias] >= 1");
+            });
+
+            entity.Property(e => e.PrecioOfrecido)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Repuesto)
+                .WithMany(p => p.RepuestoProveedores)
+                .HasForeignKey(d => d.IdRepuesto)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_RepuestoProveedor_Repuesto");
+
+            entity.HasOne(d => d.Proveedor)
+                .WithMany(p => p.RepuestoProveedores)
+                .HasForeignKey(d => d.IdProveedor)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_RepuestoProveedor_Proveedor");
         });
 
         // Seed maestro de catálogos (HasData)

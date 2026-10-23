@@ -740,6 +740,33 @@ namespace SGMA.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.RepuestoProveedor", b =>
+                {
+                    b.Property<int>("IdRepuesto")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdProveedor")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrecioOfrecido")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int>("TiempoEntregaDias")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdRepuesto", "IdProveedor")
+                        .HasName("PK_RepuestoProveedor");
+
+                    b.HasIndex("IdProveedor");
+
+                    b.ToTable("RepuestoProveedor", t =>
+                        {
+                            t.HasCheckConstraint("CK_RepuestoProveedor_PrecioOfrecido", "[PrecioOfrecido] > 0");
+
+                            t.HasCheckConstraint("CK_RepuestoProveedor_TiempoEntregaDias", "[TiempoEntregaDias] >= 1");
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Rol", b =>
                 {
                     b.Property<int>("IdRol")
@@ -970,6 +997,27 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.RepuestoProveedor", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Proveedor", "Proveedor")
+                        .WithMany("RepuestoProveedores")
+                        .HasForeignKey("IdProveedor")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_RepuestoProveedor_Proveedor");
+
+                    b.HasOne("SGMA.Domain.Entities.Repuesto", "Repuesto")
+                        .WithMany("RepuestoProveedores")
+                        .HasForeignKey("IdRepuesto")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_RepuestoProveedor_Repuesto");
+
+                    b.Navigation("Proveedor");
+
+                    b.Navigation("Repuesto");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.TecnicoEspecialidad", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.Especialidad", "Especialidad")
@@ -1035,6 +1083,16 @@ namespace SGMA.Infrastructure.Migrations
             modelBuilder.Entity("SGMA.Domain.Entities.NivelCertificacion", b =>
                 {
                     b.Navigation("TecnicoEspecialidades");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Proveedor", b =>
+                {
+                    b.Navigation("RepuestoProveedores");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Repuesto", b =>
+                {
+                    b.Navigation("RepuestoProveedores");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.Rol", b =>

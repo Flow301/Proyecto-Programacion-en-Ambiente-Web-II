@@ -11,9 +11,7 @@ public static class MapsterConfig
     // DTO de entrada → entidad: se ignora explícitamente lo que el cliente no controla (como en el material).
     public static void RegisterMaps()
     {
-        // =====================================================================
         // Activo
-        // =====================================================================
         TypeAdapterConfig<ActivoCreateDto, Activo>
             .NewConfig()
             .Ignore(dest => dest.IdActivo,          // lo asigna la base (IDENTITY)
@@ -36,9 +34,7 @@ public static class MapsterConfig
                 dest => dest.EstadoActivo,
                 dest => dest.HistorialEstados);
 
-        // =====================================================================
         // CategoriaActivo
-        // =====================================================================
         TypeAdapterConfig<CategoriaActivoCreateDto, CategoriaActivo>
             .NewConfig()
             .Ignore(dest => dest.IdCategoria,       // lo asigna la base
@@ -49,9 +45,7 @@ public static class MapsterConfig
             .Ignore(dest => dest.IdCategoria,       // viene de la ruta, no del body
                 dest => dest.Activos);
 
-        // =====================================================================
         // Especialidad
-        // =====================================================================
         TypeAdapterConfig<EspecialidadCreateDto, Especialidad>
             .NewConfig()
             .Ignore(dest => dest.IdEspecialidad,    // lo asigna la base
@@ -62,9 +56,8 @@ public static class MapsterConfig
             .Ignore(dest => dest.IdEspecialidad,    // viene de la ruta, no del body
                 dest => dest.TecnicoEspecialidades);
 
-        // =====================================================================
+
         // Tecnico
-        // =====================================================================
         TypeAdapterConfig<TecnicoCreateDto, Tecnico>
             .NewConfig()
             .Ignore(dest => dest.IdTecnico,         // lo asigna la base
@@ -78,27 +71,26 @@ public static class MapsterConfig
                 dest => dest.Estado,                // se cambia con DELETE (inactivar)
                 dest => dest.TecnicoEspecialidades);
 
-        // =====================================================================
         // Proveedor
-        // =====================================================================
         TypeAdapterConfig<ProveedorCreateDto, Proveedor>
             .NewConfig()
             .Ignore(dest => dest.IdProveedor,       // lo asigna la base
-                dest => dest.Estado);               // todo proveedor nuevo nace activo (lo pone el servicio)
+                dest => dest.Estado,                // todo proveedor nuevo nace activo (lo pone el servicio)
+                dest => dest.RepuestoProveedores);  // se asocian desde el repuesto
 
         // El PUT copia el DTO sobre la entidad rastreada: lo ignorado conserva su valor actual
         TypeAdapterConfig<ProveedorUpdateDto, Proveedor>
             .NewConfig()
             .Ignore(dest => dest.IdProveedor,
-                dest => dest.Estado);               // se cambia con DELETE (inactivar)
+                dest => dest.Estado,                // se cambia con DELETE (inactivar)
+                dest => dest.RepuestoProveedores);
 
-        // =====================================================================
         // Repuesto
-        // =====================================================================
         TypeAdapterConfig<RepuestoCreateDto, Repuesto>
             .NewConfig()
             .Ignore(dest => dest.IdRepuesto,        // lo asigna la base
-                dest => dest.Estado);               // todo repuesto nuevo nace activo (lo pone el servicio)
+                dest => dest.Estado,                // todo repuesto nuevo nace activo (lo pone el servicio)
+                dest => dest.RepuestoProveedores);  // se asocian aparte (POST api/Repuesto/{id}/proveedores)
 
         // El PUT copia el DTO sobre la entidad rastreada: lo ignorado conserva su valor actual.
         // StockActual no está en RepuestoUpdateDto: solo cambia con entradas y consumo en órdenes.
@@ -106,6 +98,7 @@ public static class MapsterConfig
             .NewConfig()
             .Ignore(dest => dest.IdRepuesto,
                 dest => dest.StockActual,
-                dest => dest.Estado);               // se cambia con DELETE (inactivar)
+                dest => dest.Estado,                // se cambia con DELETE (inactivar)
+                dest => dest.RepuestoProveedores);
     }
 }

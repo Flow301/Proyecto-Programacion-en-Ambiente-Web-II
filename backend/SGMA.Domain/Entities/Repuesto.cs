@@ -10,4 +10,6 @@ public class Repuesto
     public int StockMinimo { get; set; }
     public decimal CostoUnitario { get; set; }
     public bool Estado { get; set; }
+
+    public virtual ICollection<RepuestoProveedor> RepuestoProveedores { get; set; } = new List<RepuestoProveedor>();
 }

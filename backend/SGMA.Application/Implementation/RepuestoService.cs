@@ -136,6 +136,96 @@ public class RepuestoService : IRepuestoService
             $"Entrada de {entrada.Cantidad} registrada. Stock actual: {data.StockActual}.");
     }
 
+    // ---------- Proveedores del repuesto (tabla RepuestoProveedor) ----------
+    public async Task<Result<IEnumerable<RepuestoProveedorDto>>> GetProveedoresAsync(int id)
+    {
+        if (await _repository.GetByIdAsync(id) is null)
+            return NoExiste<IEnumerable<RepuestoProveedorDto>>(id);
+
+        return await ProveedoresAsync(id, "");
+    }
+
+    // Un proveedor que no existe o está inactivo responde 400: lo inválido es el cuerpo, no el repuesto
+    public async Task<Result<IEnumerable<RepuestoProveedorDto>>> AsociarProveedorAsync(int id, RepuestoProveedorCreateDto proveedor)
+    {
+        var entity = await _repository.GetWithProveedoresForUpdateAsync(id);
+
+        if (entity is null)
+            return NoExiste<IEnumerable<RepuestoProveedorDto>>(id);
+
+        if (!await _repository.ProveedorActivoExistsAsync(proveedor.IdProveedor))
+            return Result<IEnumerable<RepuestoProveedorDto>>.Failure(400, "Solicitud inválida",
+                $"El proveedor {proveedor.IdProveedor} no existe o está inactivo.");
+
+        if (entity.RepuestoProveedores.Any(rp => rp.IdProveedor == proveedor.IdProveedor))
+            return Result<IEnumerable<RepuestoProveedorDto>>.Failure(409, "Conflicto",
+                $"El proveedor {proveedor.IdProveedor} ya está asociado al repuesto {id}.");
+
+        entity.RepuestoProveedores.Add(new RepuestoProveedor
+        {
+            IdRepuesto = id,
+            IdProveedor = proveedor.IdProveedor,
+            PrecioOfrecido = proveedor.PrecioOfrecido,
+            TiempoEntregaDias = proveedor.TiempoEntregaDias
+        });
+
+        await _repository.SaveChangesAsync();   // INSERT en RepuestoProveedor
+
+        return await ProveedoresAsync(id, "Proveedor asociado.");
+    }
+
+    // Modificar precio y tiempo de entrega: la fila rastreada se cambia y EF genera el UPDATE
+    public async Task<Result<IEnumerable<RepuestoProveedorDto>>> ActualizarProveedorAsync(int id, int idProveedor, RepuestoProveedorUpdateDto condiciones)
+    {
+        var entity = await _repository.GetWithProveedoresForUpdateAsync(id);
+
+        if (entity is null)
+            return NoExiste<IEnumerable<RepuestoProveedorDto>>(id);
+
+        var asociacion = entity.RepuestoProveedores.FirstOrDefault(rp => rp.IdProveedor == idProveedor);
+
+        if (asociacion is null)
+            return NoAsociado(id, idProveedor);
+
+        asociacion.PrecioOfrecido = condiciones.PrecioOfrecido;
+        asociacion.TiempoEntregaDias = condiciones.TiempoEntregaDias;
+
+        await _repository.SaveChangesAsync();   // UPDATE en RepuestoProveedor
+
+        return await ProveedoresAsync(id, "Condiciones del proveedor actualizadas.");
+    }
+
+    public async Task<Result<IEnumerable<RepuestoProveedorDto>>> DesasociarProveedorAsync(int id, int idProveedor)
+    {
+        var entity = await _repository.GetWithProveedoresForUpdateAsync(id);
+
+        if (entity is null)
+            return NoExiste<IEnumerable<RepuestoProveedorDto>>(id);
+
+        var asociacion = entity.RepuestoProveedores.FirstOrDefault(rp => rp.IdProveedor == idProveedor);
+
+        if (asociacion is null)
+            return NoAsociado(id, idProveedor);
+
+        _repository.RemoveProveedor(asociacion);
+        await _repository.SaveChangesAsync();   // DELETE en RepuestoProveedor
+
+        return await ProveedoresAsync(id, "Proveedor desasociado.");
+    }
+
+    // Vuelve a leer los proveedores del repuesto para responder con sus nombres
+    private async Task<Result<IEnumerable<RepuestoProveedorDto>>> ProveedoresAsync(int id, string detalle)
+    {
+        var proveedores = await _repository.GetProveedoresAsync(id);
+        var data = _mapper.Map<IEnumerable<RepuestoProveedorDto>>(proveedores);
+
+        return Result<IEnumerable<RepuestoProveedorDto>>.Success(data, 200, "OK", detalle);
+    }
+
+    private static Result<IEnumerable<RepuestoProveedorDto>> NoAsociado(int id, int idProveedor) =>
+        Result<IEnumerable<RepuestoProveedorDto>>.Failure(404, "Recurso no encontrado",
+            $"El proveedor {idProveedor} no está asociado al repuesto {id}.");
+
     private static void Normalizar(Repuesto entity)
     {
         entity.Codigo = NormalizarCodigo(entity.Codigo);
@@ -153,4 +243,3 @@ public class RepuestoService : IRepuestoService
     private static Result<T> NoExiste<T>(int id) =>
         Result<T>.Failure(404, "Recurso no encontrado", $"El repuesto {id} no existe o está inactivo.");
 }
-

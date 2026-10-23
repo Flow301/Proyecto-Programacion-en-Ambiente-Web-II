@@ -11,4 +11,5 @@ public class Proveedor
     public string Direccion { get; set; } = null!;
     public string? CondicionesGenerales { get; set; }
     public bool Estado { get; set; }
+    public virtual ICollection<RepuestoProveedor> RepuestoProveedores { get; set; } = new List<RepuestoProveedor>();
 }
