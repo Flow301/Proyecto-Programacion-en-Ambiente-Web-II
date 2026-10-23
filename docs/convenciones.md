@@ -70,7 +70,7 @@ Seguimos las capas y patrones de los materiales de clase.
 backend/
 ├── SGMA.slnx
 ├── SGMA.Domain/
-│   ├── Entities/          Entidades (record class)
+│   ├── Entities/          Entidades (class)
 │   └── DTO/               DTO de lista, detalle, creación, edición y reportes, y PatternResult/ (Result y BaseResult)
 ├── SGMA.Infrastructure/
 │   ├── Data/              AppDbContext y configuración de tablas
