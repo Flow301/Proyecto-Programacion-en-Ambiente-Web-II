@@ -47,6 +47,17 @@ public class RepuestoRepository : IRepuestoRepository
             .FirstOrDefaultAsync(p => p.IdRepuesto == id && p.Estado);
     }
 
+    // Stock actual menor que el mínimo (docs/requerimientos.md 7.4); primero los que más faltan
+    public async Task<IEnumerable<Repuesto>> GetBajoMinimoAsync()
+    {
+        return await _context.Repuesto
+            .AsNoTracking()
+            .Where(r => r.Estado && r.StockActual < r.StockMinimo)
+            .OrderBy(r => r.StockActual - r.StockMinimo)
+            .ThenBy(r => r.Codigo)
+            .ToListAsync();
+    }
+
     // Verificaciones
     // Incluye los inactivos: el código es único en toda la tabla (UQ_Repuesto_Codigo)
     public async Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId = null)
@@ -66,6 +77,16 @@ public class RepuestoRepository : IRepuestoRepository
     {
         _context.Repuesto.Add(repuesto);
         await _context.SaveChangesAsync();
+    }
+
+    // Entrada de stock en un solo UPDATE: la suma la hace SQL Server (StockActual = StockActual + @cantidad),
+    // así no pisa un descuento que una orden esté haciendo al mismo tiempo. Devuelve las filas afectadas:
+    // 0 si el repuesto no existe o está inactivo.
+    public async Task<int> SumarStockAsync(int id, int cantidad)
+    {
+        return await _context.Repuesto
+            .Where(r => r.IdRepuesto == id && r.Estado)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.StockActual, r => r.StockActual + cantidad));
     }
 
     // Un solo SaveChangesAsync por operación: todo o nada

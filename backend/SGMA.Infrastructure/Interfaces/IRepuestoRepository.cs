@@ -9,13 +9,14 @@ public interface IRepuestoRepository
     Task<IEnumerable<Repuesto>> GetPaginationAsync(int pageNumber, int pageSize);
     Task<int> CountAsync();
     Task<Repuesto?> GetByIdAsync(int id);
+    Task<IEnumerable<Repuesto>> GetBajoMinimoAsync();
 
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId = null);
 
-    // Escritura
     Task<Repuesto?> GetForUpdateAsync(int id);
     Task AddAsync(Repuesto repuesto);
+    Task<int> SumarStockAsync(int id, int cantidad);    
     Task SaveChangesAsync();
 }
 

@@ -8,7 +8,9 @@ public interface IRepuestoService
     Task<Result<IEnumerable<RepuestoDto>>> GetAllAsync();
     Task<Result<IEnumerable<RepuestoDto>>> GetPaginationAsync(int pageNumber, int pageSize);
     Task<Result<RepuestoDto>> GetByIdAsync(int id);
+    Task<Result<IEnumerable<RepuestoDto>>> GetBajoMinimoAsync();
     Task<Result<RepuestoDto>> AddAsync(RepuestoCreateDto repuesto);
     Task<Result<RepuestoDto>> UpdateAsync(int id, RepuestoUpdateDto repuesto);
     Task<Result<int>> DeleteAsync(int id);
+    Task<Result<RepuestoDto>> RegistrarEntradaAsync(int id, RepuestoEntradaDto entrada);
 }

@@ -104,11 +104,36 @@ public class RepuestoService : IRepuestoService
         if (entity is null)
             return NoExiste<int>(id);
 
-        entity.Estado = false;                 // UPDATE Repuesto SET Estado = 0, no DELETE
+        entity.Estado = false; // UPDATE Repuesto SET Estado = 0, no DELETE
 
         await _repository.SaveChangesAsync();
 
         return Result<int>.Success(id, 200, "OK", "Repuesto inactivado.");
+    }
+
+    // "Por debajo del mínimo" = stock actual menor que el stock mínimo. Una lista vacía también es 200.
+    public async Task<Result<IEnumerable<RepuestoDto>>> GetBajoMinimoAsync()
+    {
+        var repuestos = await _repository.GetBajoMinimoAsync();
+
+        var data = _mapper.Map<IEnumerable<RepuestoDto>>(repuestos);
+
+        return Result<IEnumerable<RepuestoDto>>.Success(data);
+    }
+
+    // El stock solo sube por aquí (no hay módulo de compras): cantidad > 0 la valida el DTO
+    public async Task<Result<RepuestoDto>> RegistrarEntradaAsync(int id, RepuestoEntradaDto entrada)
+    {
+        var filas = await _repository.SumarStockAsync(id, entrada.Cantidad);
+
+        if (filas == 0)
+            return NoExiste<RepuestoDto>(id);
+
+        var repuesto = await _repository.GetByIdAsync(id);
+        var data = _mapper.Map<RepuestoDto>(repuesto!);
+
+        return Result<RepuestoDto>.Success(data, 200, "OK",
+            $"Entrada de {entrada.Cantidad} registrada. Stock actual: {data.StockActual}.");
     }
 
     private static void Normalizar(Repuesto entity)
@@ -128,3 +153,4 @@ public class RepuestoService : IRepuestoService
     private static Result<T> NoExiste<T>(int id) =>
         Result<T>.Failure(404, "Recurso no encontrado", $"El repuesto {id} no existe o está inactivo.");
 }
+

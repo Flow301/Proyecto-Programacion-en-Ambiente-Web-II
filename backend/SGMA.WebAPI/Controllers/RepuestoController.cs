@@ -38,6 +38,16 @@ public class RepuestoController : ControllerBase
         return StatusCode(result.Status, result);
     }
 
+    // GET api/Repuesto/bajo-minimo
+    [HttpGet("bajo-minimo")]
+    [EndpointSummary("Lista los repuestos activos con stock por debajo del mínimo")]
+    [ProducesResponseType<Result<IEnumerable<RepuestoDto>>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBajoMinimoAsync()
+    {
+        var result = await _service.GetBajoMinimoAsync();
+        return StatusCode(result.Status, result);
+    }
+
     // GET api/Repuesto/{id}
     [HttpGet("{id:int}", Name = "GetRepuestoById")]
     [EndpointSummary("Obtiene el detalle de un repuesto")]
@@ -87,5 +97,16 @@ public class RepuestoController : ControllerBase
         var result = await _service.DeleteAsync(id);
         return StatusCode(result.Status, result);
     }
-}
 
+    // POST api/Repuesto/{id}/entrada
+    [HttpPost("{id:int}/entrada")]
+    [EndpointSummary("Registra una entrada de stock (suma la cantidad al stock actual)")]
+    [ProducesResponseType<Result<RepuestoDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<RepuestoDto>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RegistrarEntradaAsync([FromRoute] int id, [FromBody] RepuestoEntradaDto entrada)
+    {
+        var result = await _service.RegistrarEntradaAsync(id, entrada);
+        return StatusCode(result.Status, result);
+    }
+}
