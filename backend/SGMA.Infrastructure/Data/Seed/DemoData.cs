@@ -5,10 +5,12 @@ namespace SGMA.Infrastructure.Data.Seed;
 /// <summary>
 /// DATOS FICTICIOS PARA DESARROLLO. Solo los usa DevelopmentSeeder.
 /// Las llaves son IDENTITY: aquí no se asignan Id; las relaciones se resuelven
-/// por clave natural (el login del usuario, la identificación del técnico, el código del vehículo).
+/// por clave natural (el login del usuario, la identificación del técnico, el código del vehículo,
+/// el código del repuesto y la cédula jurídica del proveedor).
 /// Las FK a catálogos usan los IDs estables de SeedIds (HasData).
 /// Los datos salen de docs/modelo-datos.md; nombres ficticios y correos con el dominio reservado .test.
-/// Es partial, dividida por tema como en el material: DemoData.Tecnicos.cs y DemoData.Activos.cs.
+/// Es partial, dividida por tema como en el material: DemoData.Tecnicos.cs, DemoData.Activos.cs,
+/// DemoData.Proveedores.cs y DemoData.Repuestos.cs.
 /// </summary>
 public static partial class DemoData
 {

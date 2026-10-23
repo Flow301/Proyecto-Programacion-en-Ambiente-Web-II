@@ -28,6 +28,8 @@ public static class DevelopmentSeeder
         await SeedUsuariosAsync(context, ct);
         await SeedTecnicosAsync(context, ct);
         await SeedActivosAsync(context, ct);
+        await SeedProveedoresAsync(context, ct);
+        await SeedRepuestosAsync(context, ct);
 
         if (transaction is not null)
             await transaction.CommitAsync(ct);
@@ -122,5 +124,44 @@ public static class DevelopmentSeeder
         context.Set<Activo>().AddRange(activos);
         await context.SaveChangesAsync(ct);
     }
-}
 
+    // ---------- Proveedores ----------
+    private static async Task SeedProveedoresAsync(DbContext context, CancellationToken ct)
+    {
+        if (await context.Set<Proveedor>().AnyAsync(ct))
+            return;
+
+        context.Set<Proveedor>().AddRange(DemoData.Proveedores());
+        await context.SaveChangesAsync(ct);
+    }
+
+    // ---------- Repuestos y sus proveedores ----------
+    private static async Task SeedRepuestosAsync(DbContext context, CancellationToken ct)
+    {
+        if (await context.Set<Repuesto>().AnyAsync(ct))
+            return;
+
+        // 1. Repuestos: la base genera IdRepuesto (IDENTITY)
+        context.Set<Repuesto>().AddRange(DemoData.Repuestos());
+        await context.SaveChangesAsync(ct);
+
+        // 2. RepuestoProveedor: los Id generados se resuelven por el código y la cédula jurídica
+        var repuestoIds = await context.Set<Repuesto>()
+            .ToDictionaryAsync(r => r.Codigo, r => r.IdRepuesto, ct);
+
+        var proveedorIds = await context.Set<Proveedor>()
+            .ToDictionaryAsync(p => p.CedulaJuridica, p => p.IdProveedor, ct);
+
+        var repuestoProveedores = DemoData.RepuestoProveedores
+            .Select(rp => new RepuestoProveedor
+            {
+                IdRepuesto = repuestoIds[rp.Codigo],
+                IdProveedor = proveedorIds[rp.CedulaJuridica],
+                PrecioOfrecido = rp.PrecioOfrecido,
+                TiempoEntregaDias = rp.TiempoEntregaDias
+            });
+
+        context.Set<RepuestoProveedor>().AddRange(repuestoProveedores);
+        await context.SaveChangesAsync(ct);
+    }
+}

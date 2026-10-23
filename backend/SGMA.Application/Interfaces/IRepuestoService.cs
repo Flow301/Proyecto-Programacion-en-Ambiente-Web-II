@@ -17,4 +17,5 @@ public interface IRepuestoService
     Task<Result<IEnumerable<RepuestoProveedorDto>>> AsociarProveedorAsync(int id, RepuestoProveedorCreateDto proveedor);
     Task<Result<IEnumerable<RepuestoProveedorDto>>> ActualizarProveedorAsync(int id, int idProveedor, RepuestoProveedorUpdateDto condiciones);
     Task<Result<IEnumerable<RepuestoProveedorDto>>> DesasociarProveedorAsync(int id, int idProveedor);
+    Task<Result<ProveedorRecomendadoDto>> GetProveedorRecomendadoAsync(int id);
 }

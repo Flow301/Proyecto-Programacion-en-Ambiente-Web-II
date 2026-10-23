@@ -121,6 +121,17 @@ public class RepuestoController : ControllerBase
         return StatusCode(result.Status, result);
     }
 
+    // GET api/Repuesto/{id}/proveedor-recomendado
+    [HttpGet("{id:int}/proveedor-recomendado")]
+    [EndpointSummary("Recomienda un proveedor activo por puntaje ponderado de tiempo de entrega (60 %) y precio (40 %)")]
+    [ProducesResponseType<Result<ProveedorRecomendadoDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<ProveedorRecomendadoDto>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProveedorRecomendadoAsync(int id)
+    {
+        var result = await _service.GetProveedorRecomendadoAsync(id);
+        return StatusCode(result.Status, result);
+    }
+
     // POST api/Repuesto/{id}/proveedores
     [HttpPost("{id:int}/proveedores")]
     [EndpointSummary("Asocia un proveedor al repuesto con su precio y tiempo de entrega")]
@@ -157,3 +168,4 @@ public class RepuestoController : ControllerBase
         return StatusCode(result.Status, result);
     }
 }
+

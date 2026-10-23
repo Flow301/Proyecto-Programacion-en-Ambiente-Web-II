@@ -10,6 +10,11 @@ namespace SGMA.Application.Implementation;
 
 public class RepuestoService : IRepuestoService
 {
+    // Pesos del proveedor recomendado (docs/decisiones-tecnicas.md, sección 2): cada día de espera
+    // es una unidad detenida, por eso el tiempo pesa más que el precio. Se cambian solo aquí.
+    public const decimal PesoTiempo = 0.6m;
+    public const decimal PesoPrecio = 0.4m;
+
     private readonly IRepuestoRepository _repository;
     private readonly IMapper _mapper;
 
@@ -104,7 +109,7 @@ public class RepuestoService : IRepuestoService
         if (entity is null)
             return NoExiste<int>(id);
 
-        entity.Estado = false; // UPDATE Repuesto SET Estado = 0, no DELETE
+        entity.Estado = false;                 // UPDATE Repuesto SET Estado = 0, no DELETE
 
         await _repository.SaveChangesAsync();
 
@@ -137,6 +142,7 @@ public class RepuestoService : IRepuestoService
     }
 
     // ---------- Proveedores del repuesto (tabla RepuestoProveedor) ----------
+
     public async Task<Result<IEnumerable<RepuestoProveedorDto>>> GetProveedoresAsync(int id)
     {
         if (await _repository.GetByIdAsync(id) is null)
@@ -211,6 +217,57 @@ public class RepuestoService : IRepuestoService
         await _repository.SaveChangesAsync();   // DELETE en RepuestoProveedor
 
         return await ProveedoresAsync(id, "Proveedor desasociado.");
+    }
+
+    // ---------- Proveedor recomendado ----------
+    // puntaje = 0,6 × (tiempo mínimo / tiempo del proveedor) + 0,4 × (precio mínimo / precio del proveedor)
+    // Solo participan los proveedores activos. Gana el mayor puntaje, en empate, el precio más bajo y después el nombre.
+    // Los CHECK de RepuestoProveedor (precio > 0, tiempo >= 1) garantizan que nunca se divide entre cero.
+    public async Task<Result<ProveedorRecomendadoDto>> GetProveedorRecomendadoAsync(int id)
+    {
+        var repuesto = await _repository.GetByIdAsync(id);
+
+        if (repuesto is null)
+            return NoExiste<ProveedorRecomendadoDto>(id);
+
+        var activos = (await _repository.GetProveedoresAsync(id))
+            .Where(rp => rp.Proveedor.Estado)
+            .ToList();
+
+        var data = new ProveedorRecomendadoDto
+        {
+            IdRepuesto = repuesto.IdRepuesto,
+            RepuestoCodigo = repuesto.Codigo,
+            RepuestoNombre = repuesto.Nombre
+        };
+
+        if (activos.Count == 0)
+            return Result<ProveedorRecomendadoDto>.Success(data, 200, "OK",
+                $"El repuesto {repuesto.Codigo} no tiene proveedores activos: no hay recomendación.");
+
+        var tiempoMinimo = activos.Min(rp => rp.TiempoEntregaDias);
+        var precioMinimo = activos.Min(rp => rp.PrecioOfrecido);
+
+        data.Opciones = activos
+            .Select(rp => new ProveedorPuntajeDto
+            {
+                IdProveedor = rp.IdProveedor,
+                ProveedorNombre = rp.Proveedor.Nombre,
+                PrecioOfrecido = rp.PrecioOfrecido,
+                TiempoEntregaDias = rp.TiempoEntregaDias,
+                Puntaje = Math.Round(
+                    PesoTiempo * tiempoMinimo / rp.TiempoEntregaDias
+                    + PesoPrecio * precioMinimo / rp.PrecioOfrecido, 3)
+            })
+            .OrderByDescending(p => p.Puntaje)
+            .ThenBy(p => p.PrecioOfrecido)
+            .ThenBy(p => p.ProveedorNombre)
+            .ToList();
+
+        data.Recomendado = data.Opciones.First();
+
+        return Result<ProveedorRecomendadoDto>.Success(data, 200, "OK",
+            $"Se recomienda {data.Recomendado.ProveedorNombre} con puntaje {data.Recomendado.Puntaje}.");
     }
 
     // Vuelve a leer los proveedores del repuesto para responder con sus nombres
