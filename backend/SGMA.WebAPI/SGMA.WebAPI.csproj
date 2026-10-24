@@ -5,6 +5,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>c4c92e9a-6a7c-4144-b086-5563c899a356</UserSecretsId>
+    <!-- Los comentarios /// de los controladores aparecen en Scalar; 1591 evita exigirlos en todo lo público -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
