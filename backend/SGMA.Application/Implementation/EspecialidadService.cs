@@ -1,4 +1,5 @@
 ﻿using MapsterMapper;
+using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
@@ -12,11 +13,14 @@ public class EspecialidadService : IEspecialidadService
 {
     private readonly IEspecialidadRepository _repository;
     private readonly IMapper _mapper;
+    private readonly ILogger<EspecialidadService> _logger;
 
-    public EspecialidadService(IEspecialidadRepository repository, IMapper mapper)
+    public EspecialidadService(IEspecialidadRepository repository, IMapper mapper,
+        ILogger<EspecialidadService> logger)
     {
         _repository = repository;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<IEnumerable<EspecialidadDto>>> GetAllAsync()
@@ -64,6 +68,8 @@ public class EspecialidadService : IEspecialidadService
 
         await _repository.AddAsync(entity);    // SQL Server asigna IdEspecialidad
 
+        _logger.LogInformation("Especialidad {IdEspecialidad} creada: {Nombre}", entity.IdEspecialidad, entity.Nombre);
+
         var data = _mapper.Map<EspecialidadDto>(entity);
 
         return Result<EspecialidadDto>.Success(data, 201, "Creado", "Especialidad registrada.");
@@ -83,6 +89,8 @@ public class EspecialidadService : IEspecialidadService
 
         await _repository.UpdateAsync(entity);
 
+        _logger.LogInformation("Especialidad {IdEspecialidad} actualizada", id);
+
         var data = _mapper.Map<EspecialidadDto>(entity);
 
         return Result<EspecialidadDto>.Success(data, 200, "OK", "Especialidad actualizada.");
@@ -95,10 +103,15 @@ public class EspecialidadService : IEspecialidadService
             return NoExiste<int>(id);
 
         if (await _repository.HasTecnicosAsync(id))
+        {
+            _logger.LogWarning("Intento de eliminar la especialidad {IdEspecialidad}, que tiene técnicos", id);
             return Result<int>.Failure(409, "Conflicto",
                 $"La especialidad {id} tiene técnicos asociados y no se puede eliminar.");
+        }
 
         await _repository.DeleteAsync(id);
+
+        _logger.LogInformation("Especialidad {IdEspecialidad} eliminada", id);
 
         return Result<int>.Success(id, 200, "OK", "Especialidad eliminada.");
     }
@@ -112,8 +125,11 @@ public class EspecialidadService : IEspecialidadService
         int? excludeId = entity.IdEspecialidad == 0 ? null : entity.IdEspecialidad;
 
         if (await _repository.ExistsByNameAsync(entity.Nombre, excludeId))
+        {
+            _logger.LogWarning("Intento de guardar una especialidad con nombre duplicado: {Nombre}", entity.Nombre);
             return Result<EspecialidadDto>.Failure(409, "Conflicto",
                 $"Ya existe una especialidad con el nombre '{entity.Nombre}'.");
+        }
 
         return null;
     }
