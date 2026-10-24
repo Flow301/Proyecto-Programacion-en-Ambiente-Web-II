@@ -1,4 +1,5 @@
 ﻿using MapsterMapper;
+using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
@@ -12,11 +13,14 @@ public class TecnicoService : ITecnicoService
 {
     private readonly ITecnicoRepository _repository;
     private readonly IMapper _mapper;
+    private readonly ILogger<TecnicoService> _logger;
 
-    public TecnicoService(ITecnicoRepository repository, IMapper mapper)
+    public TecnicoService(ITecnicoRepository repository, IMapper mapper,
+        ILogger<TecnicoService> logger)
     {
         _repository = repository;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<IEnumerable<TecnicoListDto>>> GetAllAsync()
@@ -81,6 +85,8 @@ public class TecnicoService : ITecnicoService
 
         await _repository.AddAsync(entity);    // SQL Server asigna IdTecnico
 
+        _logger.LogInformation("Técnico {IdTecnico} creado: {Identificacion}", entity.IdTecnico, entity.Identificacion);
+
         var data = _mapper.Map<TecnicoDetailDto>(entity);
 
         return Result<TecnicoDetailDto>.Success(data, 201, "Creado", "Técnico registrado.");
@@ -105,6 +111,8 @@ public class TecnicoService : ITecnicoService
 
         await _repository.SaveChangesAsync();
 
+        _logger.LogInformation("Técnico {IdTecnico} actualizado", id);
+
         var actualizado = await _repository.GetByIdAsync(id);
         var data = _mapper.Map<TecnicoDetailDto>(actualizado!);
 
@@ -122,6 +130,8 @@ public class TecnicoService : ITecnicoService
         entity.Estado = false;                 // UPDATE Tecnico SET Estado = 0, no DELETE
 
         await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Técnico {IdTecnico} inactivado", id);
 
         return Result<int>.Success(id, 200, "OK", "Técnico inactivado.");
     }
@@ -144,8 +154,12 @@ public class TecnicoService : ITecnicoService
                 $"El nivel de certificación {especialidad.IdNivelCertificacion} no existe.");
 
         if (entity.TecnicoEspecialidades.Any(te => te.IdEspecialidad == especialidad.IdEspecialidad))
+        {
+            _logger.LogWarning("Intento de asociar dos veces la especialidad {IdEspecialidad} al técnico {IdTecnico}",
+                especialidad.IdEspecialidad, id);
             return Result<TecnicoDetailDto>.Failure(409, "Conflicto",
                 $"El técnico {id} ya tiene asociada la especialidad {especialidad.IdEspecialidad}.");
+        }
 
         entity.TecnicoEspecialidades.Add(new TecnicoEspecialidad
         {
@@ -156,6 +170,8 @@ public class TecnicoService : ITecnicoService
         });
 
         await _repository.SaveChangesAsync();   // INSERT en TecnicoEspecialidad
+
+        _logger.LogInformation("Especialidad {IdEspecialidad} asociada al técnico {IdTecnico}", especialidad.IdEspecialidad, id);
 
         return await DetalleAsync(id, "Especialidad asociada.");
     }
@@ -175,6 +191,8 @@ public class TecnicoService : ITecnicoService
 
         _repository.RemoveEspecialidad(asociacion);
         await _repository.SaveChangesAsync();   // DELETE en TecnicoEspecialidad
+
+        _logger.LogInformation("Especialidad {IdEspecialidad} desasociada del técnico {IdTecnico}", idEspecialidad, id);
 
         return await DetalleAsync(id, "Especialidad desasociada.");
     }
@@ -196,9 +214,12 @@ public class TecnicoService : ITecnicoService
         entity.Correo = entity.Correo.Trim();
     }
 
-    private static Result<TecnicoDetailDto> IdentificacionRepetida(string identificacion) =>
-        Result<TecnicoDetailDto>.Failure(409, "Conflicto",
+    private Result<TecnicoDetailDto> IdentificacionRepetida(string identificacion)
+    {
+        _logger.LogWarning("Intento de guardar un técnico con identificación duplicada: {Identificacion}", identificacion);
+        return Result<TecnicoDetailDto>.Failure(409, "Conflicto",
             $"Ya existe un técnico con la identificación '{identificacion}'.");
+    }
 
     private static Result<T> NoExiste<T>(int id) =>
         Result<T>.Failure(404, "Recurso no encontrado", $"El técnico {id} no existe o está inactivo.");
