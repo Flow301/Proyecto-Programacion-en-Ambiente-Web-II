@@ -139,7 +139,7 @@ app.UseExceptionHandler();      // todo lo que viene después queda protegido po
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    // Menú y búsqueda de Scalar muestran la ruta en lugar del EndpointSummary
+    // Menú y búsqueda de Scalar muestran la ruta en lugar del <summary> de cada acción
     app.MapScalarApiReference(options => options
         .WithTitle("SGMA API")
         .WithOperationTitleSource(OperationTitleSource.Path)
