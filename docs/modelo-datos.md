@@ -20,7 +20,7 @@ Las entidades se definen en código (`SGMA.Domain/Entities`) y su configuración
   - `date` y `datetime2` → `DateTime`
 - **Montos** en colones, con `decimal(18,2)`.
 - **Fechas.** `date` para fechas de calendario (adquisición, certificación, fecha programada) y `datetime2` para momentos exactos (solicitud, cambios de estado, cierre). Guardamos la hora local del servidor, como el `sysdatetime()` del material.
-- **Entidades** como `class` tradicionales con navegación `virtual`. Aunque el material use `record`, Entity Framework necesita clases normales para poder rastrear los cambios en la base de datos.
+- **Entidades** como `class` con navegación `virtual`, igual que el material actualizado. Un `record` compara por valor, y EF Core necesita comparar las entidades por referencia para rastrearlas en sus colecciones.
 
 ---
 
