@@ -1,5 +1,6 @@
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
@@ -31,14 +32,16 @@ public class ActivoService : IActivoService
     private readonly ICategoriaActivoRepository _categoriaRepository;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IMapper _mapper;
+    private readonly ILogger<ActivoService> _logger;
 
     public ActivoService(IActivoRepository repository, ICategoriaActivoRepository categoriaRepository,
-        IUsuarioRepository usuarioRepository, IMapper mapper)
+        IUsuarioRepository usuarioRepository, IMapper mapper, ILogger<ActivoService> logger)
     {
         _repository = repository;
         _categoriaRepository = categoriaRepository;
         _usuarioRepository = usuarioRepository;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<IEnumerable<ActivoListDto>>> GetPaginationAsync(int pageNumber, int pageSize)
@@ -102,8 +105,12 @@ public class ActivoService : IActivoService
             var consecutivo = await _repository.GetUltimoConsecutivoAsync(categoria.Prefijo) + 1;
 
             if (consecutivo > MaxConsecutivo)
+            {
+                _logger.LogWarning("La categoría {IdCategoria} alcanzó el máximo de {MaxConsecutivo} vehículos",
+                    categoria.IdCategoria, MaxConsecutivo);
                 return Result<ActivoDetailDto>.Failure(409, "Conflicto",
                     $"La categoría '{categoria.Nombre}' alcanzó el máximo de {MaxConsecutivo} vehículos.");
+            }
 
             entity.Codigo = $"{categoria.Prefijo}-{consecutivo:D4}";
 
@@ -114,8 +121,11 @@ public class ActivoService : IActivoService
             }
             catch (DbUpdateException) when (intento == 1)
             {
+                _logger.LogWarning("El código {Codigo} ya fue tomado por otro registro; se reintenta con el siguiente", entity.Codigo);
             }
         }
+
+        _logger.LogInformation("Vehículo {IdActivo} creado: {Codigo}", entity.IdActivo, entity.Codigo);
 
         var creado = await _repository.GetByIdAsync(entity.IdActivo);
         var data = _mapper.Map<ActivoDetailDto>(creado!);
@@ -131,8 +141,12 @@ public class ActivoService : IActivoService
             return NoExiste(id);
 
         if (activo.KilometrajeActual < actual.KilometrajeActual)
+        {
+            _logger.LogWarning("Intento de bajar el kilometraje del vehículo {IdActivo} de {Actual} a {Nuevo} km",
+                id, actual.KilometrajeActual, activo.KilometrajeActual);
             return Result<ActivoDetailDto>.Failure(409, "Conflicto",
                 $"El kilometraje no puede disminuir: el actual es {actual.KilometrajeActual} km.");
+        }
 
         var entity = _mapper.Map<Activo>(activo);
         entity.IdActivo = id;                      // el id viene de la ruta, nunca del body
@@ -147,6 +161,8 @@ public class ActivoService : IActivoService
             return error;
 
         await _repository.UpdateAsync(entity);
+
+        _logger.LogInformation("Vehículo {IdActivo} actualizado", id);
 
         var actualizado = await _repository.GetByIdAsync(id);
         var data = _mapper.Map<ActivoDetailDto>(actualizado!);
@@ -176,6 +192,9 @@ public class ActivoService : IActivoService
 
         AplicarEstado(activo, idEstadoNuevo, idUsuario, observacion);
         await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Vehículo {Codigo} pasó de {EstadoAnterior} a {EstadoNuevo}. Usuario: {IdUsuario}",
+            activo.Codigo, actual, destino.Nombre, idUsuario);
 
         var actualizado = await _repository.GetByIdAsync(id);
         var data = _mapper.Map<ActivoDetailDto>(actualizado!);
@@ -224,6 +243,8 @@ public class ActivoService : IActivoService
         // Si cambió la extensión (p. ej. de .jpg a .png), el archivo viejo queda huérfano: se borra
         if (anterior is not null && anterior != activo.Imagen)
             File.Delete(Path.Combine(carpetaWeb, anterior));
+
+        _logger.LogInformation("Imagen del vehículo {Codigo} actualizada: {Imagen}", activo.Codigo, activo.Imagen);
 
         var actualizado = await _repository.GetByIdAsync(id);
         var data = _mapper.Map<ActivoDetailDto>(actualizado!);
@@ -291,8 +312,11 @@ public class ActivoService : IActivoService
         int? excludeId = entity.IdActivo == 0 ? null : entity.IdActivo;
 
         if (await _repository.ExistsByPlacaAsync(entity.Placa, excludeId))
+        {
+            _logger.LogWarning("Intento de guardar un vehículo con placa duplicada: {Placa}", entity.Placa);
             return Result<ActivoDetailDto>.Failure(409, "Conflicto",
                 $"Ya existe un vehículo con la placa '{entity.Placa}'.");
+        }
 
         return null;
     }
