@@ -1,4 +1,5 @@
 ﻿using MapsterMapper;
+using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
@@ -12,11 +13,14 @@ public class ProveedorService : IProveedorService
 {
     private readonly IProveedorRepository _repository;
     private readonly IMapper _mapper;
+    private readonly ILogger<ProveedorService> _logger;
 
-    public ProveedorService(IProveedorRepository repository, IMapper mapper)
+    public ProveedorService(IProveedorRepository repository, IMapper mapper,
+        ILogger<ProveedorService> logger)
     {
         _repository = repository;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<IEnumerable<ProveedorDto>>> GetAllAsync()
@@ -66,6 +70,8 @@ public class ProveedorService : IProveedorService
 
         await _repository.AddAsync(entity);    // SQL Server asigna IdProveedor
 
+        _logger.LogInformation("Proveedor {IdProveedor} creado: {CedulaJuridica}", entity.IdProveedor, entity.CedulaJuridica);
+
         var data = _mapper.Map<ProveedorDto>(entity);
 
         return Result<ProveedorDto>.Success(data, 201, "Creado", "Proveedor registrado.");
@@ -90,6 +96,8 @@ public class ProveedorService : IProveedorService
 
         await _repository.SaveChangesAsync();
 
+        _logger.LogInformation("Proveedor {IdProveedor} actualizado", id);
+
         var data = _mapper.Map<ProveedorDto>(entity);
 
         return Result<ProveedorDto>.Success(data, 200, "OK", "Proveedor actualizado.");
@@ -108,6 +116,8 @@ public class ProveedorService : IProveedorService
 
         await _repository.SaveChangesAsync();
 
+        _logger.LogInformation("Proveedor {IdProveedor} inactivado", id);
+
         return Result<int>.Success(id, 200, "OK", "Proveedor inactivado.");
     }
 
@@ -124,9 +134,12 @@ public class ProveedorService : IProveedorService
             : entity.CondicionesGenerales.Trim();
     }
 
-    private static Result<ProveedorDto> CedulaRepetida(string cedulaJuridica) =>
-        Result<ProveedorDto>.Failure(409, "Conflicto",
+    private Result<ProveedorDto> CedulaRepetida(string cedulaJuridica)
+    {
+        _logger.LogWarning("Intento de guardar un proveedor con cédula jurídica duplicada: {CedulaJuridica}", cedulaJuridica);
+        return Result<ProveedorDto>.Failure(409, "Conflicto",
             $"Ya existe un proveedor con la cédula jurídica '{cedulaJuridica}'.");
+    }
 
     private static Result<T> NoExiste<T>(int id) =>
         Result<T>.Failure(404, "Recurso no encontrado", $"El proveedor {id} no existe o está inactivo.");
