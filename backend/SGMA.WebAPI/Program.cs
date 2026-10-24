@@ -56,8 +56,21 @@ builder.Services.AddControllers()
             return new BadRequestObjectResult(result);
         };
     });
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Documento OpenAPI con título, versión y descripción (como en el material)
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Info = new()
+        {
+            Title = "SGMA API",
+            Version = "v1",
+            Description = "API del Sistema de Gestión de Mantenimiento de Activos (ISW-621, UTN). " +
+                "Todas las respuestas usan Result<T>: isSuccess, status, title, detail y data."
+        };
+        return Task.CompletedTask;
+    });
+});
 
 // Seeders en tiempo de ejecución, ver docs/modelo-datos.md
 // Primero el MasterSeeder (admin, con la contraseña de Seed:AdminPassword) y después,
@@ -128,7 +141,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     // Menú y búsqueda de Scalar muestran la ruta en lugar del EndpointSummary
     app.MapScalarApiReference(options => options
-        .WithOperationTitleSource(OperationTitleSource.Path));
+        .WithTitle("SGMA API")
+        .WithOperationTitleSource(OperationTitleSource.Path)
+        .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Fetch)); // ejemplos de consumo para React
 }
 
 app.UseHttpsRedirection();
