@@ -24,7 +24,7 @@ public class RepuestoController : ControllerBase
     /// <summary>
     /// Lista los repuestos activos.
     /// </summary>
-    /// <response code="200">Lista de repuestos activos ordenada por código; vacía si no hay ninguno.</response>
+    /// <response code="200">Lista de repuestos activos ordenada por Id; vacía si no hay ninguno.</response>
     [HttpGet]
     [ProducesResponseType<Result<IEnumerable<RepuestoDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllAsync()
