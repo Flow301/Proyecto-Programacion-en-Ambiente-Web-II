@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using SGMA.Domain.DTO.PatternResult;
 using SGMA.Shared.Exceptions;
+using System.Diagnostics;
 
 namespace SGMA.WebAPI.Handlers;
 
@@ -21,6 +22,11 @@ public class GlobalExceptionHandler : IExceptionHandler
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
+        // Código de seguimiento: el mismo TraceId que ASP.NET Core y Serilog ponen en el log
+        var traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
+        var usuario = httpContext.User.Identity?.Name ?? "anónimo";
+        var reporte = $" Si el problema persiste, reporte el código {traceId}.";
+
         var result = exception switch
         {
             RecursoNoEncontradoException =>
@@ -40,15 +46,19 @@ public class GlobalExceptionHandler : IExceptionHandler
             // Cubre dos peticiones que pasan a la vez la misma verificación de duplicado.
             DbUpdateException or SqlException { Number: 547 or 2601 or 2627 } =>
                 Result<object>.Failure(StatusCodes.Status409Conflict, "Conflicto",
-                    "No se pudo guardar porque el registro entra en conflicto con datos existentes."),
+                    "No se pudo guardar porque el registro entra en conflicto con datos existentes." + reporte),
 
             _ => Result<object>.Failure(StatusCodes.Status500InternalServerError, "Error interno del servidor",
-                "Ocurrió un error inesperado. Intente de nuevo más tarde.")
+                "Ocurrió un error inesperado." + reporte)
         };
 
-        // Solo los errores inesperados se registran como error; los de negocio son respuestas normales.
-        if (result.Status == StatusCodes.Status500InternalServerError)
-            _logger.LogError(exception, "Error no controlado en {Ruta}", httpContext.Request.Path);
+        // La excepción completa va al log, nunca al cliente. Las de negocio son respuestas normales y no se registran.
+        if (result.Status >= StatusCodes.Status500InternalServerError)
+            _logger.LogError(exception, "Error no controlado {TraceId} en {Metodo} {Ruta}. Usuario: {Usuario}",
+                traceId, httpContext.Request.Method, httpContext.Request.Path, usuario);
+        else if (exception is BadHttpRequestException or DbUpdateException or SqlException)
+            _logger.LogWarning(exception, "Excepción convertida en {Status} {TraceId} en {Metodo} {Ruta}. Usuario: {Usuario}",
+                result.Status, traceId, httpContext.Request.Method, httpContext.Request.Path, usuario);
 
         httpContext.Response.StatusCode = result.Status;
         await httpContext.Response.WriteAsJsonAsync(result, cancellationToken);
