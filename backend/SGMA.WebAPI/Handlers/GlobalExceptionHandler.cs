@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using SGMA.Domain.DTO.PatternResult;
 using SGMA.Shared.Exceptions;
 
@@ -29,6 +31,16 @@ public class GlobalExceptionHandler : IExceptionHandler
 
             ReglaNegocioException =>
                 Result<object>.Failure(StatusCodes.Status409Conflict, "Regla de negocio no cumplida", exception.Message),
+
+            // La petición HTTP venía mal formada (cuerpo demasiado grande, encabezados inválidos...)
+            BadHttpRequestException badRequest =>
+                Result<object>.Failure(badRequest.StatusCode, "Solicitud inválida", "La solicitud no es válida."),
+
+            // SQL Server rechazó el cambio: FK (547), índice único (2601) o llave primaria (2627), como en el material.
+            // Cubre dos peticiones que pasan a la vez la misma verificación de duplicado.
+            DbUpdateException or SqlException { Number: 547 or 2601 or 2627 } =>
+                Result<object>.Failure(StatusCodes.Status409Conflict, "Conflicto",
+                    "No se pudo guardar porque el registro entra en conflicto con datos existentes."),
 
             _ => Result<object>.Failure(StatusCodes.Status500InternalServerError, "Error interno del servidor",
                 "Ocurrió un error inesperado. Intente de nuevo más tarde.")

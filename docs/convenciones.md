@@ -129,6 +129,7 @@ Cada entidad principal tiene su par de interfaz e implementación: `IActivoRepos
     "data": { "Nombre": ["El campo Nombre es obligatorio."] }
   }
   ```
+- **Conflictos en la base:** si SQL Server rechaza un cambio por una FK, un índice único o una llave primaria (por ejemplo, dos peticiones que crean el mismo código a la vez), el manejador global responde 409, como en el material.
 - **Errores inesperados:** el manejador global responde 500 con un mensaje genérico en español, sin detalles internos.
 
 ### Lugares fijos
