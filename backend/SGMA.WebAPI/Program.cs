@@ -12,8 +12,28 @@ using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Implementation;
 using SGMA.Infrastructure.Interfaces;
 using SGMA.WebAPI.Handlers;
+using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog reemplaza al proveedor de logging por defecto (como en el material)
+builder.Services.AddSerilog((services, logConfig) => logConfig
+    .MinimumLevel.Information()                                             // nivel general
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)              // menos ruido del framework
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information) // "Now listening on..."
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command",
+        builder.Environment.IsDevelopment() ? LogEventLevel.Information : LogEventLevel.Warning) // SQL de EF solo en Development
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        path: "logs/serilog-.txt",
+        rollingInterval: RollingInterval.Day,   // un archivo por día: serilog-20261024.txt
+        retainedFileCountLimit: 14,             // conserva 14 archivos
+        fileSizeLimitBytes: 10_485_760,         // 10 MB por archivo
+        rollOnFileSizeLimit: true,              // al llegar a 10 MB abre serilog-20261024_001.txt
+        shared: true,                           // varios procesos pueden escribir el mismo archivo
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}"));
 
 // Add services to the container.
 
@@ -99,7 +119,8 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 
-app.UseExceptionHandler();
+app.UseSerilogRequestLogging(); // una línea de log por petición: método, ruta, código y duración
+app.UseExceptionHandler();      // todo lo que viene después queda protegido por el manejador global
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

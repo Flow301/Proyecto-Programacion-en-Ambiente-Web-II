@@ -31,6 +31,7 @@ Versiones verificadas en NuGet el 8 de octubre de 2026. Todas son estables, tien
   - `Microsoft.EntityFrameworkCore.Design` 10.0.13, con `PrivateAssets` en `all`
   - `Mapster.DependencyInjection` 10.0.13
   - `Scalar.AspNetCore` 2.18.0
+  - `Serilog.AspNetCore` 10.0.0, para el log en consola y en archivos diarios (`logs/serilog-AAAAMMDD.txt`)
   - `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.13. **Pendiente (Avance 2).**
 
 Es la misma distribución de paquetes del material de clase, con tres diferencias:
