@@ -1,4 +1,5 @@
 ﻿using MapsterMapper;
+using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
@@ -17,11 +18,14 @@ public class RepuestoService : IRepuestoService
 
     private readonly IRepuestoRepository _repository;
     private readonly IMapper _mapper;
+    private readonly ILogger<RepuestoService> _logger;
 
-    public RepuestoService(IRepuestoRepository repository, IMapper mapper)
+    public RepuestoService(IRepuestoRepository repository, IMapper mapper,
+        ILogger<RepuestoService> logger)
     {
         _repository = repository;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<IEnumerable<RepuestoDto>>> GetAllAsync()
@@ -72,6 +76,9 @@ public class RepuestoService : IRepuestoService
 
         await _repository.AddAsync(entity);    // SQL Server asigna IdRepuesto
 
+        _logger.LogInformation("Repuesto {IdRepuesto} creado: {Codigo}, stock inicial {StockActual}",
+            entity.IdRepuesto, entity.Codigo, entity.StockActual);
+
         var data = _mapper.Map<RepuestoDto>(entity);
 
         return Result<RepuestoDto>.Success(data, 201, "Creado", "Repuesto registrado.");
@@ -96,6 +103,8 @@ public class RepuestoService : IRepuestoService
 
         await _repository.SaveChangesAsync();
 
+        _logger.LogInformation("Repuesto {IdRepuesto} actualizado", id);
+
         var data = _mapper.Map<RepuestoDto>(entity);
 
         return Result<RepuestoDto>.Success(data, 200, "OK", "Repuesto actualizado.");
@@ -112,6 +121,8 @@ public class RepuestoService : IRepuestoService
         entity.Estado = false;                 // UPDATE Repuesto SET Estado = 0, no DELETE
 
         await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Repuesto {IdRepuesto} inactivado", id);
 
         return Result<int>.Success(id, 200, "OK", "Repuesto inactivado.");
     }
@@ -136,6 +147,9 @@ public class RepuestoService : IRepuestoService
 
         var repuesto = await _repository.GetByIdAsync(id);
         var data = _mapper.Map<RepuestoDto>(repuesto!);
+
+        _logger.LogInformation("Entrada de {Cantidad} al repuesto {Codigo}. Stock actual: {StockActual}",
+            entrada.Cantidad, data.Codigo, data.StockActual);
 
         return Result<RepuestoDto>.Success(data, 200, "OK",
             $"Entrada de {entrada.Cantidad} registrada. Stock actual: {data.StockActual}.");
@@ -164,8 +178,12 @@ public class RepuestoService : IRepuestoService
                 $"El proveedor {proveedor.IdProveedor} no existe o está inactivo.");
 
         if (entity.RepuestoProveedores.Any(rp => rp.IdProveedor == proveedor.IdProveedor))
+        {
+            _logger.LogWarning("Intento de asociar dos veces el proveedor {IdProveedor} al repuesto {IdRepuesto}",
+                proveedor.IdProveedor, id);
             return Result<IEnumerable<RepuestoProveedorDto>>.Failure(409, "Conflicto",
                 $"El proveedor {proveedor.IdProveedor} ya está asociado al repuesto {id}.");
+        }
 
         entity.RepuestoProveedores.Add(new RepuestoProveedor
         {
@@ -176,6 +194,8 @@ public class RepuestoService : IRepuestoService
         });
 
         await _repository.SaveChangesAsync();   // INSERT en RepuestoProveedor
+
+        _logger.LogInformation("Proveedor {IdProveedor} asociado al repuesto {IdRepuesto}", proveedor.IdProveedor, id);
 
         return await ProveedoresAsync(id, "Proveedor asociado.");
     }
@@ -198,6 +218,8 @@ public class RepuestoService : IRepuestoService
 
         await _repository.SaveChangesAsync();   // UPDATE en RepuestoProveedor
 
+        _logger.LogInformation("Condiciones del proveedor {IdProveedor} en el repuesto {IdRepuesto} actualizadas", idProveedor, id);
+
         return await ProveedoresAsync(id, "Condiciones del proveedor actualizadas.");
     }
 
@@ -215,6 +237,8 @@ public class RepuestoService : IRepuestoService
 
         _repository.RemoveProveedor(asociacion);
         await _repository.SaveChangesAsync();   // DELETE en RepuestoProveedor
+
+        _logger.LogInformation("Proveedor {IdProveedor} desasociado del repuesto {IdRepuesto}", idProveedor, id);
 
         return await ProveedoresAsync(id, "Proveedor desasociado.");
     }
@@ -293,9 +317,12 @@ public class RepuestoService : IRepuestoService
     // Los códigos se guardan en mayúscula (FIL-ACE-001), así "fil-ace-001" cuenta como repetido
     private static string NormalizarCodigo(string codigo) => codigo.Trim().ToUpperInvariant();
 
-    private static Result<RepuestoDto> CodigoRepetido(string codigo) =>
-        Result<RepuestoDto>.Failure(409, "Conflicto",
+    private Result<RepuestoDto> CodigoRepetido(string codigo)
+    {
+        _logger.LogWarning("Intento de guardar un repuesto con código duplicado: {Codigo}", codigo);
+        return Result<RepuestoDto>.Failure(409, "Conflicto",
             $"Ya existe un repuesto con el código '{codigo}'.");
+    }
 
     private static Result<T> NoExiste<T>(int id) =>
         Result<T>.Failure(404, "Recurso no encontrado", $"El repuesto {id} no existe o está inactivo.");
