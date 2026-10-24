@@ -29,7 +29,7 @@ public class RepuestoRepository : IRepuestoRepository
         return await _context.Repuesto
             .AsNoTracking()
             .Where(p => p.Estado)
-            .OrderBy(p => p.Codigo)
+            .OrderBy(p => p.IdRepuesto)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
