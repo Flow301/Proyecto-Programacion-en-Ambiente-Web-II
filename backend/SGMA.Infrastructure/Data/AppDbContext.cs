@@ -28,6 +28,9 @@ public class AppDbContext : DbContext
     public DbSet<RepuestoProveedor> RepuestoProveedor { get; set; }
     public DbSet<TipoMantenimiento> TipoMantenimiento { get; set; }
     public DbSet<OrdenMantenimiento> OrdenMantenimiento { get; set; }
+    public DbSet<AsignacionTecnico> AsignacionTecnico { get; set; }
+    public DbSet<DetalleRepuesto> DetalleRepuesto { get; set; }
+    public DbSet<RepuestoPendiente> RepuestoPendiente { get; set; }
     public DbSet<HistorialEstadoOrden> HistorialEstadoOrden { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -551,6 +554,87 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdUsuarioSolicitante)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_OrdenMantenimiento_Usuario");
+        });
+
+        // AsignacionTecnico (OrdenMantenimiento N:N Tecnico)
+        modelBuilder.Entity<AsignacionTecnico>(entity =>
+        {
+            // Llave compuesta: un técnico no se asigna dos veces a la misma orden
+            entity.HasKey(e => new { e.IdOrden, e.IdTecnico })
+                .HasName("PK_AsignacionTecnico");
+
+            entity.ToTable(t => t.HasCheckConstraint("CK_AsignacionTecnico_HorasTrabajadas", "[HorasTrabajadas] >= 0"));
+
+            entity.Property(e => e.HorasTrabajadas)
+                .HasColumnType("decimal(6, 2)");
+
+            entity.Property(e => e.TarifaAplicada)
+                .HasColumnType("decimal(10, 2)");
+
+            entity.HasOne(d => d.Orden)
+                .WithMany(p => p.Asignaciones)
+                .HasForeignKey(d => d.IdOrden)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_AsignacionTecnico_OrdenMantenimiento");
+
+            entity.HasOne(d => d.Tecnico)
+                .WithMany()
+                .HasForeignKey(d => d.IdTecnico)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_AsignacionTecnico_Tecnico");
+        });
+
+        // DetalleRepuesto (OrdenMantenimiento N:N Repuesto)
+        modelBuilder.Entity<DetalleRepuesto>(entity =>
+        {
+            // Como el detalle de factura del material: el mismo repuesto puede ir en dos líneas con costos distintos
+            entity.HasKey(e => new { e.IdOrden, e.NumeroLinea })
+                .HasName("PK_DetalleRepuesto");
+
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_DetalleRepuesto_Cantidad", "[Cantidad] > 0");
+                t.HasCheckConstraint("CK_DetalleRepuesto_CostoUnitario", "[CostoUnitario] > 0");
+            });
+
+            entity.Property(e => e.CostoUnitario)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.Property(e => e.Subtotal)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Orden)
+                .WithMany(p => p.Detalles)
+                .HasForeignKey(d => d.IdOrden)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_DetalleRepuesto_OrdenMantenimiento");
+
+            entity.HasOne(d => d.Repuesto)
+                .WithMany()
+                .HasForeignKey(d => d.IdRepuesto)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_DetalleRepuesto_Repuesto");
+        });
+
+        // RepuestoPendiente (OrdenMantenimiento N:N Repuesto)
+        modelBuilder.Entity<RepuestoPendiente>(entity =>
+        {
+            entity.HasKey(e => new { e.IdOrden, e.IdRepuesto })
+                .HasName("PK_RepuestoPendiente");
+
+            entity.ToTable(t => t.HasCheckConstraint("CK_RepuestoPendiente_Cantidad", "[Cantidad] > 0"));
+
+            entity.HasOne(d => d.Orden)
+                .WithMany(p => p.RepuestosPendientes)
+                .HasForeignKey(d => d.IdOrden)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_RepuestoPendiente_OrdenMantenimiento");
+
+            entity.HasOne(d => d.Repuesto)
+                .WithMany()
+                .HasForeignKey(d => d.IdRepuesto)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_RepuestoPendiente_Repuesto");
         });
 
         // HistorialEstadoOrden

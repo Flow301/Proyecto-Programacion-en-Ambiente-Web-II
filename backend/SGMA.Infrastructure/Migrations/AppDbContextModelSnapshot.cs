@@ -119,6 +119,34 @@ namespace SGMA.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.AsignacionTecnico", b =>
+                {
+                    b.Property<int>("IdOrden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdTecnico")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaAsignacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("HorasTrabajadas")
+                        .HasColumnType("decimal(6, 2)");
+
+                    b.Property<decimal?>("TarifaAplicada")
+                        .HasColumnType("decimal(10, 2)");
+
+                    b.HasKey("IdOrden", "IdTecnico")
+                        .HasName("PK_AsignacionTecnico");
+
+                    b.HasIndex("IdTecnico");
+
+                    b.ToTable("AsignacionTecnico", t =>
+                        {
+                            t.HasCheckConstraint("CK_AsignacionTecnico_HorasTrabajadas", "[HorasTrabajadas] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.CategoriaActivo", b =>
                 {
                     b.Property<int>("IdCategoria")
@@ -245,6 +273,42 @@ namespace SGMA.Infrastructure.Migrations
                             MargenAvisoKm = 500,
                             Nombre = "Motocicleta",
                             Prefijo = "MOT"
+                        });
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.DetalleRepuesto", b =>
+                {
+                    b.Property<int>("IdOrden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NumeroLinea")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("CostoUnitario")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IdRepuesto")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.HasKey("IdOrden", "NumeroLinea")
+                        .HasName("PK_DetalleRepuesto");
+
+                    b.HasIndex("IdRepuesto");
+
+                    b.ToTable("DetalleRepuesto", t =>
+                        {
+                            t.HasCheckConstraint("CK_DetalleRepuesto_Cantidad", "[Cantidad] > 0");
+
+                            t.HasCheckConstraint("CK_DetalleRepuesto_CostoUnitario", "[CostoUnitario] > 0");
                         });
                 });
 
@@ -868,6 +932,31 @@ namespace SGMA.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.RepuestoPendiente", b =>
+                {
+                    b.Property<int>("IdOrden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdRepuesto")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("IdOrden", "IdRepuesto")
+                        .HasName("PK_RepuestoPendiente");
+
+                    b.HasIndex("IdRepuesto");
+
+                    b.ToTable("RepuestoPendiente", t =>
+                        {
+                            t.HasCheckConstraint("CK_RepuestoPendiente_Cantidad", "[Cantidad] > 0");
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.RepuestoProveedor", b =>
                 {
                     b.Property<int>("IdRepuesto")
@@ -1216,6 +1305,48 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("EstadoActivo");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.AsignacionTecnico", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.OrdenMantenimiento", "Orden")
+                        .WithMany("Asignaciones")
+                        .HasForeignKey("IdOrden")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_AsignacionTecnico_OrdenMantenimiento");
+
+                    b.HasOne("SGMA.Domain.Entities.Tecnico", "Tecnico")
+                        .WithMany()
+                        .HasForeignKey("IdTecnico")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_AsignacionTecnico_Tecnico");
+
+                    b.Navigation("Orden");
+
+                    b.Navigation("Tecnico");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.DetalleRepuesto", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.OrdenMantenimiento", "Orden")
+                        .WithMany("Detalles")
+                        .HasForeignKey("IdOrden")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_DetalleRepuesto_OrdenMantenimiento");
+
+                    b.HasOne("SGMA.Domain.Entities.Repuesto", "Repuesto")
+                        .WithMany()
+                        .HasForeignKey("IdRepuesto")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_DetalleRepuesto_Repuesto");
+
+                    b.Navigation("Orden");
+
+                    b.Navigation("Repuesto");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.HistorialEstadoActivo", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.Activo", "Activo")
@@ -1347,6 +1478,27 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("UsuarioSolicitante");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.RepuestoPendiente", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.OrdenMantenimiento", "Orden")
+                        .WithMany("RepuestosPendientes")
+                        .HasForeignKey("IdOrden")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_RepuestoPendiente_OrdenMantenimiento");
+
+                    b.HasOne("SGMA.Domain.Entities.Repuesto", "Repuesto")
+                        .WithMany()
+                        .HasForeignKey("IdRepuesto")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_RepuestoPendiente_Repuesto");
+
+                    b.Navigation("Orden");
+
+                    b.Navigation("Repuesto");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.RepuestoProveedor", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.Proveedor", "Proveedor")
@@ -1458,7 +1610,13 @@ namespace SGMA.Infrastructure.Migrations
 
             modelBuilder.Entity("SGMA.Domain.Entities.OrdenMantenimiento", b =>
                 {
+                    b.Navigation("Asignaciones");
+
+                    b.Navigation("Detalles");
+
                     b.Navigation("HistorialEstados");
+
+                    b.Navigation("RepuestosPendientes");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.Proveedor", b =>

@@ -25,5 +25,8 @@ public class OrdenMantenimiento
     public virtual Prioridad? Prioridad { get; set; }
     public virtual EstadoOrden EstadoOrden { get; set; } = null!;
     public virtual Usuario UsuarioSolicitante { get; set; } = null!;
+    public virtual ICollection<AsignacionTecnico> Asignaciones { get; set; } = new List<AsignacionTecnico>();
+    public virtual ICollection<DetalleRepuesto> Detalles { get; set; } = new List<DetalleRepuesto>();
+    public virtual ICollection<RepuestoPendiente> RepuestosPendientes { get; set; } = new List<RepuestoPendiente>();
     public virtual ICollection<HistorialEstadoOrden> HistorialEstados { get; set; } = new List<HistorialEstadoOrden>();
 }
