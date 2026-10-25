@@ -21,6 +21,11 @@ public class AppDbContext : DbContext
     public DbSet<Especialidad> Especialidad { get; set; }
     public DbSet<Tecnico> Tecnico { get; set; }
     public DbSet<TecnicoEspecialidad> TecnicoEspecialidad { get; set; }
+    public DbSet<Usuario> Usuario { get; set; }
+    public DbSet<HistorialEstadoActivo> HistorialEstadoActivo { get; set; }
+    public DbSet<Proveedor> Proveedor { get; set; }
+    public DbSet<Repuesto> Repuesto { get; set; }
+    public DbSet<RepuestoProveedor> RepuestoProveedor { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -277,6 +282,173 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdNivelCertificacion)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_TecnicoEspecialidad_NivelCertificacion");
+        });
+
+        // Usuario
+        modelBuilder.Entity<Usuario>(entity =>
+        {
+            entity.HasKey(e => e.IdUsuario)
+                .HasName("PK_Usuario");
+
+            entity.HasIndex(e => e.Login, "UQ_Usuario_Login")
+                .IsUnique();
+
+            entity.HasIndex(e => e.Correo, "UQ_Usuario_Correo")
+                .IsUnique();
+
+            entity.Property(e => e.NombreCompleto)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Login)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Correo)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ClaveHash)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.FechaCreacion)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.HasOne(d => d.Rol)
+                .WithMany(p => p.Usuarios)
+                .HasForeignKey(d => d.IdRol)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Usuario_Rol");
+        });
+
+        // HistorialEstadoActivo
+        modelBuilder.Entity<HistorialEstadoActivo>(entity =>
+        {
+            entity.HasKey(e => e.IdHistorial)
+                .HasName("PK_HistorialEstadoActivo");
+
+            entity.Property(e => e.FechaCambio)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.Property(e => e.Observacion)
+                .HasMaxLength(500);
+
+            entity.HasOne(d => d.Activo)
+                .WithMany(p => p.HistorialEstados)
+                .HasForeignKey(d => d.IdActivo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_Activo");
+
+            // Dos FK a EstadoActivo: el nombre de la restricción dice cuál es cuál
+            entity.HasOne(d => d.EstadoAnterior)
+                .WithMany()
+                .HasForeignKey(d => d.IdEstadoAnterior)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_EstadoAnterior");
+
+            entity.HasOne(d => d.EstadoNuevo)
+                .WithMany()
+                .HasForeignKey(d => d.IdEstadoNuevo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_EstadoNuevo");
+
+            entity.HasOne(d => d.Usuario)
+                .WithMany()
+                .HasForeignKey(d => d.IdUsuario)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_Usuario");
+        });
+
+        // Proveedor
+        modelBuilder.Entity<Proveedor>(entity =>
+        {
+            entity.HasKey(e => e.IdProveedor)
+                .HasName("PK_Proveedor");
+
+            entity.HasIndex(e => e.CedulaJuridica, "UQ_Proveedor_CedulaJuridica")
+                .IsUnique();
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.CedulaJuridica)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.PersonaContacto)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Telefono)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Correo)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Direccion)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.CondicionesGenerales)
+                .HasMaxLength(300);
+        });
+
+        // Repuesto
+        modelBuilder.Entity<Repuesto>(entity =>
+        {
+            entity.HasKey(e => e.IdRepuesto)
+                .HasName("PK_Repuesto");
+
+            // El CHECK de StockActual es la última defensa: el stock nunca puede quedar negativo
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Repuesto_StockActual", "[StockActual] >= 0");
+                t.HasCheckConstraint("CK_Repuesto_StockMinimo", "[StockMinimo] >= 0");
+                t.HasCheckConstraint("CK_Repuesto_CostoUnitario", "[CostoUnitario] > 0");
+            });
+
+            entity.HasIndex(e => e.Codigo, "UQ_Repuesto_Codigo")
+                .IsUnique();
+
+            entity.Property(e => e.Codigo)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.UnidadMedida)
+                .HasMaxLength(20);
+
+            entity.Property(e => e.CostoUnitario)
+                .HasColumnType("decimal(18, 2)");
+        });
+
+        // RepuestoProveedor (Repuesto N:N Proveedor)
+        modelBuilder.Entity<RepuestoProveedor>(entity =>
+        {
+            // Llave compuesta: impide asociar el mismo proveedor dos veces al mismo repuesto
+            entity.HasKey(e => new { e.IdRepuesto, e.IdProveedor })
+                .HasName("PK_RepuestoProveedor");
+
+            // Con estos CHECK la fórmula del proveedor recomendado nunca divide entre cero
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_RepuestoProveedor_PrecioOfrecido", "[PrecioOfrecido] > 0");
+                t.HasCheckConstraint("CK_RepuestoProveedor_TiempoEntregaDias", "[TiempoEntregaDias] >= 1");
+            });
+
+            entity.Property(e => e.PrecioOfrecido)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Repuesto)
+                .WithMany(p => p.RepuestoProveedores)
+                .HasForeignKey(d => d.IdRepuesto)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_RepuestoProveedor_Repuesto");
+
+            entity.HasOne(d => d.Proveedor)
+                .WithMany(p => p.RepuestoProveedores)
+                .HasForeignKey(d => d.IdProveedor)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_RepuestoProveedor_Proveedor");
         });
 
         // Seed maestro de catálogos (HasData)

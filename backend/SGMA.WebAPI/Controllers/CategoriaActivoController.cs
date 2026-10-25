@@ -5,9 +5,13 @@ using SGMA.Domain.DTO.PatternResult;
 
 namespace SGMA.WebAPI.Controllers;
 
+/// <summary>
+/// Categorías de vehículos: consulta, registro, actualización y eliminación.
+/// </summary>
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
+[ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
 public class CategoriaActivoController : ControllerBase
 {
     private readonly ICategoriaActivoService _service;
@@ -17,9 +21,11 @@ public class CategoriaActivoController : ControllerBase
         _service = service;
     }
 
-    // GET api/CategoriaActivo
+    /// <summary>
+    /// Lista todas las categorías.
+    /// </summary>
+    /// <response code="200">Lista de categorías ordenada por Id; vacía si no hay ninguna.</response>
     [HttpGet]
-    [EndpointSummary("Lista todas las categorías")]
     [ProducesResponseType<Result<IEnumerable<CategoriaActivoDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllAsync()
     {
@@ -27,34 +33,52 @@ public class CategoriaActivoController : ControllerBase
         return StatusCode(result.Status, result);
     }
 
-    // GET api/CategoriaActivo/{pageNumber}/{pageSize}
+    /// <summary>
+    /// Lista las categorías por páginas.
+    /// </summary>
+    /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
+    /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <response code="200">Página de categorías con pageNumber, pageSize, totalRecords y totalPages.</response>
+    /// <response code="400">pageNumber o pageSize fuera de rango.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
-    [EndpointSummary("Lista las categorías por página")]
     [ProducesResponseType<Result<IEnumerable<CategoriaActivoDto>>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Result<IEnumerable<CategoriaActivoDto>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10)
     {
         var result = await _service.GetPaginationAsync(pageNumber, pageSize);
         return StatusCode(result.Status, result);
     }
 
-    // GET api/CategoriaActivo/{id}
+    /// <summary>
+    /// Obtiene el detalle de una categoría.
+    /// </summary>
+    /// <param name="id" example="1">Id de la categoría.</param>
+    /// <response code="200">Detalle de la categoría.</response>
+    /// <response code="404">La categoría no existe.</response>
     [HttpGet("{id:int}", Name = "GetCategoriaActivoById")]
-    [EndpointSummary("Obtiene una categoría por id")]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(int id)
     {
         var result = await _service.GetByIdAsync(id);
         return StatusCode(result.Status, result);
     }
 
-    // POST api/CategoriaActivo
+    /// <summary>
+    /// Registra una categoría nueva.
+    /// </summary>
+    /// <remarks>
+    /// El nombre y el prefijo no se repiten. El prefijo son tres letras y se guarda en mayúscula;
+    /// con él se generan los códigos de los vehículos (PKP-0001). El margen de aviso debe ser menor que el intervalo.
+    /// </remarks>
+    /// <param name="categoria">Datos de la categoría.</param>
+    /// <response code="201">Categoría creada; el encabezado Location apunta a GET api/CategoriaActivo/{id}.</response>
+    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="409">Ya existe una categoría con ese nombre o prefijo.</response>
     [HttpPost]
-    [EndpointSummary("Crea una categoría")]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AddAsync([FromBody] CategoriaActivoCreateDto categoria)
     {
         var result = await _service.AddAsync(categoria);
@@ -64,25 +88,40 @@ public class CategoriaActivoController : ControllerBase
         return CreatedAtRoute("GetCategoriaActivoById", new { id = result.Data!.IdCategoria }, result);
     }
 
-    // PUT api/CategoriaActivo/{id}
+    /// <summary>
+    /// Actualiza los datos de una categoría.
+    /// </summary>
+    /// <remarks>
+    /// Se puede conservar el nombre y el prefijo actuales. El prefijo no cambia si la categoría ya tiene vehículos.
+    /// </remarks>
+    /// <param name="id" example="1">Id de la categoría (de la ruta, nunca del cuerpo).</param>
+    /// <param name="categoria">Datos nuevos de la categoría.</param>
+    /// <response code="200">Categoría actualizada.</response>
+    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="404">La categoría no existe.</response>
+    /// <response code="409">El nombre o el prefijo pertenecen a otra categoría, o se quiso cambiar el prefijo de una categoría con vehículos.</response>
     [HttpPut("{id:int}")]
-    [EndpointSummary("Actualiza una categoría")]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status404NotFound)]
-    [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateAsync([FromRoute] int id, [FromBody] CategoriaActivoUpdateDto categoria)
     {
         var result = await _service.UpdateAsync(id, categoria);
         return StatusCode(result.Status, result);
     }
 
-    // DELETE api/CategoriaActivo/{id}
+    /// <summary>
+    /// Elimina una categoría que no tiene vehículos.
+    /// </summary>
+    /// <param name="id" example="10">Id de la categoría.</param>
+    /// <response code="200">Categoría eliminada; data = Id eliminado.</response>
+    /// <response code="404">La categoría no existe.</response>
+    /// <response code="409">La categoría tiene vehículos y no se puede eliminar.</response>
     [HttpDelete("{id:int}")]
-    [EndpointSummary("Elimina una categoría sin vehículos")]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Result<int>>(StatusCodes.Status404NotFound)]
-    [ProducesResponseType<Result<int>>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteAsync(int id)
     {
         var result = await _service.DeleteAsync(id);

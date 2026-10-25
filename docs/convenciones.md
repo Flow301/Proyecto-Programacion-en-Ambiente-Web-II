@@ -31,6 +31,7 @@ Versiones verificadas en NuGet el 8 de octubre de 2026. Todas son estables, tien
   - `Microsoft.EntityFrameworkCore.Design` 10.0.13, con `PrivateAssets` en `all`
   - `Mapster.DependencyInjection` 10.0.13
   - `Scalar.AspNetCore` 2.18.0
+  - `Serilog.AspNetCore` 10.0.0, para el log en consola y en archivos diarios (`logs/serilog-AAAAMMDD.txt`)
   - `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.13. **Pendiente (Avance 2).**
 
 Es la misma distribución de paquetes del material de clase, con tres diferencias:
@@ -70,7 +71,7 @@ Seguimos las capas y patrones de los materiales de clase.
 backend/
 ├── SGMA.slnx
 ├── SGMA.Domain/
-│   ├── Entities/          Entidades (record class)
+│   ├── Entities/          Entidades (class)
 │   └── DTO/               DTO de lista, detalle, creación, edición y reportes, y PatternResult/ (Result y BaseResult)
 ├── SGMA.Infrastructure/
 │   ├── Data/              AppDbContext y configuración de tablas
@@ -104,8 +105,8 @@ En la Clean Architecture de libro, Infrastructure depende de Application y no al
 
 ### Recorrido de una petición
 
-1. **Controlador** (`WebAPI/Controllers`). Recibe la petición, llama al servicio y responde con `StatusCode(result.Status, result)`. Al crear responde 201 con `CreatedAtRoute`, que agrega el encabezado `Location`. Documenta cada código posible con `[ProducesResponseType]` y `[EndpointSummary]` para que se vea en Scalar. No tiene lógica de negocio.
-2. **Servicio** (`Application/Implementation`). Aplica las reglas de negocio y convierte entidades en DTO con Mapster. Devuelve siempre un `Result<T>`: `Success`, `Paged` o `Failure` con 400, 404 o 409 para los errores esperados del CRUD. Recibe el usuario responsable como parámetro: en el Avance 1 viene del cuerpo de la petición y desde el Avance 2, del token.
+1. **Controlador** (`WebAPI/Controllers`). Recibe la petición, llama al servicio y responde con `StatusCode(result.Status, result)`. Al crear responde 201 con `CreatedAtRoute`, que agrega el encabezado `Location`. Se documenta para Scalar como en el material: comentarios XML (`<summary>`, `<remarks>`, `<param example>` y un `<response code>` por cada código) y un `[ProducesResponseType]` por código. El éxito usa `Result<Dto>`, el 400 de validación `Result<Dictionary<string, string[]>>`, los demás errores `Result<object>`, y la clase declara el 500 para todas sus acciones. Los DTO llevan `<summary>` y `<example>` en cada propiedad. No tiene lógica de negocio.
+2. **Servicio** (`Application/Implementation`). Aplica las reglas de negocio y convierte entidades en DTO con Mapster. Registra con `ILogger<T>` cada cambio guardado (`LogInformation`) y cada conflicto rechazado (`LogWarning`), como en el material. Devuelve siempre un `Result<T>`: `Success`, `Paged` o `Failure` con 400, 404 o 409 para los errores esperados del CRUD. Recibe el usuario responsable como parámetro: en el Avance 1 viene del cuerpo de la petición y desde el Avance 2, del token.
 3. **Repositorio** (`Infrastructure/Implementation`). Consulta y guarda con EF Core. Devuelve entidades, salvo en agregaciones (`GroupBy`, reportes, dashboard), que devuelven el DTO de resultado directamente. Cada método de escritura termina con un solo `SaveChangesAsync`, y los borrados físicos usan `ExecuteDeleteAsync`, igual que en el material.
 4. **`AppDbContext`** (`Infrastructure/Data`). Configura tablas, relaciones, índices y restricciones en `OnModelCreating`, y aplica los seeders.
 
@@ -118,8 +119,19 @@ Cada entidad principal tiene su par de interfaz e implementación: `IActivoRepos
 - **Forma única de respuesta:** `Result<T>` y `BaseResult`, en `SGMA.Domain/DTO/PatternResult`, copiados del material. El código HTTP se repite en `status` dentro del body.
 - **Errores esperados del CRUD** (no existe, nombre repetido, tiene relaciones): el servicio devuelve `Result<T>.Failure`, como en el material. El orden de las verificaciones es 404 y después 409.
 - **Reglas del flujo de estados:** el servicio lanza una excepción de negocio propia, porque el enunciado lo exige (sección 9). El manejador global la convierte en la misma forma `Result<T>`, así el cliente nunca ve dos formatos.
-- **Validación de formato:** la hace `[ApiController]` con las DataAnnotations del DTO y responde 400 con `ValidationProblemDetails`. Es la única respuesta con otra forma, igual que en el material.
-- **Errores inesperados:** el manejador global responde 500 con un mensaje genérico en español, sin detalles internos.
+- **Validación de formato:** la hace `[ApiController]` con las DataAnnotations del DTO y responde 400. Como en el material, `InvalidModelStateResponseFactory` (en `Program.cs`) la devuelve también como `Result<T>`, con los errores de cada campo en `data`:
+
+  ```json
+  {
+    "isSuccess": false,
+    "status": 400,
+    "title": "Solicitud inválida",
+    "detail": "Uno o más datos enviados no son válidos.",
+    "data": { "Nombre": ["El campo Nombre es obligatorio."] }
+  }
+  ```
+- **Conflictos en la base:** si SQL Server rechaza un cambio por una FK, un índice único o una llave primaria (por ejemplo, dos peticiones que crean el mismo código a la vez), el manejador global responde 409, como en el material.
+- **Errores inesperados:** el manejador global responde 500 con un mensaje genérico en español, sin detalles internos. El mensaje incluye el código de seguimiento (`TraceId`) que también queda en el log junto con la excepción completa, la ruta y el usuario.
 
 ### Lugares fijos
 
@@ -161,7 +173,7 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 ### Validación
 
 - Doble validación:
-  - **Formato:** DataAnnotations en los DTO de entrada, que ASP.NET responde con 400.
+  - **Formato:** DataAnnotations en los DTO de entrada, que ASP.NET responde con 400. Las reglas que comparan campos del mismo DTO o no dependen de la base (el margen menor que el intervalo, una fecha que no puede ser futura) van en el propio DTO con `IValidatableObject`, como en el material.
   - **Negocio:** en el servicio, con excepciones propias.
   - La base tiene además restricciones `UNIQUE` y `CHECK` como última defensa.
 - En el Avance 2 se suma la validación en el cliente, que no reemplaza la del servidor.
@@ -195,7 +207,7 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
   - `PascalCase` para tipos, métodos y propiedades;
   - `camelCase` para variables locales y parámetros;
   - `_camelCase` para campos privados, como el `_repository` del material.
-- Una clase por archivo, con el mismo nombre del archivo.
+- Una clase por archivo, con el mismo nombre del archivo. La excepción es `DemoData`: es `partial` y se divide por tema (`DemoData.Tecnicos.cs`, `DemoData.Activos.cs`), como `DemoData.MoreSuppliers.cs` en el material.
 - **Comentarios:** pocos, breves y solo donde aportan algo que el código no dice. No comentamos cada línea ni escribimos frases como "Este método se encarga de…".
 
 ### Base de datos

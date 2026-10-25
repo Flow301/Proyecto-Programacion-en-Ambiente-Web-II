@@ -1,6 +1,6 @@
 ﻿namespace SGMA.Domain.Entities;
 
-public record class Tecnico
+public class Tecnico
 {
     public int IdTecnico { get; set; }
     public string NombreCompleto { get; set; } = null!;

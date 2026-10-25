@@ -17,7 +17,7 @@ namespace SGMA.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -455,6 +455,49 @@ namespace SGMA.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.HistorialEstadoActivo", b =>
+                {
+                    b.Property<int>("IdHistorial")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdHistorial"));
+
+                    b.Property<DateTime>("FechaCambio")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysdatetime())");
+
+                    b.Property<int>("IdActivo")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdEstadoAnterior")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdEstadoNuevo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdUsuario")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("IdHistorial")
+                        .HasName("PK_HistorialEstadoActivo");
+
+                    b.HasIndex("IdActivo");
+
+                    b.HasIndex("IdEstadoAnterior");
+
+                    b.HasIndex("IdEstadoNuevo");
+
+                    b.HasIndex("IdUsuario");
+
+                    b.ToTable("HistorialEstadoActivo");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.NaturalezaMantenimiento", b =>
                 {
                     b.Property<int>("IdNaturaleza")
@@ -589,6 +632,141 @@ namespace SGMA.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Proveedor", b =>
+                {
+                    b.Property<int>("IdProveedor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdProveedor"));
+
+                    b.Property<string>("CedulaJuridica")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("CondicionesGenerales")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Correo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Direccion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PersonaContacto")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Telefono")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.HasKey("IdProveedor")
+                        .HasName("PK_Proveedor");
+
+                    b.HasIndex(new[] { "CedulaJuridica" }, "UQ_Proveedor_CedulaJuridica")
+                        .IsUnique();
+
+                    b.ToTable("Proveedor");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Repuesto", b =>
+                {
+                    b.Property<int>("IdRepuesto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdRepuesto"));
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<decimal>("CostoUnitario")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("StockActual")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StockMinimo")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UnidadMedida")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("IdRepuesto")
+                        .HasName("PK_Repuesto");
+
+                    b.HasIndex(new[] { "Codigo" }, "UQ_Repuesto_Codigo")
+                        .IsUnique();
+
+                    b.ToTable("Repuesto", t =>
+                        {
+                            t.HasCheckConstraint("CK_Repuesto_CostoUnitario", "[CostoUnitario] > 0");
+
+                            t.HasCheckConstraint("CK_Repuesto_StockActual", "[StockActual] >= 0");
+
+                            t.HasCheckConstraint("CK_Repuesto_StockMinimo", "[StockMinimo] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.RepuestoProveedor", b =>
+                {
+                    b.Property<int>("IdRepuesto")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdProveedor")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrecioOfrecido")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int>("TiempoEntregaDias")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdRepuesto", "IdProveedor")
+                        .HasName("PK_RepuestoProveedor");
+
+                    b.HasIndex("IdProveedor");
+
+                    b.ToTable("RepuestoProveedor", t =>
+                        {
+                            t.HasCheckConstraint("CK_RepuestoProveedor_PrecioOfrecido", "[PrecioOfrecido] > 0");
+
+                            t.HasCheckConstraint("CK_RepuestoProveedor_TiempoEntregaDias", "[TiempoEntregaDias] >= 1");
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Rol", b =>
                 {
                     b.Property<int>("IdRol")
@@ -703,6 +881,63 @@ namespace SGMA.Infrastructure.Migrations
                     b.ToTable("TecnicoEspecialidad");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Usuario", b =>
+                {
+                    b.Property<int>("IdUsuario")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdUsuario"));
+
+                    b.Property<string>("ClaveHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Correo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysdatetime())");
+
+                    b.Property<int>("IdRol")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Login")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("NombreCompleto")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UltimoAcceso")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("IdUsuario")
+                        .HasName("PK_Usuario");
+
+                    b.HasIndex("IdRol");
+
+                    b.HasIndex(new[] { "Correo" }, "UQ_Usuario_Correo")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "Login" }, "UQ_Usuario_Login")
+                        .IsUnique();
+
+                    b.ToTable("Usuario");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Activo", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.CategoriaActivo", "Categoria")
@@ -722,6 +957,65 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("Categoria");
 
                     b.Navigation("EstadoActivo");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.HistorialEstadoActivo", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Activo", "Activo")
+                        .WithMany("HistorialEstados")
+                        .HasForeignKey("IdActivo")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_HistorialEstadoActivo_Activo");
+
+                    b.HasOne("SGMA.Domain.Entities.EstadoActivo", "EstadoAnterior")
+                        .WithMany()
+                        .HasForeignKey("IdEstadoAnterior")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_HistorialEstadoActivo_EstadoAnterior");
+
+                    b.HasOne("SGMA.Domain.Entities.EstadoActivo", "EstadoNuevo")
+                        .WithMany()
+                        .HasForeignKey("IdEstadoNuevo")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_HistorialEstadoActivo_EstadoNuevo");
+
+                    b.HasOne("SGMA.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("IdUsuario")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_HistorialEstadoActivo_Usuario");
+
+                    b.Navigation("Activo");
+
+                    b.Navigation("EstadoAnterior");
+
+                    b.Navigation("EstadoNuevo");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.RepuestoProveedor", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Proveedor", "Proveedor")
+                        .WithMany("RepuestoProveedores")
+                        .HasForeignKey("IdProveedor")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_RepuestoProveedor_Proveedor");
+
+                    b.HasOne("SGMA.Domain.Entities.Repuesto", "Repuesto")
+                        .WithMany("RepuestoProveedores")
+                        .HasForeignKey("IdRepuesto")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_RepuestoProveedor_Repuesto");
+
+                    b.Navigation("Proveedor");
+
+                    b.Navigation("Repuesto");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.TecnicoEspecialidad", b =>
@@ -754,6 +1048,23 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("Tecnico");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.Usuario", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Rol", "Rol")
+                        .WithMany("Usuarios")
+                        .HasForeignKey("IdRol")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_Usuario_Rol");
+
+                    b.Navigation("Rol");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Activo", b =>
+                {
+                    b.Navigation("HistorialEstados");
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.CategoriaActivo", b =>
                 {
                     b.Navigation("Activos");
@@ -772,6 +1083,21 @@ namespace SGMA.Infrastructure.Migrations
             modelBuilder.Entity("SGMA.Domain.Entities.NivelCertificacion", b =>
                 {
                     b.Navigation("TecnicoEspecialidades");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Proveedor", b =>
+                {
+                    b.Navigation("RepuestoProveedores");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Repuesto", b =>
+                {
+                    b.Navigation("RepuestoProveedores");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.Rol", b =>
+                {
+                    b.Navigation("Usuarios");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.Tecnico", b =>

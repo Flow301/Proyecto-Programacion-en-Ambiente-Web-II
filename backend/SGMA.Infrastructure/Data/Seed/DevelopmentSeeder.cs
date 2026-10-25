@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using SGMA.Domain.Entities;
 
 namespace SGMA.Infrastructure.Data.Seed;
@@ -24,10 +25,31 @@ public static class DevelopmentSeeder
             ? await context.Database.BeginTransactionAsync(ct)
             : null;
 
+        await SeedUsuariosAsync(context, ct);
         await SeedTecnicosAsync(context, ct);
+        await SeedActivosAsync(context, ct);
+        await SeedProveedoresAsync(context, ct);
+        await SeedRepuestosAsync(context, ct);
 
         if (transaction is not null)
             await transaction.CommitAsync(ct);
+    }
+
+    // ---------- Usuarios de demostración ----------
+    private static async Task SeedUsuariosAsync(DbContext context, CancellationToken ct)
+    {
+        // admin ya existe (MasterSeeder): el bloque solo revisa los usuarios de demostración
+        if (await context.Set<Usuario>().AnyAsync(u => u.Login != MasterSeeder.LoginAdmin, ct))
+            return;
+
+        var hasher = new PasswordHasher<Usuario>();
+        var usuarios = DemoData.Usuarios();
+
+        foreach (var usuario in usuarios)
+            usuario.ClaveHash = hasher.HashPassword(usuario, DemoData.ClaveDemo);
+
+        context.Set<Usuario>().AddRange(usuarios);
+        await context.SaveChangesAsync(ct);
     }
 
     // ---------- Técnicos y sus especialidades ----------
@@ -57,5 +79,89 @@ public static class DevelopmentSeeder
         context.Set<TecnicoEspecialidad>().AddRange(tecnicoEspecialidades);
         await context.SaveChangesAsync(ct);
     }
-}
 
+    // ---------- Vehículos y su historial de estados ----------
+    private static async Task SeedActivosAsync(DbContext context, CancellationToken ct)
+    {
+        if (await context.Set<Activo>().AnyAsync(ct))
+            return;
+
+        // El IdUsuario generado se resuelve por el login (incluido admin, del MasterSeeder)
+        var usuarioIds = await context.Set<Usuario>()
+            .ToDictionaryAsync(u => u.Login, u => u.IdUsuario, ct);
+
+        // Fechas relativas al día de la siembra, para que la demostración nunca se vea vieja
+        var hoy = DateTime.Today;
+        var activos = DemoData.Activos();
+
+        foreach (var activo in activos)
+        {
+            // Del cambio más antiguo al más reciente; el primero es el registro inicial (sin estado anterior)
+            var cambios = DemoData.HistorialActivos
+                .Where(h => h.Codigo == activo.Codigo)
+                .OrderByDescending(h => h.DiasAtras);
+
+            int? estadoAnterior = null;
+
+            foreach (var cambio in cambios)
+            {
+                activo.HistorialEstados.Add(new HistorialEstadoActivo
+                {
+                    IdEstadoAnterior = estadoAnterior,
+                    IdEstadoNuevo = cambio.IdEstadoNuevo,
+                    FechaCambio = hoy.AddDays(-cambio.DiasAtras).AddHours(8),
+                    IdUsuario = usuarioIds[cambio.Login],
+                    Observacion = cambio.Observacion
+                });
+                estadoAnterior = cambio.IdEstadoNuevo;
+            }
+
+            // El estado actual es el del último cambio; la fecha de registro, la del primero
+            activo.IdEstadoActivo = estadoAnterior!.Value;
+            activo.FechaRegistro = activo.HistorialEstados.First().FechaCambio;
+        }
+
+        context.Set<Activo>().AddRange(activos);
+        await context.SaveChangesAsync(ct);
+    }
+
+    // ---------- Proveedores ----------
+    private static async Task SeedProveedoresAsync(DbContext context, CancellationToken ct)
+    {
+        if (await context.Set<Proveedor>().AnyAsync(ct))
+            return;
+
+        context.Set<Proveedor>().AddRange(DemoData.Proveedores());
+        await context.SaveChangesAsync(ct);
+    }
+
+    // ---------- Repuestos y sus proveedores ----------
+    private static async Task SeedRepuestosAsync(DbContext context, CancellationToken ct)
+    {
+        if (await context.Set<Repuesto>().AnyAsync(ct))
+            return;
+
+        // 1. Repuestos: la base genera IdRepuesto (IDENTITY)
+        context.Set<Repuesto>().AddRange(DemoData.Repuestos());
+        await context.SaveChangesAsync(ct);
+
+        // 2. RepuestoProveedor: los Id generados se resuelven por el código y la cédula jurídica
+        var repuestoIds = await context.Set<Repuesto>()
+            .ToDictionaryAsync(r => r.Codigo, r => r.IdRepuesto, ct);
+
+        var proveedorIds = await context.Set<Proveedor>()
+            .ToDictionaryAsync(p => p.CedulaJuridica, p => p.IdProveedor, ct);
+
+        var repuestoProveedores = DemoData.RepuestoProveedores
+            .Select(rp => new RepuestoProveedor
+            {
+                IdRepuesto = repuestoIds[rp.Codigo],
+                IdProveedor = proveedorIds[rp.CedulaJuridica],
+                PrecioOfrecido = rp.PrecioOfrecido,
+                TiempoEntregaDias = rp.TiempoEntregaDias
+            });
+
+        context.Set<RepuestoProveedor>().AddRange(repuestoProveedores);
+        await context.SaveChangesAsync(ct);
+    }
+}

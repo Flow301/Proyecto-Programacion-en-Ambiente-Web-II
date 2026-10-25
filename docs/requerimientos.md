@@ -544,12 +544,12 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Repuestos y proveedores**
 
-- [ ] CRUD de repuestos con inactivación, código único y stock nunca negativo.
-- [ ] CRUD de proveedores con inactivación y cédula jurídica única.
-- [ ] Asociación repuesto–proveedor con precio y tiempo de entrega, sin duplicados.
-- [ ] Registro de entradas de stock.
-- [ ] Consulta de repuestos bajo el mínimo.
-- [ ] Proveedor recomendado por puntaje ponderado.
+- [x] CRUD de repuestos con inactivación, código único y stock nunca negativo.
+- [x] CRUD de proveedores con inactivación y cédula jurídica única.
+- [x] Asociación repuesto–proveedor con precio y tiempo de entrega, sin duplicados.
+- [x] Registro de entradas de stock.
+- [x] Consulta de repuestos bajo el mínimo.
+- [x] Proveedor recomendado por puntaje ponderado.
 
 **Orden de mantenimiento**
 

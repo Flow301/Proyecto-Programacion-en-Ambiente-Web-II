@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Logs de Serilog (backend/SGMA.WebAPI/logs)
+logs/

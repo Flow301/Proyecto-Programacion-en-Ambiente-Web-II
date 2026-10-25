@@ -1,4 +1,5 @@
 using MapsterMapper;
+using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
@@ -12,11 +13,14 @@ public class CategoriaActivoService : ICategoriaActivoService
 {
     private readonly ICategoriaActivoRepository _repository;
     private readonly IMapper _mapper;
+    private readonly ILogger<CategoriaActivoService> _logger;
 
-    public CategoriaActivoService(ICategoriaActivoRepository repository, IMapper mapper)
+    public CategoriaActivoService(ICategoriaActivoRepository repository, IMapper mapper,
+        ILogger<CategoriaActivoService> logger)
     {
         _repository = repository;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<IEnumerable<CategoriaActivoDto>>> GetAllAsync()
@@ -64,6 +68,8 @@ public class CategoriaActivoService : ICategoriaActivoService
 
         await _repository.AddAsync(entity);
 
+        _logger.LogInformation("Categoría {IdCategoria} creada: {Nombre}", entity.IdCategoria, entity.Nombre);
+
         var data = _mapper.Map<CategoriaActivoDto>(entity);
 
         return Result<CategoriaActivoDto>.Success(data, 201, "Creado", "Categoría registrada.");
@@ -85,10 +91,15 @@ public class CategoriaActivoService : ICategoriaActivoService
 
         // Los códigos de sus vehículos ya se generaron con el prefijo actual
         if (entity.Prefijo != actual.Prefijo && await _repository.HasActivosAsync(id))
+        {
+            _logger.LogWarning("Intento de cambiar el prefijo de la categoría {IdCategoria}, que tiene vehículos", id);
             return Result<CategoriaActivoDto>.Failure(409, "Conflicto",
                 $"La categoría '{actual.Nombre}' tiene vehículos y su prefijo no se puede cambiar.");
+        }
 
         await _repository.UpdateAsync(entity);
+
+        _logger.LogInformation("Categoría {IdCategoria} actualizada", id);
 
         var data = _mapper.Map<CategoriaActivoDto>(entity);
 
@@ -101,10 +112,15 @@ public class CategoriaActivoService : ICategoriaActivoService
             return NoExiste<int>(id);
 
         if (await _repository.HasActivosAsync(id))
+        {
+            _logger.LogWarning("Intento de eliminar la categoría {IdCategoria}, que tiene vehículos", id);
             return Result<int>.Failure(409, "Conflicto",
                 $"La categoría {id} tiene vehículos asociados y no se puede eliminar.");
+        }
 
         await _repository.DeleteAsync(id);
+
+        _logger.LogInformation("Categoría {IdCategoria} eliminada", id);
 
         return Result<int>.Success(id, 200, "OK", "Categoría eliminada.");
     }
@@ -116,19 +132,21 @@ public class CategoriaActivoService : ICategoriaActivoService
         entity.Descripcion = entity.Descripcion?.Trim();
         entity.Prefijo = entity.Prefijo.ToUpperInvariant();
 
-        if (entity.MargenAvisoKm >= entity.IntervaloKm)
-            return Result<CategoriaActivoDto>.Failure(400, "Solicitud inválida",
-                "El margen de aviso debe ser menor que el intervalo de mantenimiento.");
-
         int? excludeId = entity.IdCategoria == 0 ? null : entity.IdCategoria;
 
         if (await _repository.ExistsByNameAsync(entity.Nombre, excludeId))
+        {
+            _logger.LogWarning("Intento de guardar una categoría con nombre duplicado: {Nombre}", entity.Nombre);
             return Result<CategoriaActivoDto>.Failure(409, "Conflicto",
                 $"Ya existe una categoría con el nombre '{entity.Nombre}'.");
+        }
 
         if (await _repository.ExistsByPrefijoAsync(entity.Prefijo, excludeId))
+        {
+            _logger.LogWarning("Intento de guardar una categoría con prefijo duplicado: {Prefijo}", entity.Prefijo);
             return Result<CategoriaActivoDto>.Failure(409, "Conflicto",
                 $"Ya existe una categoría con el prefijo '{entity.Prefijo}'.");
+        }
 
         return null;
     }
