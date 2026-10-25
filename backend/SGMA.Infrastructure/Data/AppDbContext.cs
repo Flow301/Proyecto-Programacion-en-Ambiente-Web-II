@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<Proveedor> Proveedor { get; set; }
     public DbSet<Repuesto> Repuesto { get; set; }
     public DbSet<RepuestoProveedor> RepuestoProveedor { get; set; }
+    public DbSet<TipoMantenimiento> TipoMantenimiento { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -449,6 +450,34 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdProveedor)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_RepuestoProveedor_Proveedor");
+        });
+
+        // TipoMantenimiento
+        modelBuilder.Entity<TipoMantenimiento>(entity =>
+        {
+            entity.HasKey(e => e.IdTipoMantenimiento)
+                .HasName("PK_TipoMantenimiento");
+
+            entity.HasIndex(e => e.Nombre, "UQ_TipoMantenimiento_Nombre")
+                .IsUnique();
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(80);
+
+            entity.Property(e => e.Descripcion)
+                .HasMaxLength(250);
+
+            entity.HasOne(d => d.Naturaleza)
+                .WithMany()
+                .HasForeignKey(d => d.IdNaturaleza)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_TipoMantenimiento_NaturalezaMantenimiento");
+
+            entity.HasOne(d => d.EspecialidadRequerida)
+                .WithMany()
+                .HasForeignKey(d => d.IdEspecialidadRequerida)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_TipoMantenimiento_Especialidad");
         });
 
         // Seed maestro de catálogos (HasData)

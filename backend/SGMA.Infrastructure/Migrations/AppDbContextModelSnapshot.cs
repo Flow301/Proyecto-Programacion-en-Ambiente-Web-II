@@ -881,6 +881,135 @@ namespace SGMA.Infrastructure.Migrations
                     b.ToTable("TecnicoEspecialidad");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.TipoMantenimiento", b =>
+                {
+                    b.Property<int>("IdTipoMantenimiento")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdTipoMantenimiento"));
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("IdEspecialidadRequerida")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdNaturaleza")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.HasKey("IdTipoMantenimiento")
+                        .HasName("PK_TipoMantenimiento");
+
+                    b.HasIndex("IdEspecialidadRequerida");
+
+                    b.HasIndex("IdNaturaleza");
+
+                    b.HasIndex(new[] { "Nombre" }, "UQ_TipoMantenimiento_Nombre")
+                        .IsUnique();
+
+                    b.ToTable("TipoMantenimiento");
+
+                    b.HasData(
+                        new
+                        {
+                            IdTipoMantenimiento = 1,
+                            IdEspecialidadRequerida = 1,
+                            IdNaturaleza = 1,
+                            Nombre = "Servicio preventivo por kilometraje"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 2,
+                            IdEspecialidadRequerida = 2,
+                            IdNaturaleza = 1,
+                            Nombre = "Servicio preventivo de motor diésel"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 3,
+                            IdEspecialidadRequerida = 4,
+                            IdNaturaleza = 2,
+                            Nombre = "Reparación de frenos"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 4,
+                            IdEspecialidadRequerida = 5,
+                            IdNaturaleza = 2,
+                            Nombre = "Reparación de suspensión y dirección"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 5,
+                            IdEspecialidadRequerida = 6,
+                            IdNaturaleza = 2,
+                            Nombre = "Reparación del sistema eléctrico"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 6,
+                            IdEspecialidadRequerida = 2,
+                            IdNaturaleza = 2,
+                            Nombre = "Reparación de motor diésel"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 7,
+                            IdEspecialidadRequerida = 3,
+                            IdNaturaleza = 2,
+                            Nombre = "Reparación de motor de gasolina"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 8,
+                            IdEspecialidadRequerida = 7,
+                            IdNaturaleza = 2,
+                            Nombre = "Reparación de transmisión y embrague"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 9,
+                            IdEspecialidadRequerida = 8,
+                            IdNaturaleza = 2,
+                            Nombre = "Reparación de aire acondicionado"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 10,
+                            IdEspecialidadRequerida = 9,
+                            IdNaturaleza = 2,
+                            Nombre = "Cambio y alineamiento de llantas"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 11,
+                            IdEspecialidadRequerida = 10,
+                            IdNaturaleza = 2,
+                            Nombre = "Reparación de carrocería"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 12,
+                            IdEspecialidadRequerida = 1,
+                            IdNaturaleza = 3,
+                            Nombre = "Auxilio por avería en ruta"
+                        },
+                        new
+                        {
+                            IdTipoMantenimiento = 13,
+                            IdEspecialidadRequerida = 1,
+                            IdNaturaleza = 3,
+                            Nombre = "Atención de emergencia en taller"
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Usuario", b =>
                 {
                     b.Property<int>("IdUsuario")
@@ -1046,6 +1175,27 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("NivelCertificacion");
 
                     b.Navigation("Tecnico");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.TipoMantenimiento", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Especialidad", "EspecialidadRequerida")
+                        .WithMany()
+                        .HasForeignKey("IdEspecialidadRequerida")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_TipoMantenimiento_Especialidad");
+
+                    b.HasOne("SGMA.Domain.Entities.NaturalezaMantenimiento", "Naturaleza")
+                        .WithMany()
+                        .HasForeignKey("IdNaturaleza")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_TipoMantenimiento_NaturalezaMantenimiento");
+
+                    b.Navigation("EspecialidadRequerida");
+
+                    b.Navigation("Naturaleza");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.Usuario", b =>

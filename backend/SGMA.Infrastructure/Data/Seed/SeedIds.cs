@@ -59,4 +59,18 @@ public static class SeedIds
     public const int EspecialidadAireAcondicionado = 8;
     public const int EspecialidadLlantasAlineamiento = 9;
     public const int EspecialidadCarroceriaPintura = 10;
+
+    public const int TipoMantenimientoPreventivoKilometraje = 1;
+    public const int TipoMantenimientoPreventivoDiesel = 2;
+    public const int TipoMantenimientoReparacionFrenos = 3;
+    public const int TipoMantenimientoReparacionSuspension = 4;
+    public const int TipoMantenimientoReparacionElectrico = 5;
+    public const int TipoMantenimientoReparacionMotorDiesel = 6;
+    public const int TipoMantenimientoReparacionMotorGasolina = 7;
+    public const int TipoMantenimientoReparacionTransmision = 8;
+    public const int TipoMantenimientoReparacionAireAcondicionado = 9;
+    public const int TipoMantenimientoCambioLlantas = 10;
+    public const int TipoMantenimientoReparacionCarroceria = 11;
+    public const int TipoMantenimientoAuxilioEnRuta = 12;
+    public const int TipoMantenimientoEmergenciaTaller = 13;
 }

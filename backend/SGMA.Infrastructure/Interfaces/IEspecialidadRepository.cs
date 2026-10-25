@@ -14,6 +14,7 @@ public interface IEspecialidadRepository
     Task<bool> ExistsAsync(int id);
     Task<bool> ExistsByNameAsync(string nombre, int? excludeId = null);
     Task<bool> HasTecnicosAsync(int id);
+    Task<bool> HasTiposMantenimientoAsync(int id);
 
     // Escritura
     Task AddAsync(Especialidad especialidad);

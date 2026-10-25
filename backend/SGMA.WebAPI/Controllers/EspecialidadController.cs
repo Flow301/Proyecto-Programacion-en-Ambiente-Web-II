@@ -114,12 +114,12 @@ public class EspecialidadController : ControllerBase
     }
 
     /// <summary>
-    /// Elimina una especialidad que no tiene técnicos asociados.
+    /// Elimina una especialidad que no tiene técnicos asociados ni la requiere ningún tipo de mantenimiento.
     /// </summary>
     /// <param name="id" example="10">Id de la especialidad.</param>
     /// <response code="200">Especialidad eliminada; data = Id eliminado.</response>
     /// <response code="404">La especialidad no existe.</response>
-    /// <response code="409">La especialidad tiene técnicos y no se puede eliminar.</response>
+    /// <response code="409">La especialidad tiene técnicos o la requiere un tipo de mantenimiento, y no se puede eliminar.</response>
     [HttpDelete("{id:int}")]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]

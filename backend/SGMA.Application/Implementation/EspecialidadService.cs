@@ -109,6 +109,13 @@ public class EspecialidadService : IEspecialidadService
                 $"La especialidad {id} tiene técnicos asociados y no se puede eliminar.");
         }
 
+        if (await _repository.HasTiposMantenimientoAsync(id))
+        {
+            _logger.LogWarning("Intento de eliminar la especialidad {IdEspecialidad}, requerida por tipos de mantenimiento", id);
+            return Result<int>.Failure(409, "Conflicto",
+                $"La especialidad {id} es requerida por tipos de mantenimiento y no se puede eliminar.");
+        }
+
         await _repository.DeleteAsync(id);
 
         _logger.LogInformation("Especialidad {IdEspecialidad} eliminada", id);

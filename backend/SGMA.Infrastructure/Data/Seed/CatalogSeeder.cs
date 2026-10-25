@@ -90,5 +90,22 @@ public static class CatalogSeeder
             new Especialidad { IdEspecialidad = SeedIds.EspecialidadCarroceriaPintura, Nombre = "Carrocería y pintura", Descripcion = "Reparación de carrocería, enderezado y pintura." }
         );
 
+        // TipoMantenimiento (naturaleza y especialidad requerida de cada uno, docs/modelo-datos.md)
+        modelBuilder.Entity<TipoMantenimiento>().HasData(
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoPreventivoKilometraje, Nombre = "Servicio preventivo por kilometraje", IdNaturaleza = SeedIds.NaturalezaPreventivo, IdEspecialidadRequerida = SeedIds.EspecialidadMecanicaGeneral },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoPreventivoDiesel, Nombre = "Servicio preventivo de motor diésel", IdNaturaleza = SeedIds.NaturalezaPreventivo, IdEspecialidadRequerida = SeedIds.EspecialidadMotoresDiesel },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoReparacionFrenos, Nombre = "Reparación de frenos", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadFrenos },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoReparacionSuspension, Nombre = "Reparación de suspensión y dirección", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadSuspensionDireccion },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoReparacionElectrico, Nombre = "Reparación del sistema eléctrico", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadSistemaElectrico },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoReparacionMotorDiesel, Nombre = "Reparación de motor diésel", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadMotoresDiesel },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoReparacionMotorGasolina, Nombre = "Reparación de motor de gasolina", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadMotoresGasolina },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoReparacionTransmision, Nombre = "Reparación de transmisión y embrague", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadTransmisionEmbrague },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoReparacionAireAcondicionado, Nombre = "Reparación de aire acondicionado", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadAireAcondicionado },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoCambioLlantas, Nombre = "Cambio y alineamiento de llantas", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadLlantasAlineamiento },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoReparacionCarroceria, Nombre = "Reparación de carrocería", IdNaturaleza = SeedIds.NaturalezaCorrectivo, IdEspecialidadRequerida = SeedIds.EspecialidadCarroceriaPintura },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoAuxilioEnRuta, Nombre = "Auxilio por avería en ruta", IdNaturaleza = SeedIds.NaturalezaEmergencia, IdEspecialidadRequerida = SeedIds.EspecialidadMecanicaGeneral },
+            new TipoMantenimiento { IdTipoMantenimiento = SeedIds.TipoMantenimientoEmergenciaTaller, Nombre = "Atención de emergencia en taller", IdNaturaleza = SeedIds.NaturalezaEmergencia, IdEspecialidadRequerida = SeedIds.EspecialidadMecanicaGeneral }
+        );
+
     }
 }
