@@ -27,6 +27,8 @@ public class AppDbContext : DbContext
     public DbSet<Repuesto> Repuesto { get; set; }
     public DbSet<RepuestoProveedor> RepuestoProveedor { get; set; }
     public DbSet<TipoMantenimiento> TipoMantenimiento { get; set; }
+    public DbSet<OrdenMantenimiento> OrdenMantenimiento { get; set; }
+    public DbSet<HistorialEstadoOrden> HistorialEstadoOrden { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -356,6 +358,12 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdUsuario)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_HistorialEstadoActivo_Usuario");
+
+            entity.HasOne(d => d.Orden)
+                .WithMany()
+                .HasForeignKey(d => d.IdOrden)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoActivo_OrdenMantenimiento");
         });
 
         // Proveedor
@@ -478,6 +486,109 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdEspecialidadRequerida)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_TipoMantenimiento_Especialidad");
+        });
+
+        // OrdenMantenimiento
+        modelBuilder.Entity<OrdenMantenimiento>(entity =>
+        {
+            entity.HasKey(e => e.IdOrden)
+                .HasName("PK_OrdenMantenimiento");
+
+            entity.HasIndex(e => e.Codigo, "UQ_OrdenMantenimiento_Codigo")
+                .IsUnique();
+
+            entity.Property(e => e.Codigo)
+                .HasMaxLength(15)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Motivo)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.Diagnostico)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.FechaSolicitud)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.Property(e => e.FechaProgramada)
+                .HasColumnType("date");
+
+            entity.Property(e => e.CostoRepuestos)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.Property(e => e.CostoManoObra)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.Property(e => e.CostoTotal)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Activo)
+                .WithMany()
+                .HasForeignKey(d => d.IdActivo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_OrdenMantenimiento_Activo");
+
+            entity.HasOne(d => d.TipoMantenimiento)
+                .WithMany()
+                .HasForeignKey(d => d.IdTipoMantenimiento)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_OrdenMantenimiento_TipoMantenimiento");
+
+            entity.HasOne(d => d.Prioridad)
+                .WithMany()
+                .HasForeignKey(d => d.IdPrioridad)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_OrdenMantenimiento_Prioridad");
+
+            entity.HasOne(d => d.EstadoOrden)
+                .WithMany()
+                .HasForeignKey(d => d.IdEstadoOrden)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_OrdenMantenimiento_EstadoOrden");
+
+            entity.HasOne(d => d.UsuarioSolicitante)
+                .WithMany()
+                .HasForeignKey(d => d.IdUsuarioSolicitante)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_OrdenMantenimiento_Usuario");
+        });
+
+        // HistorialEstadoOrden
+        modelBuilder.Entity<HistorialEstadoOrden>(entity =>
+        {
+            entity.HasKey(e => e.IdHistorial)
+                .HasName("PK_HistorialEstadoOrden");
+
+            entity.Property(e => e.FechaCambio)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.Property(e => e.Observacion)
+                .HasMaxLength(500);
+
+            entity.HasOne(d => d.Orden)
+                .WithMany(p => p.HistorialEstados)
+                .HasForeignKey(d => d.IdOrden)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoOrden_OrdenMantenimiento");
+
+            // Dos FK a EstadoOrden: el nombre de la restricción dice cuál es cuál
+            entity.HasOne(d => d.EstadoAnterior)
+                .WithMany()
+                .HasForeignKey(d => d.IdEstadoAnterior)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoOrden_EstadoAnterior");
+
+            entity.HasOne(d => d.EstadoNuevo)
+                .WithMany()
+                .HasForeignKey(d => d.IdEstadoNuevo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoOrden_EstadoNuevo");
+
+            entity.HasOne(d => d.Usuario)
+                .WithMany()
+                .HasForeignKey(d => d.IdUsuario)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_HistorialEstadoOrden_Usuario");
         });
 
         // Seed maestro de catálogos (HasData)

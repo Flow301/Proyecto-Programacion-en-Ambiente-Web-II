@@ -1,6 +1,6 @@
 namespace SGMA.Domain.Entities;
 
-// Solo lo escribe ActivoService al cambiar el estado. IdOrden se agrega con OrdenMantenimiento (semana 7).
+// Solo lo escribe ActivoService al cambiar el estado. IdOrden es la orden que provocó un cambio automático.
 public class HistorialEstadoActivo
 {
     public int IdHistorial { get; set; }
@@ -9,10 +9,12 @@ public class HistorialEstadoActivo
     public int IdEstadoNuevo { get; set; }
     public DateTime FechaCambio { get; set; }
     public int IdUsuario { get; set; }
+    public int? IdOrden { get; set; }
     public string? Observacion { get; set; }
 
     public virtual Activo Activo { get; set; } = null!;
     public virtual EstadoActivo? EstadoAnterior { get; set; }
     public virtual EstadoActivo EstadoNuevo { get; set; } = null!;
     public virtual Usuario Usuario { get; set; } = null!;
+    public virtual OrdenMantenimiento? Orden { get; set; }
 }
