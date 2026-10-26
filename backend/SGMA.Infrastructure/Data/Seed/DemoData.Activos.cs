@@ -31,8 +31,9 @@ public static partial class DemoData
     // Código del vehículo, login de quien hizo el cambio, estado nuevo, días antes de la siembra y observación.
     // El estado anterior y el estado actual del vehículo los deduce DevelopmentSeeder del orden de las filas.
     // Los pasos a En Mantenimiento y de regreso los provocan las órdenes (docs/modelo-datos.md, "Coherencia"):
-    // la columna IdOrden llega en la semana 7 con OrdenMantenimiento.
-    public record HistorialActivoDemo(string Codigo, string Login, int IdEstadoNuevo, int DiasAtras, string? Observacion);
+    // NumeroOrden es la orden de DemoData.Ordenes que causó el cambio; DevelopmentSeeder la guarda en IdOrden
+    // al sembrar las órdenes. Los cambios manuales del Administrador no tienen orden.
+    public record HistorialActivoDemo(string Codigo, string Login, int IdEstadoNuevo, int DiasAtras, string? Observacion, int? NumeroOrden = null);
 
     // Carga inicial de la flota: todos nacen Operativos el mismo día
     private const int DiasCargaInicial = 180;
@@ -42,17 +43,18 @@ public static partial class DemoData
         .. Activos().Select(a => new HistorialActivoDemo(a.Codigo, MasterSeeder.LoginAdmin, SeedIds.EstadoActivoOperativo, DiasCargaInicial, "Registro inicial de la flota")),
 
         // Orden 9 (preventivo, Completada)
-        new("PKP-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 60, "Inicio de la orden OM-2026-00009"),
-        new("PKP-0001", "lvargas", SeedIds.EstadoActivoOperativo, 59, "Orden OM-2026-00009 completada"),
+        new("PKP-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 60, "Inicio de la orden OM-2026-00009", 9),
+        new("PKP-0001", "lvargas", SeedIds.EstadoActivoOperativo, 59, "Orden OM-2026-00009 completada", 9),
         // Orden 8 (preventivo de motor diésel, Completada)
-        new("BUI-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 45, "Inicio de la orden OM-2026-00008"),
-        new("BUI-0001", "lvargas", SeedIds.EstadoActivoOperativo, 44, "Orden OM-2026-00008 completada"),
+        new("BUI-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 45, "Inicio de la orden OM-2026-00008", 8),
+        new("BUI-0001", "lvargas", SeedIds.EstadoActivoOperativo, 44, "Orden OM-2026-00008 completada", 8),
         // Orden 6 (motor diésel, En Ejecución)
-        new("CMP-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 6, "Inicio de la orden OM-2026-00006"),
+        new("CMP-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 6, "Inicio de la orden OM-2026-00006", 6),
         // Orden 10 (suspensión, En Espera de Repuesto)
-        new("CML-0001", "asolis", SeedIds.EstadoActivoEnMantenimiento, 4, "Inicio de la orden OM-2026-00010"),
+        new("CML-0001", "asolis", SeedIds.EstadoActivoEnMantenimiento, 4, "Inicio de la orden OM-2026-00010", 10),
         // Cambios manuales del Administrador
         new("BUS-0002", MasterSeeder.LoginAdmin, SeedIds.EstadoActivoFueraDeServicio, 2, "Impacto en la suspensión delantera"),
         new("ADM-0001", MasterSeeder.LoginAdmin, SeedIds.EstadoActivoDadoDeBaja, 30, "Unidad vendida")
     ];
 }
+    
