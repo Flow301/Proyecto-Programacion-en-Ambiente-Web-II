@@ -14,6 +14,7 @@ public interface IActivoRepository
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsAsync(int id);
     Task<bool> ExistsByPlacaAsync(string placa, int? excludeId = null);
+    Task<bool> HasOrdenesAbiertasAsync(int id);
     // Escritura
     Task<Activo?> GetForUpdateAsync(int id);
     Task AddAsync(Activo activo);

@@ -157,14 +157,15 @@ public class ActivoController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Solo el Administrador. Transiciones manuales: Operativo ↔ Fuera de Servicio, y de cualquiera de los dos a Dado de Baja.
-    /// En Mantenimiento lo controlan las órdenes y Dado de Baja es final. Cada cambio queda en el historial.
+    /// En Mantenimiento lo controlan las órdenes y Dado de Baja es final. No se da de baja un vehículo con órdenes abiertas.
+    /// Cada cambio queda en el historial.
     /// </remarks>
     /// <param name="id" example="1">Id del vehículo.</param>
     /// <param name="estado">Estado destino, usuario responsable y observación.</param>
     /// <response code="200">Estado cambiado; data = detalle del vehículo.</response>
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="404">El vehículo, el estado o el usuario no existen.</response>
-    /// <response code="409">La transición no está permitida o el usuario no es Administrador.</response>
+    /// <response code="409">La transición no está permitida, el vehículo tiene órdenes abiertas (al dar de baja) o el usuario no es Administrador.</response>
     [HttpPost("{id:int}/estado")]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
@@ -181,13 +182,14 @@ public class ActivoController : ControllerBase
     /// </summary>
     /// <remarks>
     /// El vehículo nunca se borra. Es la misma transición manual que pasar a Dado de Baja, solo para el Administrador.
+    /// No se permite si el vehículo tiene órdenes abiertas.
     /// </remarks>
     /// <param name="id" example="12">Id del vehículo.</param>
     /// <param name="baja">Usuario responsable y observación.</param>
     /// <response code="200">Vehículo dado de baja; data = detalle del vehículo.</response>
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="404">El vehículo o el usuario no existen.</response>
-    /// <response code="409">El vehículo ya está dado de baja o en mantenimiento, o el usuario no es Administrador.</response>
+    /// <response code="409">El vehículo ya está dado de baja o en mantenimiento, tiene órdenes abiertas, o el usuario no es Administrador.</response>
     [HttpDelete("{id:int}")]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
