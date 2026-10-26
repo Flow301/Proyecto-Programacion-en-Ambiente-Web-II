@@ -34,7 +34,8 @@ public class CategoriaActivoService : ICategoriaActivoService
 
     public async Task<Result<IEnumerable<CategoriaActivoDto>>> GetPaginationAsync(int pageNumber, int pageSize)
     {
-        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize)
+        // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
+        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<CategoriaActivoDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 

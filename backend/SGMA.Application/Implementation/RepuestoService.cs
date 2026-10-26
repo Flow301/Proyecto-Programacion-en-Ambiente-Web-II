@@ -39,7 +39,8 @@ public class RepuestoService : IRepuestoService
 
     public async Task<Result<IEnumerable<RepuestoDto>>> GetPaginationAsync(int pageNumber, int pageSize)
     {
-        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize)
+        // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
+        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<RepuestoDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
@@ -140,6 +141,20 @@ public class RepuestoService : IRepuestoService
     // El stock solo sube por aquí (no hay módulo de compras): cantidad > 0 la valida el DTO
     public async Task<Result<RepuestoDto>> RegistrarEntradaAsync(int id, RepuestoEntradaDto entrada)
     {
+        var actual = await _repository.GetByIdAsync(id);
+
+        if (actual is null)
+            return NoExiste<RepuestoDto>(id);
+
+        // StockActual es int: la suma no puede pasar de int.MaxValue
+        if (actual.StockActual > int.MaxValue - entrada.Cantidad)
+        {
+            _logger.LogWarning("Intento de registrar una entrada de {Cantidad} que desborda el stock del repuesto {Codigo}",
+                entrada.Cantidad, actual.Codigo);
+            return Result<RepuestoDto>.Failure(409, "Conflicto",
+                $"La entrada de {entrada.Cantidad} supera el stock máximo permitido para el repuesto {actual.Codigo}.");
+        }
+
         var filas = await _repository.SumarStockAsync(id, entrada.Cantidad);
 
         if (filas == 0)
