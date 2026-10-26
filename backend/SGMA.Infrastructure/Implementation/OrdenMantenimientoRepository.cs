@@ -49,4 +49,31 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .AsSplitQuery()                        // dos colecciones: evita el producto cartesiano
             .FirstOrDefaultAsync(o => o.IdOrden == id);
     }
+
+    // Mayor consecutivo del año, incluidas las canceladas: los códigos no se reutilizan.
+    // El MAX de texto sirve porque el consecutivo siempre tiene cinco dígitos.
+    public async Task<int> GetUltimoConsecutivoAsync(int anio)
+    {
+        var prefijo = $"OM-{anio}-";
+        var ultimo = await _context.OrdenMantenimiento
+            .Where(o => o.Codigo.StartsWith(prefijo))
+            .MaxAsync(o => (string?)o.Codigo);
+
+        return ultimo is null ? 0 : int.Parse(ultimo[prefijo.Length..]);
+    }
+
+    public async Task<TipoMantenimiento?> GetTipoMantenimientoAsync(int idTipoMantenimiento)
+    {
+        return await _context.TipoMantenimiento
+            .AsNoTracking()
+            .Include(t => t.Naturaleza)
+            .FirstOrDefaultAsync(t => t.IdTipoMantenimiento == idTipoMantenimiento);
+    }
+
+    // Inserta la orden y su registro inicial de historial con un solo SaveChangesAsync
+    public async Task AddAsync(OrdenMantenimiento orden)
+    {
+        _context.OrdenMantenimiento.Add(orden);
+        await _context.SaveChangesAsync();
+    }
 }

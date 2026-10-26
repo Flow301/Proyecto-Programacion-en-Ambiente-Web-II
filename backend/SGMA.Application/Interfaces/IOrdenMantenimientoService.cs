@@ -7,4 +7,5 @@ public interface IOrdenMantenimientoService
 {
     Task<Result<IEnumerable<OrdenMantenimientoListDto>>> GetPaginationAsync(int pageNumber, int pageSize);
     Task<Result<OrdenMantenimientoDetailDto>> GetByIdAsync(int id);
+    Task<Result<OrdenMantenimientoDetailDto>> AddAsync(OrdenMantenimientoCreateDto orden, int idUsuario);
 }

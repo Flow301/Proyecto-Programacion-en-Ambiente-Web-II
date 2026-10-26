@@ -54,4 +54,33 @@ public class OrdenMantenimientoController : ControllerBase
         var result = await _service.GetByIdAsync(id);
         return StatusCode(result.Status, result);
     }
+
+    /// <summary>
+    /// Crea una solicitud de mantenimiento y genera su código.
+    /// </summary>
+    /// <remarks>
+    /// El código sigue el patrón OM-AAAA-00001 (año de la solicitud y consecutivo que reinicia cada año).
+    /// La orden nace Solicitada, con su registro inicial en el historial.
+    /// Solo el Administrador o el Solicitante/Consulta crean órdenes. El vehículo no puede estar dado de baja,
+    /// y si está En Mantenimiento solo se admite un tipo de naturaleza Emergencia.
+    /// </remarks>
+    /// <param name="orden">Vehículo, tipo, motivo y usuario solicitante.</param>
+    /// <response code="201">Orden creada; el encabezado Location apunta a GET api/OrdenMantenimiento/{id}.</response>
+    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="404">El vehículo, el tipo de mantenimiento o el usuario no existen, o el usuario está inactivo.</response>
+    /// <response code="409">El usuario no puede crear órdenes, el vehículo está dado de baja o está En Mantenimiento y el tipo no es de emergencia.</response>
+    [HttpPost]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AddAsync([FromBody] OrdenMantenimientoCreateDto orden)
+    {
+        // Avance 1: el usuario viene del cuerpo; desde el Avance 2, del token (solo cambia esta línea)
+        var result = await _service.AddAsync(orden, orden.IdUsuario);
+        if (!result.IsSuccess)
+            return StatusCode(result.Status, result);
+        // 201 Created + encabezado Location: /api/OrdenMantenimiento/{id}
+        return CreatedAtRoute("GetOrdenMantenimientoById", new { id = result.Data!.IdOrden }, result);
+    }
 }

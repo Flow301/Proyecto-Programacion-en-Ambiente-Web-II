@@ -100,5 +100,22 @@ public static class MapsterConfig
                 dest => dest.StockActual,
                 dest => dest.Estado,                // se cambia con DELETE (inactivar)
                 dest => dest.RepuestoProveedores);
+
+        // OrdenMantenimiento: del DTO solo salen IdActivo, IdTipoMantenimiento y Motivo
+        TypeAdapterConfig<OrdenMantenimientoCreateDto, OrdenMantenimiento>
+            .NewConfig()
+            .Ignore(dest => dest.IdOrden,           // lo asigna la base
+                dest => dest.Codigo,                // lo genera el servicio (OM-AAAA-00001)
+                dest => dest.IdEstadoOrden,         // toda orden nace Solicitada
+                dest => dest.IdUsuarioSolicitante,  // es el usuario responsable
+                dest => dest.Activo,
+                dest => dest.TipoMantenimiento,
+                dest => dest.Prioridad,
+                dest => dest.EstadoOrden,
+                dest => dest.UsuarioSolicitante,
+                dest => dest.Asignaciones,          // llegan con el ciclo de vida (Avance 2)
+                dest => dest.Detalles,
+                dest => dest.RepuestosPendientes,
+                dest => dest.HistorialEstados);     // el registro inicial lo agrega el servicio
     }
 }
