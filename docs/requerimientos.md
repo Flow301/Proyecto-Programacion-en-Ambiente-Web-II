@@ -537,10 +537,10 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Técnicos y especialidades**
 
-- [ ] CRUD de técnicos con inactivación e identificación única.
-- [ ] CRUD de especialidades, sin eliminar las que tienen relaciones.
-- [ ] Asociar y desasociar especialidades con nivel y fecha, sin duplicados.
-- [ ] Consulta de técnicos disponibles por especialidad.
+- [X] CRUD de técnicos con inactivación e identificación única.
+- [X] CRUD de especialidades, sin eliminar las que tienen relaciones.
+- [X] Asociar y desasociar especialidades con nivel y fecha, sin duplicados.
+- [X] Consulta de técnicos disponibles por especialidad.
 
 **Repuestos y proveedores**
 
