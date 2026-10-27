@@ -43,11 +43,8 @@ builder.Services.AddControllers()
         // El 400 automático de [ApiController] usa la misma forma Result<T> que el resto de la API (como en el material)
         options.InvalidModelStateResponseFactory = context =>
         {
-            var errors = context.ModelState
-                .Where(entry => entry.Value!.Errors.Count > 0)
-                .ToDictionary(
-                    entry => entry.Key,
-                    entry => entry.Value!.Errors.Select(error => error.ErrorMessage).ToArray());
+            // Errores por campo; los de un cuerpo vacío o un JSON mal formado se traducen al español
+            var errors = ErroresDeModelo.EnEspanol(context);
 
             var result = Result<Dictionary<string, string[]>>.Failure(400, "Solicitud inválida",
                 "Uno o más datos enviados no son válidos.");
