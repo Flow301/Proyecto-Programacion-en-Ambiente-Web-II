@@ -46,7 +46,8 @@ public class ActivoService : IActivoService
 
     public async Task<Result<IEnumerable<ActivoListDto>>> GetPaginationAsync(int pageNumber, int pageSize)
     {
-        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize)
+        // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
+        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<ActivoListDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
@@ -188,7 +189,11 @@ public class ActivoService : IActivoService
             throw new TransicionNoPermitidaException(
                 $"El vehículo {activo.Codigo} está {actual} y no puede pasar a {destino.Nombre}.", actual, destino.Nombre);
 
-        // Las condiciones que dependen de las órdenes (no dar de baja con órdenes abiertas) llegan con OrdenMantenimiento
+        if (idEstadoNuevo == SeedIds.EstadoActivoDadoDeBaja && await _repository.HasOrdenesAbiertasAsync(id))
+        {
+            _logger.LogWarning("Intento de dar de baja el vehículo {Codigo}, que tiene órdenes abiertas", activo.Codigo);
+            throw new ReglaNegocioException($"El vehículo {activo.Codigo} tiene órdenes abiertas y no se puede dar de baja.");
+        }
 
         AplicarEstado(activo, idEstadoNuevo, idUsuario, observacion);
         await _repository.SaveChangesAsync();

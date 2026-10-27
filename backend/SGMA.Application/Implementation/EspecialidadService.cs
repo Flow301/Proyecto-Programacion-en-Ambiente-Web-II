@@ -34,7 +34,8 @@ public class EspecialidadService : IEspecialidadService
 
     public async Task<Result<IEnumerable<EspecialidadDto>>> GetPaginationAsync(int pageNumber, int pageSize)
     {
-        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize)
+        // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
+        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<EspecialidadDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
@@ -107,6 +108,13 @@ public class EspecialidadService : IEspecialidadService
             _logger.LogWarning("Intento de eliminar la especialidad {IdEspecialidad}, que tiene técnicos", id);
             return Result<int>.Failure(409, "Conflicto",
                 $"La especialidad {id} tiene técnicos asociados y no se puede eliminar.");
+        }
+
+        if (await _repository.HasTiposMantenimientoAsync(id))
+        {
+            _logger.LogWarning("Intento de eliminar la especialidad {IdEspecialidad}, requerida por tipos de mantenimiento", id);
+            return Result<int>.Failure(409, "Conflicto",
+                $"La especialidad {id} es requerida por tipos de mantenimiento y no se puede eliminar.");
         }
 
         await _repository.DeleteAsync(id);

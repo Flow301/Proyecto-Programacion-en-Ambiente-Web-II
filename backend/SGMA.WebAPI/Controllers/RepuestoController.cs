@@ -152,10 +152,12 @@ public class RepuestoController : ControllerBase
     /// <response code="200">Entrada registrada; data = repuesto con el stock nuevo.</response>
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="404">El repuesto no existe o está inactivo.</response>
+    /// <response code="409">El stock resultante supera el máximo permitido.</response>
     [HttpPost("{id:int}/entrada")]
     [ProducesResponseType<Result<RepuestoDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RegistrarEntradaAsync([FromRoute] int id, [FromBody] RepuestoEntradaDto entrada)
     {
         var result = await _service.RegistrarEntradaAsync(id, entrada);

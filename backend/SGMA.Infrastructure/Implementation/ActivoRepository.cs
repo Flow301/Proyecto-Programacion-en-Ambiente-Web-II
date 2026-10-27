@@ -83,6 +83,13 @@ public class ActivoRepository : IActivoRepository
             .AnyAsync(a => a.Placa == placa && a.IdActivo != excludeId);
     }
 
+    // Abierta = en un estado no final (EsFinal sale del catálogo EstadoOrden)
+    public async Task<bool> HasOrdenesAbiertasAsync(int id)
+    {
+        return await _context.OrdenMantenimiento
+            .AnyAsync(o => o.IdActivo == id && !o.EstadoOrden.EsFinal);
+    }
+
     // Rastreada (sin AsNoTracking) para cambiar el estado; trae el estado actual para los mensajes
     public async Task<Activo?> GetForUpdateAsync(int id)
     {

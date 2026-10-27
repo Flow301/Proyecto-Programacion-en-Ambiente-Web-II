@@ -553,12 +553,12 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Orden de mantenimiento**
 
-- [ ] Modelo completo: orden, tipos, prioridades, detalle, pendientes, asignaciones e historial.
-- [ ] Crear solicitud en estado Solicitada con código `OM-AAAA-00001`.
-- [ ] Registro inicial de la orden en su historial. *(adelanto)*
-- [ ] Validación de vehículo existente y no dado de baja, tipo existente y solicitante activo.
-- [ ] Bloqueo por En Mantenimiento, salvo naturaleza Emergencia. *(adelanto)*
-- [ ] Consulta de órdenes: listado paginado y detalle.
+- [x] Modelo completo: orden, tipos, prioridades, detalle, pendientes, asignaciones e historial.
+- [x] Crear solicitud en estado Solicitada con código `OM-AAAA-00001`.
+- [x] Registro inicial de la orden en su historial. *(adelanto)*
+- [x] Validación de vehículo existente y no dado de baja, tipo existente y solicitante activo.
+- [x] Bloqueo por En Mantenimiento, salvo naturaleza Emergencia. *(adelanto)*
+- [x] Consulta de órdenes: listado paginado y detalle.
 
 **Usuarios**
 

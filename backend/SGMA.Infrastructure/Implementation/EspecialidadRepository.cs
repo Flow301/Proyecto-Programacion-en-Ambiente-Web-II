@@ -86,6 +86,12 @@ public class EspecialidadRepository : IEspecialidadRepository
         return result;
     }
 
+    public async Task<bool> HasTiposMantenimientoAsync(int id)
+    {
+        return await _context.TipoMantenimiento
+            .AnyAsync(t => t.IdEspecialidadRequerida == id);
+    }
+
     // =====================================================================
     // Escritura (un solo SaveChangesAsync por operación)
     // =====================================================================
