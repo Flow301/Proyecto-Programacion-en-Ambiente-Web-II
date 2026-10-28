@@ -204,7 +204,7 @@ Las excepciones viven en `SGMA.Shared/Exceptions`. El manejador global de excepc
 Otras respuestas:
 
 - Los errores de formato en los datos enviados (campos obligatorios, longitudes) responden **400**, por la validación de los DTO.
-- Desde el Avance 2, un endpoint llamado sin token válido responde **401**, y con un rol sin permiso, **403**. El rol se valida dos veces: en el atributo `[Authorize]` del controlador y en la matriz.
+- Desde el Avance 1, un endpoint llamado sin token válido responde **401**, y con un rol sin permiso, **403**. Cuando llegue el ciclo de vida (Avance 2), el rol de cada transición se validará dos veces: en el atributo `[Authorize]` del controlador y en la matriz.
 
 ---
 

@@ -236,7 +236,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - La fecha de cierre se registra en cualquier estado final: Completada, Cancelada o Rechazada.
 - Al completar una orden de naturaleza Preventivo, el kilometraje del último preventivo del vehículo pasa a ser el registrado en esa orden.
 - Una orden nunca se elimina físicamente; para eso existe Cancelar, disponible desde cualquier estado no final.
-- *Decisión del equipo:* en el Avance 1, sin JWT, el usuario responsable viaja en el cuerpo de la petición. Desde el Avance 2 se toma del token, y solo cambia el controlador.
+- El usuario responsable (solicitante, quien cambia el estado) se toma siempre del token, nunca del cuerpo de la petición.
 
 **Permisos.**
 
@@ -393,29 +393,62 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Registrar, consultar, actualizar, desactivar y reactivar usuarios.
 - Asignar o cambiar el rol.
 - Iniciar sesión con credenciales válidas y obtener un token JWT.
+- Consultar el perfil del usuario autenticado.
+- Cambiar la contraseña propia (cualquier rol).
+- Resetear la contraseña de otro usuario (Administrador).
 - Cerrar sesión.
 - Mostrar solo las pantallas y opciones de menú del rol autenticado.
+
+**Endpoints.**
+
+| Método | Ruta | Quién | Qué hace |
+|---|---|---|---|
+| POST | `api/Auth/login` | Público | Valida las credenciales y devuelve el token, su expiración y el usuario. |
+| GET | `api/Auth/perfil` | Cualquier rol | Datos del usuario del token. |
+| PUT | `api/Auth/clave` | Cualquier rol | Cambia la contraseña propia; pide la actual. |
+| GET | `api/Usuario` | Administrador | Lista todos los usuarios, incluidos los inactivos. |
+| GET | `api/Usuario/{pageNumber}/{pageSize}` | Administrador | Lista paginada. |
+| GET | `api/Usuario/{id}` | Administrador | Detalle. |
+| GET | `api/Usuario/roles` | Administrador | Los tres roles, para el formulario. |
+| POST | `api/Usuario` | Administrador | Registra un usuario con su contraseña inicial. |
+| PUT | `api/Usuario/{id}` | Administrador | Actualiza nombre, login y correo. |
+| PUT | `api/Usuario/{id}/rol` | Administrador | Cambia el rol. |
+| PUT | `api/Usuario/{id}/clave` | Administrador | Resetea la contraseña sin pedir la actual. |
+| DELETE | `api/Usuario/{id}` | Administrador | Desactiva (baja lógica). |
+| POST | `api/Usuario/{id}/reactivar` | Administrador | Reactiva. |
+
+El cierre de sesión no tiene endpoint: el cliente descarta el token.
 
 **Validaciones y reglas de negocio.**
 
 - El nombre de usuario y el correo son únicos.
 - La contraseña nunca se guarda en texto plano: usamos `PasswordHasher` (PBKDF2 con *salt*).
+- La contraseña tiene entre 8 y 100 caracteres al crear, cambiar o resetear.
 - Los usuarios nunca se eliminan físicamente, solo se desactivan, porque tienen actividad registrada (órdenes, cambios de estado).
 - Un usuario inactivo no puede iniciar sesión aunque sus credenciales sean correctas.
-  - Caso borde: un token emitido antes de la desactivación sigue siendo válido hasta que expira.
+  - El login responde 401 con el mismo mensaje si el usuario no existe, está inactivo o la contraseña es incorrecta, para no revelar qué cuentas existen.
+  - Caso borde: un token emitido antes de la desactivación sigue siendo válido hasta que expira. `api/Auth/perfil` sí responde 401 a ese usuario, y los servicios que validan al usuario responsable lo rechazan.
   - Caso borde: si se cambia el rol de un usuario con sesión abierta, su token conserva el rol anterior hasta que expira. El nuevo rol aplica desde su siguiente inicio de sesión.
-- Todo endpoint protegido valida el rol del token: responde 401 si no hay token o es inválido, y 403 si el rol no tiene permiso.
+- Cambio de la contraseña propia:
+  - Siempre sobre el usuario del token, nunca sobre otro.
+  - Pide la contraseña actual. Si no coincide, responde 400 (no 401, porque el cliente trata el 401 como sesión vencida).
+  - La nueva debe ser distinta de la actual.
+- El reseteo por el Administrador no pide la contraseña actual y funciona también sobre usuarios inactivos.
+- Caso borde: cambiar o resetear la contraseña no invalida el token vigente; sigue sirviendo hasta que expira.
+- El token dura 60 minutos, va firmado con HMAC-SHA256 y lleva el id (`sub`), el login (`name`) y el rol (`role`) del usuario. No hay refresh token.
+- Todo endpoint pide token salvo `api/Auth/login`: responde 401 si no hay token o es inválido, y 403 si el rol no tiene permiso.
+- El usuario responsable de cada acción sale del token, nunca del cuerpo de la petición.
 - El seeder crea al menos un Administrador (`admin`).
 - *Decisión del equipo:* no se puede desactivar ni quitarle el rol al último Administrador activo, para que el sistema nunca quede sin acceso administrativo.
 - El último acceso se actualiza en cada inicio de sesión. El cierre de sesión se hace del lado del cliente, descartando el token.
 
 **Permisos.**
 
-- Administrador: CRUD completo y asignación de roles.
-- Coordinador/Técnico: sin acceso, salvo iniciar y cerrar su propia sesión.
-- Solicitante/Consulta: sin acceso, salvo iniciar y cerrar su propia sesión.
+- Administrador: CRUD completo, asignación de roles y reseteo de contraseñas.
+- Coordinador/Técnico: sin acceso, salvo iniciar y cerrar su propia sesión, consultar su perfil y cambiar su propia contraseña.
+- Solicitante/Consulta: sin acceso, salvo iniciar y cerrar su propia sesión, consultar su perfil y cambiar su propia contraseña.
 
-**Avance.** Las entidades Usuario y Rol y el seed (administrador y usuarios de demostración de los tres roles) van en el Avance 1, porque órdenes e historial los referencian. El CRUD, el login, el JWT y la autorización por rol van en el Avance 2.
+**Avance.** Todo el módulo va en el Avance 1, porque el profesor lo pidió para esa entrega: entidades y seed, CRUD, login con JWT, cambio y reseteo de contraseña, y autorización por rol en todos los endpoints. En el Avance 2 solo se suman las pantallas de React.
 
 ---
 
@@ -560,9 +593,18 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 - [x] Bloqueo por En Mantenimiento, salvo naturaleza Emergencia. *(adelanto)*
 - [x] Consulta de órdenes: listado paginado y detalle.
 
-**Usuarios**
+**Usuarios y seguridad**
 
 - [ ] Entidades Usuario y Rol con seed del administrador y de usuarios de los tres roles.
+- [x] Login con JWT, logout del lado del cliente y actualización del último acceso.
+- [x] Usuario inactivo sin acceso.
+- [x] Perfil del usuario autenticado y cambio de la contraseña propia para todos los roles.
+- [ ] CRUD de usuarios con desactivación, reactivación y asignación de rol.
+- [ ] Reseteo de contraseña por el Administrador.
+- [ ] Protección del último Administrador activo.
+- [ ] Autorización por rol en todos los endpoints, con 401 y 403. Hecho en activos, categorías, especialidades y técnicos; faltan repuestos, proveedores y órdenes.
+- [ ] Solicitante/Consulta ve solo sus órdenes y el historial de los vehículos relacionados con ellas.
+- [x] El usuario responsable sale del token en todos los endpoints.
 
 ### Avance 2 — semana 13
 
@@ -597,13 +639,6 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 - [ ] Evaluación bajo demanda con estados Vencido, Próximo a vencer y Al día.
 - [ ] Exclusión de vehículos dados de baja y detección de órdenes preventivas en curso.
 - [ ] Generación de la orden preventiva confirmada por el Administrador.
-
-**Usuarios y seguridad**
-
-- [ ] CRUD de usuarios con desactivación, reactivación y asignación de rol.
-- [ ] Login con JWT, logout y actualización del último acceso.
-- [ ] Usuario inactivo sin acceso; protección del último Administrador activo.
-- [ ] Autorización por rol en todos los endpoints, con 401 y 403.
 
 **Reportes y dashboard**
 
