@@ -123,7 +123,7 @@ dotnet user-secrets set "Jwt:Key" "<clave-aleatoria-de-al-menos-32-caracteres>" 
 ```
 
 - `TrustServerCertificate=True` es necesario porque la instancia local usa un certificado autofirmado.
-- `Jwt:Key` firma los tokens. Cualquier texto aleatorio de 32 caracteres o más sirve, y cada uno puede tener la suya. Para generar una en PowerShell: `[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])`.
+- `Jwt:Key` firma los tokens. Cualquier texto aleatorio de 32 caracteres o más sirve, y cada uno puede tener la suya. Para generar una en PowerShell: `$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`.
 - Los secretos quedan en `%APPDATA%\Microsoft\UserSecrets\`, en la carpeta del `UserSecretsId` de `SGMA.WebAPI`. Para revisarlos: `dotnet user-secrets list --project SGMA.WebAPI`.
 
 ### 3. Crear la base de datos
