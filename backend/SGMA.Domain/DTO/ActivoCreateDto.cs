@@ -4,16 +4,10 @@ namespace SGMA.Domain.DTO;
 
 /// <summary>
 /// Datos para registrar un vehículo. Sin IdActivo, Codigo ni estado: los asigna el servidor.
-/// La imagen se sube aparte.
+/// La imagen se sube aparte. El usuario responsable sale del token.
 /// </summary>
 public record class ActivoCreateDto : IValidatableObject
 {
-    /// <summary>Usuario responsable: debe ser un Administrador activo. Queda en el registro inicial del historial.</summary>
-    /// <example>1</example>
-    // Avance 1: el usuario responsable viaja en el cuerpo; desde el Avance 2 sale del token
-    [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
-    public int IdUsuario { get; set; }
-
     /// <summary>Nombre: obligatorio, máximo 100 caracteres.</summary>
     /// <example>Pickup de inspección de carreteras</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(100, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]

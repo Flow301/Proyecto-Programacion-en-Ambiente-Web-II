@@ -1,16 +1,22 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
+using SGMA.Shared.Constants;
 
 namespace SGMA.WebAPI.Controllers;
 
 /// <summary>
 /// Especialidades técnicas: consulta, registro, actualización y eliminación.
+/// Administrador y Coordinador/Técnico consultan; solo el Administrador registra, modifica y elimina.
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
+[Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")] // escribir pide además Administrador
+[ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
+[ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]           // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
 public class EspecialidadController : ControllerBase
 {
@@ -78,6 +84,7 @@ public class EspecialidadController : ControllerBase
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="409">Ya existe una especialidad con ese nombre.</response>
     [HttpPost]
+    [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType<Result<EspecialidadDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
@@ -102,6 +109,7 @@ public class EspecialidadController : ControllerBase
     /// <response code="404">La especialidad no existe.</response>
     /// <response code="409">El nombre pertenece a otra especialidad.</response>
     [HttpPut("{id:int}")]
+    [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType<Result<EspecialidadDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -121,6 +129,7 @@ public class EspecialidadController : ControllerBase
     /// <response code="404">La especialidad no existe.</response>
     /// <response code="409">La especialidad tiene técnicos o la requiere un tipo de mantenimiento, y no se puede eliminar.</response>
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]

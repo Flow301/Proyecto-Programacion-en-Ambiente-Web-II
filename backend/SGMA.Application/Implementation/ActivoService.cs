@@ -289,7 +289,7 @@ public class ActivoService : IActivoService
         activo.IdEstadoActivo = idEstadoNuevo;
     }
 
-    // Avance 1: el usuario responsable viaja en el cuerpo. Desde el Avance 2 lo valida el token con [Authorize].
+    // [Authorize] ya valida el rol del token; esto cubre al usuario desactivado o cambiado de rol con un token aún vigente.
     private async Task ValidarAdministradorAsync(int idUsuario)
     {
         var usuario = await _usuarioRepository.GetByIdAsync(idUsuario);

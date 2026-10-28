@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
+using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
 
@@ -64,10 +65,10 @@ public class OrdenMantenimientoController : ControllerBase
     /// Solo el Administrador o el Solicitante/Consulta crean órdenes. El vehículo no puede estar dado de baja,
     /// y si está En Mantenimiento solo se admite un tipo de naturaleza Emergencia.
     /// </remarks>
-    /// <param name="orden">Vehículo, tipo, motivo y usuario solicitante.</param>
+    /// <param name="orden">Vehículo, tipo y motivo. El solicitante es el usuario del token.</param>
     /// <response code="201">Orden creada; el encabezado Location apunta a GET api/OrdenMantenimiento/{id}.</response>
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
-    /// <response code="404">El vehículo, el tipo de mantenimiento o el usuario no existen, o el usuario está inactivo.</response>
+    /// <response code="404">El vehículo o el tipo de mantenimiento no existen, o el usuario fue desactivado.</response>
     /// <response code="409">El usuario no puede crear órdenes, el vehículo está dado de baja o está En Mantenimiento y el tipo no es de emergencia.</response>
     [HttpPost]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status201Created)]
@@ -76,8 +77,7 @@ public class OrdenMantenimientoController : ControllerBase
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AddAsync([FromBody] OrdenMantenimientoCreateDto orden)
     {
-        // Avance 1: el usuario viene del cuerpo; desde el Avance 2, del token (solo cambia esta línea)
-        var result = await _service.AddAsync(orden, orden.IdUsuario);
+        var result = await _service.AddAsync(orden, User.GetIdUsuario());
         if (!result.IsSuccess)
             return StatusCode(result.Status, result);
         // 201 Created + encabezado Location: /api/OrdenMantenimiento/{id}

@@ -152,7 +152,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return data;
     }
 
-    // Avance 1: el usuario responsable viaja en el cuerpo. Desde el Avance 2 lo valida el token con [Authorize].
+    // [Authorize] ya valida el rol del token; esto cubre al usuario desactivado o cambiado de rol con un token aún vigente.
     // El Coordinador/Técnico no crea órdenes (docs/requerimientos.md, 7.5).
     private async Task ValidarSolicitanteAsync(int idUsuario)
     {

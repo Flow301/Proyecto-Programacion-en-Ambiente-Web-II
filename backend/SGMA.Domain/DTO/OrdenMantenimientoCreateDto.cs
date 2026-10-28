@@ -4,15 +4,10 @@ namespace SGMA.Domain.DTO;
 
 /// <summary>
 /// Datos para crear una solicitud de mantenimiento. Sin IdOrden, Codigo ni estado: los asigna el servidor.
+/// El usuario solicitante sale del token.
 /// </summary>
 public record class OrdenMantenimientoCreateDto
 {
-    /// <summary>Usuario solicitante: un Administrador o Solicitante/Consulta activo. Queda en el registro inicial del historial.</summary>
-    /// <example>5</example>
-    // Avance 1: el usuario responsable viaja en el cuerpo; desde el Avance 2 sale del token
-    [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
-    public int IdUsuario { get; set; }
-
     /// <summary>Id de un vehículo existente que no esté dado de baja.</summary>
     /// <example>3</example>
     [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
