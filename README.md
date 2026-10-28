@@ -37,9 +37,9 @@ Las transiciones permitidas, quién puede ejecutar cada una y sus efectos autom�
 
 ## Entregas
 
-**Avance 1 (semana 7) — en desarrollo.** API sin frontend con el CRUD de activos, categorías, técnicos, especialidades, repuestos y proveedores; relaciones 1:N y N:N; migraciones y seeders; validaciones; manejo global de excepciones; y creación y consulta de órdenes de mantenimiento.
+**Avance 1 (semana 7) — en desarrollo.** API sin frontend con el CRUD de activos, categorías, técnicos, especialidades, repuestos y proveedores; relaciones 1:N y N:N; migraciones y seeders; validaciones; manejo global de excepciones; creación y consulta de órdenes de mantenimiento; y gestión de usuarios con login JWT, cambio y reseteo de contraseña y autorización por rol en todos los endpoints.
 
-**Avance 2 (semana 13, entrega final) — pendiente.** Ciclo de vida completo de la orden, frontend en React, JWT y roles, historial visible, reportes y dashboard.
+**Avance 2 (semana 13, entrega final) — pendiente.** Ciclo de vida completo de la orden, frontend en React, historial visible, reportes y dashboard.
 
 ## Stack
 
@@ -49,7 +49,7 @@ Las transiciones permitidas, quién puede ejecutar cada una y sus efectos autom�
 - **Mapeo entidad–DTO:** Mapster.
 - **Documentación de la API:** OpenAPI y Scalar.
 - **Contraseñas:** `PasswordHasher` de ASP.NET Core Identity (hash PBKDF2 con *salt*).
-- **Autenticación:** JWT con roles. **Pendiente (Avance 2).**
+- **Autenticación:** JWT con roles (`Microsoft.AspNetCore.Authentication.JwtBearer`).
 - **Frontend:** React con JavaScript, sin TypeScript. **Pendiente (Avance 2).**
 - **Control de versiones:** Git y GitHub.
 
@@ -72,7 +72,7 @@ Seguimos la organización de capas y los patrones vistos en clase (Clean Archite
 │   ├── SGMA.Infrastructure/      Data/ (AppDbContext y Seed/), Interfaces/, Implementation/ y Migrations/
 │   ├── SGMA.Application/         Interfaces/, Implementation/ y Mapper/
 │   ├── SGMA.Shared/              Excepciones de negocio y constantes compartidas
-│   └── SGMA.WebAPI/              Controllers/, Program.cs, appsettings.json y wwwroot/imagenes/
+│   └── SGMA.WebAPI/              Controllers/, Handlers/, Security/, Program.cs, appsettings.json y wwwroot/imagenes/
 └── frontend/                     Pendiente (Avance 2)
 ```
 
@@ -82,7 +82,7 @@ Qué hace cada proyecto y a cuáles referencia:
 - **`SGMA.Infrastructure`:** acceso a datos con EF Core: `AppDbContext`, configuración de tablas, seeders, repositorios y migraciones. Referencia a Domain.
 - **`SGMA.Application`:** servicios con las reglas de negocio y configuración de Mapster. Referencia a Domain, Infrastructure y Shared.
 - **`SGMA.Shared`:** excepciones de negocio y constantes que usan Application y WebAPI. No referencia a ningún otro proyecto.
-- **`SGMA.WebAPI`:** controladores, manejo global de excepciones, configuración e imágenes de los activos. Referencia a Application, Domain, Infrastructure y Shared.
+- **`SGMA.WebAPI`:** controladores, manejo global de excepciones, generación y validación del JWT, configuración e imágenes de los activos. Referencia a Application, Domain, Infrastructure y Shared.
 
 ## Cómo levantar el proyecto
 
@@ -113,17 +113,18 @@ cd <carpeta-del-repositorio>
 
 ### 2. Configurar los secretos locales
 
-Cada uno guarda su cadena de conexión y la contraseña del administrador inicial en *User Secrets*, fuera del repositorio. Así `appsettings.json` es igual para los dos y ningún secreto llega a GitHub.
+Cada uno guarda su cadena de conexión, la contraseña del administrador inicial y la clave de firma del JWT en *User Secrets*, fuera del repositorio. Así `appsettings.json` es igual para los dos y ningún secreto llega a GitHub.
 
 ```powershell
 cd backend
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;Database=SGMA;Trusted_Connection=True;TrustServerCertificate=True" --project SGMA.WebAPI
 dotnet user-secrets set "Seed:AdminPassword" "<contraseña-del-admin>" --project SGMA.WebAPI
+dotnet user-secrets set "Jwt:Key" "<clave-aleatoria-de-al-menos-32-caracteres>" --project SGMA.WebAPI
 ```
 
 - `TrustServerCertificate=True` es necesario porque la instancia local usa un certificado autofirmado.
+- `Jwt:Key` firma los tokens. Cualquier texto aleatorio de 32 caracteres o más sirve, y cada uno puede tener la suya. Para generar una en PowerShell: `[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])`.
 - Los secretos quedan en `%APPDATA%\Microsoft\UserSecrets\`, en la carpeta del `UserSecretsId` de `SGMA.WebAPI`. Para revisarlos: `dotnet user-secrets list --project SGMA.WebAPI`.
-- **Pendiente (Avance 2):** clave de firma del JWT.
 
 ### 3. Crear la base de datos
 
@@ -155,7 +156,13 @@ dotnet run --project SGMA.WebAPI --launch-profile https
 
 La documentación interactiva queda en `https://localhost:<puerto>/scalar/v1`. El puerto aparece en la consola y en `SGMA.WebAPI/Properties/launchSettings.json`.
 
-> **Pendiente (Avance 2):** cómo obtener el token con el login y usarlo desde Scalar.
+Todos los endpoints piden token, salvo el login. Para probarlos en Scalar:
+
+1. Ejecutar `POST /api/Auth/login` con un usuario de prueba, por ejemplo `{ "login": "admin", "clave": "<contraseña-del-admin>" }`.
+2. Copiar el valor de `data.token` de la respuesta.
+3. Pegarlo en la sección de autenticación (**Bearer**) de Scalar. Desde ese momento, Scalar lo envía en el encabezado `Authorization: Bearer <token>` de cada petición.
+
+El token dura 60 minutos. Sin token, la API responde 401; con un rol sin permiso, 403. Para probar otro rol, se repite el login con ese usuario.
 
 ### 5. Ejecutar el frontend
 
@@ -174,6 +181,8 @@ En ambiente Development, el `DevelopmentSeeder` crea además estos usuarios, tod
 ### Problemas frecuentes
 
 - **`Falta la configuración Seed:AdminPassword` al ejecutar la API o un comando de EF:** falta el secreto del paso 2.
+- **`Falta la configuración Jwt:Key` al ejecutar la API o un comando de EF:** falta el secreto del paso 2, o la clave tiene menos de 32 caracteres.
+- **401 en todos los endpoints de Scalar:** falta pegar el token del login, o ya pasaron sus 60 minutos.
 - **Error de certificado al conectar con SQL Server:** la cadena de conexión debe incluir `TrustServerCertificate=True`.
 - **`Unable to create a 'DbContext'` al usar `dotnet ef`:** el comando debe ejecutarse desde `backend/` con `--project` y `--startup-project`, como en el paso 3.
 - **Advertencia `NETSDK1233` al compilar:** la solución debe abrirse con Visual Studio 2026.
