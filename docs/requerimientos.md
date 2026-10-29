@@ -595,15 +595,15 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Usuarios y seguridad**
 
-- [ ] Entidades Usuario y Rol con seed del administrador y de usuarios de los tres roles.
+- [x] Entidades Usuario y Rol con seed del administrador y de usuarios de los tres roles.
 - [x] Login con JWT, logout del lado del cliente y actualización del último acceso.
 - [x] Usuario inactivo sin acceso.
 - [x] Perfil del usuario autenticado y cambio de la contraseña propia para todos los roles.
-- [ ] CRUD de usuarios con desactivación, reactivación y asignación de rol.
-- [ ] Reseteo de contraseña por el Administrador.
-- [ ] Protección del último Administrador activo.
-- [ ] Autorización por rol en todos los endpoints, con 401 y 403. Hecho en activos, categorías, especialidades y técnicos; faltan repuestos, proveedores y órdenes.
-- [ ] Solicitante/Consulta ve solo sus órdenes y el historial de los vehículos relacionados con ellas.
+- [x] CRUD de usuarios con desactivación, reactivación y asignación de rol.
+- [x] Reseteo de contraseña por el Administrador.
+- [x] Protección del último Administrador activo.
+- [x] Autorización por rol en todos los endpoints, con 401 y 403. Hecho en activos, categorías, especialidades y técnicos; faltan repuestos, proveedores y órdenes.
+- [x] Solicitante/Consulta ve solo sus órdenes y el historial de los vehículos relacionados con ellas.
 - [x] El usuario responsable sale del token en todos los endpoints.
 
 ### Avance 2 — semana 13
