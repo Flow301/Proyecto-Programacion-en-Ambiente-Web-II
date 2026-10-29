@@ -1,17 +1,22 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
+using SGMA.Shared.Constants;
 using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
 
 /// <summary>
 /// Órdenes de mantenimiento: creación de solicitudes y consulta. El resto del ciclo de vida llega en el Avance 2.
+/// Los tres roles consultan (sin [Authorize] en la clase: basta la política por defecto);
+/// solo el Administrador y el Solicitante/Consulta crean órdenes.
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
+[ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
 public class OrdenMantenimientoController : ControllerBase
 {
@@ -68,11 +73,14 @@ public class OrdenMantenimientoController : ControllerBase
     /// <param name="orden">Vehículo, tipo y motivo. El solicitante es el usuario del token.</param>
     /// <response code="201">Orden creada; el encabezado Location apunta a GET api/OrdenMantenimiento/{id}.</response>
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="403">El rol es Coordinador/Técnico.</response>
     /// <response code="404">El vehículo o el tipo de mantenimiento no existen, o el usuario fue desactivado.</response>
-    /// <response code="409">El usuario no puede crear órdenes, el vehículo está dado de baja o está En Mantenimiento y el tipo no es de emergencia.</response>
+    /// <response code="409">El usuario ya no puede crear órdenes (le cambiaron el rol con el token vigente), el vehículo está dado de baja o está En Mantenimiento y el tipo no es de emergencia.</response>
     [HttpPost]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.SolicitanteConsulta}")]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AddAsync([FromBody] OrdenMantenimientoCreateDto orden)
