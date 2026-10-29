@@ -546,27 +546,27 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Base técnica**
 
-- [ ] Solución con las capas de clase: Domain, Infrastructure, Application, Shared y WebAPI.
-- [ ] Migraciones aplicadas en SQL Server con todas las tablas del modelo, incluidas las de la orden.
-- [ ] Seeders: catálogos con `HasData`, administrador con `MasterSeeder` y datos de flota con `DevelopmentSeeder`, con 8 a 12 registros por tabla principal.
-- [ ] Manejo global de excepciones con respuestas claras en español.
-- [ ] Validaciones de entrada en todos los DTO de creación y edición.
-- [ ] Listados paginados con el total de registros.
-- [ ] API documentada y probada en Scalar.
+- [x] Solución con las capas de clase: Domain, Infrastructure, Application, Shared y WebAPI.
+- [x] Migraciones aplicadas en SQL Server con todas las tablas del modelo, incluidas las de la orden.
+- [x] Seeders: catálogos con `HasData`, administrador con `MasterSeeder` y datos de flota con `DevelopmentSeeder`, con 8 a 12 registros por tabla principal.
+- [x] Manejo global de excepciones con respuestas claras en español.
+- [x] Validaciones de entrada en todos los DTO de creación y edición.
+- [x] Listados paginados con el total de registros.
+- [x] API documentada y probada en Scalar.
 
 **Activos**
 
-- [ ] CRUD completo, con baja lógica (Dado de Baja).
-- [ ] Código `PREFIJO-0001` generado, único e inmutable; placa única.
-- [ ] Carga y actualización de la imagen, con validación de tipo y tamaño.
-- [ ] Cambios manuales del Administrador con sus restricciones.
-- [ ] Historial del vehículo (registro inicial y cambios manuales) y su consulta. *(adelanto)*
-- [ ] Kilometraje que nunca disminuye.
+- [x] CRUD completo, con baja lógica (Dado de Baja).
+- [x] Código `PREFIJO-0001` generado, único e inmutable; placa única.
+- [x] Carga y actualización de la imagen, con validación de tipo y tamaño.
+- [x] Cambios manuales del Administrador con sus restricciones.
+- [x] Historial del vehículo (registro inicial y cambios manuales) y su consulta. *(adelanto)*
+- [x] Kilometraje que nunca disminuye.
 
 **Categorías**
 
-- [ ] CRUD completo, con nombre y prefijo únicos y parámetros de preventivo validados.
-- [ ] No se elimina una categoría con vehículos ni se cambia su prefijo si tiene vehículos.
+- [x] CRUD completo, con nombre y prefijo únicos y parámetros de preventivo validados.
+- [x] No se elimina una categoría con vehículos ni se cambia su prefijo si tiene vehículos.
 
 **Técnicos y especialidades**
 
