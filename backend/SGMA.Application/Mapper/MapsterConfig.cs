@@ -117,5 +117,26 @@ public static class MapsterConfig
                 dest => dest.Detalles,
                 dest => dest.RepuestosPendientes,
                 dest => dest.HistorialEstados);     // el registro inicial lo agrega el servicio
+
+        // Usuario (Usuario → UsuarioDto no necesita configuración: RolNombre ← Rol.Nombre)
+        TypeAdapterConfig<UsuarioCreateDto, Usuario>
+            .NewConfig()
+            .Ignore(dest => dest.IdUsuario,         // lo asigna la base
+                dest => dest.ClaveHash,             // el servicio guarda el hash de Clave, nunca el texto
+                dest => dest.Estado,                // todo usuario nuevo nace activo (lo pone el servicio)
+                dest => dest.FechaCreacion,         // la pone la base (sysdatetime())
+                dest => dest.UltimoAcceso,          // lo actualiza el login
+                dest => dest.Rol);                  // basta con IdRol
+
+        // El PUT copia el DTO sobre la entidad rastreada: lo ignorado conserva su valor actual
+        TypeAdapterConfig<UsuarioUpdateDto, Usuario>
+            .NewConfig()
+            .Ignore(dest => dest.IdUsuario,
+                dest => dest.ClaveHash,             // PUT api/Usuario/{id}/clave
+                dest => dest.IdRol,                 // PUT api/Usuario/{id}/rol
+                dest => dest.Estado,                // DELETE (desactivar) y POST .../reactivar
+                dest => dest.FechaCreacion,
+                dest => dest.UltimoAcceso,
+                dest => dest.Rol);
     }
 }
