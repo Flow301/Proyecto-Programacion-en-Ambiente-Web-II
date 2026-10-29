@@ -14,10 +14,13 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<OrdenMantenimiento>> GetPaginationAsync(int pageNumber, int pageSize)
+    // El Solicitante/Consulta ve solo sus órdenes: el filtro va en el WHERE, antes del Skip/Take,
+    // para que la paginación y totalRecords cuenten solo las suyas
+    public async Task<IEnumerable<OrdenMantenimiento>> GetPaginationAsync(int pageNumber, int pageSize, int? idSolicitante = null)
     {
         return await _context.OrdenMantenimiento
             .AsNoTracking()
+            .Where(o => idSolicitante == null || o.IdUsuarioSolicitante == idSolicitante)
             .Include(o => o.Activo)
             .Include(o => o.TipoMantenimiento)
             .Include(o => o.Prioridad)
@@ -29,9 +32,10 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync()
+    public async Task<int> CountAsync(int? idSolicitante = null)
     {
-        return await _context.OrdenMantenimiento.CountAsync();
+        return await _context.OrdenMantenimiento
+            .CountAsync(o => idSolicitante == null || o.IdUsuarioSolicitante == idSolicitante);
     }
 
     // Trae el detalle y las asignaciones para calcular los costos en vivo mientras la orden está abierta

@@ -71,11 +71,16 @@ public class ActivoService : IActivoService
         return Result<ActivoDetailDto>.Success(data);
     }
 
-    public async Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id)
+    // El Solicitante/Consulta solo ve el historial de los vehículos con alguna orden suya
+    public async Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante)
     {
         if (!await _repository.ExistsAsync(id))
             return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(404, "Recurso no encontrado",
                 $"El vehículo {id} no existe.");
+
+        if (esSolicitante && !await _repository.HasOrdenesDelSolicitanteAsync(id, idUsuario))
+            return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(404, "Recurso no encontrado",
+                $"El vehículo {id} no tiene órdenes de mantenimiento suyas.");
 
         var historial = await _repository.GetHistorialAsync(id);
 

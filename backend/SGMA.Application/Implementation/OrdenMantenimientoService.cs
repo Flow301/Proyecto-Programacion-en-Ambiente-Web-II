@@ -33,26 +33,32 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         _logger = logger;
     }
 
-    public async Task<Result<IEnumerable<OrdenMantenimientoListDto>>> GetPaginationAsync(int pageNumber, int pageSize)
+    // Administrador y Coordinador/Técnico ven todas; el Solicitante/Consulta, solo las que él creó
+    public async Task<Result<IEnumerable<OrdenMantenimientoListDto>>> GetPaginationAsync(int pageNumber, int pageSize,
+        int idUsuario, bool esSolicitante)
     {
         // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
         if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<OrdenMantenimientoListDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
-        var ordenes = await _repository.GetPaginationAsync(pageNumber, pageSize);
-        var totalRecords = await _repository.CountAsync();
+        int? idSolicitante = esSolicitante ? idUsuario : null;
+
+        var ordenes = await _repository.GetPaginationAsync(pageNumber, pageSize, idSolicitante);
+        var totalRecords = await _repository.CountAsync(idSolicitante);
 
         var data = _mapper.Map<IEnumerable<OrdenMantenimientoListDto>>(ordenes);
 
         return Result<IEnumerable<OrdenMantenimientoListDto>>.Paged(data, pageNumber, pageSize, totalRecords);
     }
 
-    public async Task<Result<OrdenMantenimientoDetailDto>> GetByIdAsync(int id)
+    // Una orden ajena responde 404 con el mismo mensaje que una inexistente:
+    // así el Solicitante no puede averiguar qué ids existen
+    public async Task<Result<OrdenMantenimientoDetailDto>> GetByIdAsync(int id, int idUsuario, bool esSolicitante)
     {
         var orden = await _repository.GetByIdAsync(id);
 
-        if (orden is null)
+        if (orden is null || (esSolicitante && orden.IdUsuarioSolicitante != idUsuario))
             return Result<OrdenMantenimientoDetailDto>.Failure(404, "Recurso no encontrado", $"La orden {id} no existe.");
 
         return Result<OrdenMantenimientoDetailDto>.Success(MapearDetalle(orden));

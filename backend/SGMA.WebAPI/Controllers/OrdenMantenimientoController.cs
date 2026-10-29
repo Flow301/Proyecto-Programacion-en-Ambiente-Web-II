@@ -30,6 +30,9 @@ public class OrdenMantenimientoController : ControllerBase
     /// <summary>
     /// Lista las órdenes de mantenimiento por páginas.
     /// </summary>
+    /// <remarks>
+    /// El Solicitante/Consulta ve solo las órdenes que él creó; totalRecords cuenta solo las suyas.
+    /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
     /// <response code="200">Página de órdenes con pageNumber, pageSize, totalRecords y totalPages.</response>
@@ -39,7 +42,8 @@ public class OrdenMantenimientoController : ControllerBase
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10)
     {
-        var result = await _service.GetPaginationAsync(pageNumber, pageSize);
+        var result = await _service.GetPaginationAsync(pageNumber, pageSize,
+            User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta));
         return StatusCode(result.Status, result);
     }
 
@@ -48,16 +52,17 @@ public class OrdenMantenimientoController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Mientras la orden está abierta, los costos de repuestos, mano de obra y total se calculan en vivo.
+    /// El Solicitante/Consulta solo ve las órdenes que él creó.
     /// </remarks>
     /// <param name="id" example="1">Id de la orden.</param>
     /// <response code="200">Detalle de la orden con su vehículo, tipo, estado y costos.</response>
-    /// <response code="404">La orden no existe.</response>
+    /// <response code="404">La orden no existe, o el usuario es Solicitante/Consulta y la orden no es suya.</response>
     [HttpGet("{id:int}", Name = "GetOrdenMantenimientoById")]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(int id)
     {
-        var result = await _service.GetByIdAsync(id);
+        var result = await _service.GetByIdAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta));
         return StatusCode(result.Status, result);
     }
 

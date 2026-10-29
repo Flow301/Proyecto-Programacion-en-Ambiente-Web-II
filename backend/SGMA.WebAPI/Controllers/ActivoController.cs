@@ -63,15 +63,18 @@ public class ActivoController : ControllerBase
     /// <summary>
     /// Consulta el historial de estados de un vehículo.
     /// </summary>
+    /// <remarks>
+    /// El Solicitante/Consulta solo ve el historial de los vehículos con alguna orden suya.
+    /// </remarks>
     /// <param name="id" example="1">Id del vehículo.</param>
     /// <response code="200">Cambios de estado del vehículo, con fecha, usuario y observación.</response>
-    /// <response code="404">El vehículo no existe.</response>
+    /// <response code="404">El vehículo no existe, o el usuario es Solicitante/Consulta y no tiene órdenes de ese vehículo.</response>
     [HttpGet("{id:int}/historial")]
     [ProducesResponseType<Result<IEnumerable<HistorialEstadoActivoDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHistorialAsync(int id)
     {
-        var result = await _service.GetHistorialAsync(id);
+        var result = await _service.GetHistorialAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta));
         return StatusCode(result.Status, result);
     }
 
