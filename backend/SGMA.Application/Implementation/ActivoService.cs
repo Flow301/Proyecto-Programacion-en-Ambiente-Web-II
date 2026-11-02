@@ -71,11 +71,16 @@ public class ActivoService : IActivoService
         return Result<ActivoDetailDto>.Success(data);
     }
 
-    public async Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id)
+    // El Solicitante/Consulta solo ve el historial de los vehículos con alguna orden suya
+    public async Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante)
     {
         if (!await _repository.ExistsAsync(id))
             return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(404, "Recurso no encontrado",
                 $"El vehículo {id} no existe.");
+
+        if (esSolicitante && !await _repository.HasOrdenesDelSolicitanteAsync(id, idUsuario))
+            return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(404, "Recurso no encontrado",
+                $"El vehículo {id} no tiene órdenes de mantenimiento suyas.");
 
         var historial = await _repository.GetHistorialAsync(id);
 
@@ -289,7 +294,7 @@ public class ActivoService : IActivoService
         activo.IdEstadoActivo = idEstadoNuevo;
     }
 
-    // Avance 1: el usuario responsable viaja en el cuerpo. Desde el Avance 2 lo valida el token con [Authorize].
+    // [Authorize] ya valida el rol del token; esto cubre al usuario desactivado o cambiado de rol con un token aún vigente.
     private async Task ValidarAdministradorAsync(int idUsuario)
     {
         var usuario = await _usuarioRepository.GetByIdAsync(idUsuario);

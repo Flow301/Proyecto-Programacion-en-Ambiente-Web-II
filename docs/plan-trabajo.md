@@ -103,26 +103,89 @@ Objetivo: la API completa del Avance 1, probada en Scalar, con más del 50 % de 
 - Revisar que todos los listados paginen con `Result<T>.Paged` y que todos los errores respondan con `Result<T>` en español.
 - Recorrer la checklist del Avance 1 en Scalar sobre una base recreada desde cero, y anotar lo que falle.
 
+### Semana 7 (continuación): usuarios, login y JWT
+
+El profesor pidió el módulo de usuarios y la seguridad para el Avance 1, así que se adelantan de la semana 8. Lo que ya existe y lo que falta está en [requerimientos, 7.10](requerimientos.md#710-gestión-de-usuarios-y-roles); las reglas técnicas, en [convenciones](convenciones.md#autenticación-y-autorización).
+
+**Integrante A (hecho)**
+
+- Paquete JwtBearer, sección `Jwt` en `appsettings.json` y secreto `Jwt:Key` (README, paso 2).
+- `Program.cs`: autenticación JWT, política por defecto que exige token, 401 y 403 con `Result<T>`, y esquema Bearer en Scalar.
+- `Roles.cs`, `ITokenService` y `TokenService`, y `ClaimsPrincipalExtensions` (`User.GetIdUsuario()`).
+- `AuthService` y `AuthController`: `POST api/Auth/login`, `GET api/Auth/perfil` y `PUT api/Auth/clave` (cambio de la contraseña propia).
+- En `IUsuarioRepository`: `GetByIdAsync` (ahora con el rol), `GetByLoginForUpdateAsync`, `GetForUpdateAsync` y `SaveChangesAsync`. Además, `UsuarioDto` y `CambioClaveDto`.
+- El usuario responsable sale del token: se quitó `IdUsuario` de `ActivoCreateDto`, `ActivoEstadoDto`, `ActivoBajaDto` y `OrdenMantenimientoCreateDto`, y el campo `idUsuario` de `PUT api/Activo/{id}/imagen`.
+- Roles en `ActivoController`, `CategoriaActivoController`, `EspecialidadController` y `TecnicoController`.
+
+**Integrante B**
+
+1. **CRUD de usuarios.** Ya existen `UsuarioDto` (salida) y los métodos de `IUsuarioRepository` de la lista anterior; se reutilizan, no se duplican.
+   - **DTO nuevos** en `SGMA.Domain/DTO`, con DataAnnotations del mismo largo que las columnas (`NombreCompleto` 100, `Login` 50, `Correo` 100) y `<summary>` y `<example>` en cada propiedad:
+     - `UsuarioCreateDto`: `NombreCompleto`, `Login`, `Correo` (`[EmailAddress]`), `Clave` (8 a 100 caracteres) e `IdRol`.
+     - `UsuarioUpdateDto`: `NombreCompleto`, `Login` y `Correo`. No cambia el rol, la clave ni el estado, porque cada uno tiene su endpoint.
+     - `UsuarioRolDto`: `IdRol`.
+     - `UsuarioClaveDto`: `Clave` (8 a 100 caracteres).
+     - `RolDto`: `IdRol` y `Nombre`.
+   - **Repositorio** (`IUsuarioRepository` y `UsuarioRepository`):
+     - Lectura: `GetAllAsync` y `GetPaginationAsync` (con el rol, incluidos los inactivos, ordenados por `IdUsuario`), `CountAsync` y `GetRolesAsync`.
+     - Verificaciones: `ExistsByLoginAsync(login, excludeId)`, `ExistsByCorreoAsync(correo, excludeId)`, `RolExistsAsync(idRol)` y `CountAdministradoresActivosAsync()`.
+     - Escritura: `AddAsync`.
+   - **Mapster:** `UsuarioCreateDto → Usuario` ignorando `IdUsuario`, `ClaveHash`, `Estado`, `FechaCreacion`, `UltimoAcceso` y `Rol`, y `UsuarioUpdateDto → Usuario` ignorando también `IdRol`. `Usuario → UsuarioDto` no necesita configuración (`RolNombre ← Rol.Nombre`).
+   - **`IUsuarioService` y `UsuarioService`**, con `ILogger` como los demás servicios. Para el hash, `PasswordHasher<Usuario>`, igual que `AuthService`.
+     - `GetAllAsync`, `GetPaginationAsync` (con la misma validación de página que `TecnicoService`), `GetByIdAsync` y `GetRolesAsync`.
+     - `AddAsync`: login y correo únicos (409); el rol existe (400); guarda la clave con hash; el usuario nace activo.
+     - `UpdateAsync`: existe (404); login y correo únicos excluyendo al propio usuario (409).
+     - `CambiarRolAsync`: existe (404); el rol existe (400); si deja de ser Administrador y es el último Administrador activo, responde 409.
+     - `CambiarClaveAsync` (reseteo): existe (404); guarda el hash nuevo; funciona también con inactivos. El log registra quién y a quién, nunca la clave.
+     - `DeleteAsync` (desactivar): existe y está activo (404); si es el último Administrador activo, responde 409; `Estado = false`.
+     - `ReactivarAsync`: existe (404); si ya está activo, responde 409; `Estado = true`.
+   - **`UsuarioController`** con `[Authorize(Roles = Roles.Administrador)]` en la clase, documentado como los demás, con 401 y 403 declarados en la clase:
+
+     | Método | Ruta | Respuestas |
+     |---|---|---|
+     | GET | `api/Usuario` | 200 |
+     | GET | `api/Usuario/{pageNumber}/{pageSize}` | 200, 400 |
+     | GET | `api/Usuario/{id}` (`Name = "GetUsuarioById"`) | 200, 404 |
+     | GET | `api/Usuario/roles` | 200 |
+     | POST | `api/Usuario` | 201 con `CreatedAtRoute`, 400, 409 |
+     | PUT | `api/Usuario/{id}` | 200, 400, 404, 409 |
+     | PUT | `api/Usuario/{id}/rol` | 200, 400, 404, 409 |
+     | PUT | `api/Usuario/{id}/clave` | 200, 400, 404 |
+     | DELETE | `api/Usuario/{id}` | 200, 404, 409 |
+     | POST | `api/Usuario/{id}/reactivar` | 200, 404, 409 |
+
+   - Registrar `IUsuarioService` y `UsuarioService` en `Program.cs`. `IUsuarioRepository` ya está registrado.
+2. **Roles en los controladores que faltan,** siguiendo el ejemplo de `TecnicoController` (ver [convenciones](convenciones.md#autenticación-y-autorización)):
+   - `ProveedorController` y `RepuestoController`: Administrador y Coordinador/Técnico consultan (incluidos stock bajo el mínimo y proveedor recomendado); solo el Administrador escribe, asocia proveedores y registra entradas.
+   - `OrdenMantenimientoController`: los tres roles consultan; crean el Administrador y el Solicitante/Consulta. El usuario ya sale del token.
+   - Declarar el 401 en la clase y el 403 donde corresponda.
+3. **El Solicitante ve solo lo suyo.**
+   - En `GET api/OrdenMantenimiento/{pageNumber}/{pageSize}` y `GET api/OrdenMantenimiento/{id}`, el controlador pasa `User.GetIdUsuario()` y si el usuario es Solicitante (`User.IsInRole(Roles.SolicitanteConsulta)`). El servicio filtra por `IdUsuarioSolicitante`. Una orden ajena responde 404, igual que si no existiera.
+   - En `GET api/Activo/{id}/historial`, un Solicitante solo ve el historial de vehículos con alguna orden suya; si no tiene ninguna, 404.
+4. **Prueba en Scalar** con `admin`, `lvargas` (Coordinador), `cjimenez` (Solicitante) y `drojas` (inactiva). Revisar que cada endpoint responda 401 sin token y 403 con un rol sin permiso, y que no se pueda desactivar ni quitar el rol a `admin` mientras sea el único Administrador activo.
+5. Marcar en la [checklist](requerimientos.md#avance-1--semana-7) los ítems de "Usuarios y seguridad" que queden terminados.
+
 **Juntos**
 
 - Corregir lo que salga en el recorrido.
-- Repaso cruzado completo, en el que cada uno explica los módulos del otro.
+- Repaso cruzado completo, en el que cada uno explica los módulos del otro, incluido el flujo del token: login, `TokenService`, validación en `Program.cs`, `[Authorize]` y `User.GetIdUsuario()`.
 - Integrar en `main` y crear la etiqueta `avance-1`.
-- Pedir al profesor el material de JWT y de React para el Avance 2.
+- Pedir al profesor el material de React para el Avance 2, y confirmar que la forma en que resolvimos el JWT le parece bien.
 
 ---
 
 ## Avance 2: semanas 8 a 13
 
-Objetivo: el ciclo de vida completo de la orden, la seguridad con JWT, el frontend en React, el historial visible, los reportes y el dashboard.
+Objetivo: el ciclo de vida completo de la orden, el frontend en React, el historial visible, los reportes y el dashboard. La seguridad con JWT se adelantó al Avance 1.
 
-### Semana 8: seguridad y primera parte del ciclo de vida
+### Semana 8: frontend base y primera parte del ciclo de vida
 
 **Integrante A**
 
-- Login con JWT: servicio de tokens, clave en User Secrets, actualización del último acceso y rechazo de usuarios inactivos.
-- CRUD de usuarios con desactivación, reactivación y cambio de rol, protegiendo al último Administrador activo.
-- Autorización por rol en todos los endpoints existentes (401 y 403). Los controladores pasan a tomar el usuario del token en vez del cuerpo de la petición.
+La seguridad se adelantó a la semana 7, así que A adelanta el frontend base de la semana 9:
+
+- Crear el proyecto React con Vite en `frontend/`, con la estructura que indique el profesor.
+- Módulo cliente de la API con el token, login, cierre de sesión y redirección al login cuando el token expira.
 
 **Integrante B**
 
@@ -130,12 +193,11 @@ Objetivo: el ciclo de vida completo de la orden, la seguridad con JWT, el fronte
 - Diagnosticar (prioridad, kilometraje y corrección del tipo), aprobar (fecha programada), rechazar y cancelar antes de la ejecución, cada una con su historial.
 - Completar el seeder de órdenes si quedó pendiente, y recrear la base.
 
-### Semana 9: frontend base y segunda parte del ciclo de vida
+### Semana 9: plantilla del frontend y segunda parte del ciclo de vida
 
 **Integrante A**
 
-- Crear el proyecto React con Vite en `frontend/`, con la estructura que indique el profesor.
-- Módulo cliente de la API con el token, login, cierre de sesión y redirección al login cuando el token expira.
+- Pantalla de cambio de contraseña propia, disponible para los tres roles.
 - Plantilla general: menú según el rol con la sección activa, usuario y rol visibles, y la paleta como variables CSS.
 
 **Integrante B**
@@ -172,7 +234,7 @@ Objetivo: el ciclo de vida completo de la orden, la seguridad con JWT, el fronte
 
 **Integrante A**
 
-- Pantallas de usuarios y de mantenimiento preventivo.
+- Pantallas de usuarios (incluidos el cambio de rol y el reseteo de contraseña) y de mantenimiento preventivo.
 - Repaso de los requerimientos de interfaz:
   - confirmaciones;
   - indicadores de carga;
@@ -191,7 +253,7 @@ Objetivo: el ciclo de vida completo de la orden, la seguridad con JWT, el fronte
 **Integrante A**
 
 - Corregir lo que salga en el recorrido, en sus módulos.
-- Completar las secciones pendientes del README: frontend, login y usuarios de prueba.
+- Completar las secciones pendientes del README: frontend y cómo iniciar sesión desde React.
 
 **Integrante B**
 
@@ -208,4 +270,4 @@ Objetivo: el ciclo de vida completo de la orden, la seguridad con JWT, el fronte
 ## Pendientes que no son código
 
 - Conseguir las 12 fotos de los vehículos (semana 6, Integrante A).
-- Pedir al profesor el material de manejo global de excepciones, JWT y React (lo antes posible). El CRUD, las validaciones y los seeders ya están en el proyecto ERP de clase.
+- Pedir al profesor el material de manejo global de excepciones y React (lo antes posible), y confirmar con él la forma en que resolvimos el JWT. El CRUD, las validaciones y los seeders ya están en el proyecto ERP de clase.

@@ -90,6 +90,13 @@ public class ActivoRepository : IActivoRepository
             .AnyAsync(o => o.IdActivo == id && !o.EstadoOrden.EsFinal);
     }
 
+    // Historial para el Solicitante/Consulta: el vehículo tiene alguna orden suya, abierta o cerrada
+    public async Task<bool> HasOrdenesDelSolicitanteAsync(int id, int idUsuario)
+    {
+        return await _context.OrdenMantenimiento
+            .AnyAsync(o => o.IdActivo == id && o.IdUsuarioSolicitante == idUsuario);
+    }
+
     // Rastreada (sin AsNoTracking) para cambiar el estado; trae el estado actual para los mensajes
     public async Task<Activo?> GetForUpdateAsync(int id)
     {

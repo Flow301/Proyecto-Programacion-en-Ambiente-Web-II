@@ -32,7 +32,7 @@ Versiones verificadas en NuGet el 8 de octubre de 2026. Todas son estables, tien
   - `Mapster.DependencyInjection` 10.0.13
   - `Scalar.AspNetCore` 2.18.0
   - `Serilog.AspNetCore` 10.0.0, para el log en consola y en archivos diarios (`logs/serilog-AAAAMMDD.txt`)
-  - `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.13. **Pendiente (Avance 2).**
+  - `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.13, para validar y generar los tokens JWT
 
 Es la misma distribución de paquetes del material de clase, con tres diferencias:
 
@@ -89,6 +89,7 @@ backend/
 └── SGMA.WebAPI/
     ├── Controllers/       Controladores
     ├── Handlers/          Manejador global de excepciones
+    ├── Security/          TokenService (genera el JWT) y ClaimsPrincipalExtensions (User.GetIdUsuario())
     ├── wwwroot/imagenes/  Imágenes de los vehículos
     ├── Program.cs
     └── appsettings.json
@@ -105,8 +106,8 @@ En la Clean Architecture de libro, Infrastructure depende de Application y no al
 
 ### Recorrido de una petición
 
-1. **Controlador** (`WebAPI/Controllers`). Recibe la petición, llama al servicio y responde con `StatusCode(result.Status, result)`. Al crear responde 201 con `CreatedAtRoute`, que agrega el encabezado `Location`. Se documenta para Scalar como en el material: comentarios XML (`<summary>`, `<remarks>`, `<param example>` y un `<response code>` por cada código) y un `[ProducesResponseType]` por código. El éxito usa `Result<Dto>`, el 400 de validación `Result<Dictionary<string, string[]>>`, los demás errores `Result<object>`, y la clase declara el 500 para todas sus acciones. Los DTO llevan `<summary>` y `<example>` en cada propiedad. No tiene lógica de negocio.
-2. **Servicio** (`Application/Implementation`). Aplica las reglas de negocio y convierte entidades en DTO con Mapster. Registra con `ILogger<T>` cada cambio guardado (`LogInformation`) y cada conflicto rechazado (`LogWarning`), como en el material. Devuelve siempre un `Result<T>`: `Success`, `Paged` o `Failure` con 400, 404 o 409 para los errores esperados del CRUD. Recibe el usuario responsable como parámetro: en el Avance 1 viene del cuerpo de la petición y desde el Avance 2, del token.
+1. **Controlador** (`WebAPI/Controllers`). Recibe la petición, llama al servicio y responde con `StatusCode(result.Status, result)`. Al crear responde 201 con `CreatedAtRoute`, que agrega el encabezado `Location`. Se documenta para Scalar como en el material: comentarios XML (`<summary>`, `<remarks>`, `<param example>` y un `<response code>` por cada código) y un `[ProducesResponseType]` por código. El éxito usa `Result<Dto>`, el 400 de validación `Result<Dictionary<string, string[]>>`, los demás errores `Result<object>`, y la clase declara el 401 y el 500 para todas sus acciones (y el 403 si todas lo pueden dar). Los DTO llevan `<summary>` y `<example>` en cada propiedad. Declara los roles con `[Authorize(Roles = ...)]` usando las constantes de `SGMA.Shared/Constants/Roles.cs` (ver [Autenticación y autorización](#autenticación-y-autorización)) y toma el usuario responsable del token con `User.GetIdUsuario()`. No tiene lógica de negocio.
+2. **Servicio** (`Application/Implementation`). Aplica las reglas de negocio y convierte entidades en DTO con Mapster. Registra con `ILogger<T>` cada cambio guardado (`LogInformation`) y cada conflicto rechazado (`LogWarning`), como en el material. Devuelve siempre un `Result<T>`: `Success`, `Paged` o `Failure` con 400, 404 o 409 para los errores esperados del CRUD. Recibe el usuario responsable como parámetro (`int idUsuario`), que el controlador saca del token; nunca viaja en el cuerpo de la petición.
 3. **Repositorio** (`Infrastructure/Implementation`). Consulta y guarda con EF Core. Devuelve entidades, salvo en agregaciones (`GroupBy`, reportes, dashboard), que devuelven el DTO de resultado directamente. Cada método de escritura termina con un solo `SaveChangesAsync`, y los borrados físicos usan `ExecuteDeleteAsync`, igual que en el material.
 4. **`AppDbContext`** (`Infrastructure/Data`). Configura tablas, relaciones, índices y restricciones en `OnModelCreating`, y aplica los seeders.
 
@@ -180,10 +181,35 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 
 ### Seguridad
 
-- Las contraseñas se guardan como hash con `PasswordHasher`, nunca en texto plano.
+- Las contraseñas se guardan como hash con `PasswordHasher`, nunca en texto plano. Ningún DTO de salida ni ningún log incluye la contraseña ni su hash.
 - Un usuario inactivo no inicia sesión.
 - El seeder siempre crea al menos un Administrador.
-- Ningún secreto va al repositorio. La cadena de conexión, la contraseña del administrador inicial y la clave del JWT viven en User Secrets. La contraseña común de los usuarios de demostración no cuenta como secreto: es pública y solo existe en Development (ver [modelo de datos](modelo-datos.md)).
+- Ningún secreto va al repositorio. La cadena de conexión, la contraseña del administrador inicial y la clave del JWT (`Jwt:Key`) viven en User Secrets. La contraseña común de los usuarios de demostración no cuenta como secreto: es pública y solo existe en Development (ver [modelo de datos](modelo-datos.md)).
+- Ningún endpoint queda abierto por olvido: la política por defecto exige token, y solo `api/Auth/login` lleva `[AllowAnonymous]`.
+
+### Autenticación y autorización
+
+El material de clase no trae JWT, así que esto lo decidimos nosotros:
+
+- **Token.** Lo genera `TokenService` (`SGMA.WebAPI/Security`) al hacer login, a través de la interfaz `ITokenService` de Application. Va firmado con HMAC-SHA256 y dura 60 minutos (`Jwt:ExpiraMinutos`). No hay refresh token.
+- **Claims.** Llevan su nombre corto, sin mapear: `sub` (IdUsuario), `name` (Login) y `role` (nombre del rol).
+- **Configuración.** `Jwt:Issuer`, `Jwt:Audience` y `Jwt:ExpiraMinutos` en `appsettings.json`. `Jwt:Key` (mínimo 32 caracteres) en User Secrets; si falta, la API no arranca.
+- **Roles en los controladores.** Con las constantes de `Roles.cs`, que deben coincidir exactamente con los nombres de la tabla `Rol`:
+
+  ```csharp
+  // Clase: quién puede consultar
+  [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
+  public class TecnicoController : ControllerBase
+
+  // Acción: además, solo el Administrador escribe (los dos atributos se cumplen a la vez)
+  [HttpPost]
+  [Authorize(Roles = Roles.Administrador)]
+  ```
+
+  Si los tres roles pueden consultar, la clase no lleva `[Authorize]`: basta la política por defecto.
+- **Usuario responsable.** `User.GetIdUsuario()` en el controlador; el servicio lo recibe como `int idUsuario`.
+- **Respuestas.** El 401 (sin token, token inválido o vencido) y el 403 (rol sin permiso) salen de los eventos de `AddJwtBearer` en `Program.cs`, con la misma forma `Result<T>` que el resto de la API.
+- **Filtros por dueño.** Lo que el rol no alcanza a expresar ("el Solicitante ve solo sus órdenes") se resuelve en el servicio, que recibe el id del usuario y su rol.
 
 ---
 
@@ -345,5 +371,5 @@ El material de clase (proyecto ERP) cubre las consultas, el CRUD completo con `R
 - Manejo global de excepciones con `IExceptionHandler`.
 - Transacciones entre varios repositorios. Mientras tanto, un solo `SaveChangesAsync` al final de cada operación (ver [Recorrido de una petición](#recorrido-de-una-petición)).
 - Subida de imágenes.
-- JWT: dónde se generan los tokens, qué claims llevan y cuánto duran.
+- JWT: el material no lo trae. Lo resolvimos como se describe en [Autenticación y autorización](#autenticación-y-autorización); si el profesor muestra otra forma, la ajustamos.
 - Estructura del proyecto React y forma de consumir la API.
