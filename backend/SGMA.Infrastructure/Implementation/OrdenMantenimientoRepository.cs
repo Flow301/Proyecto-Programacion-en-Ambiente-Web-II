@@ -74,10 +74,31 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .FirstOrDefaultAsync(t => t.IdTipoMantenimiento == idTipoMantenimiento);
     }
 
+    public async Task<bool> PrioridadExistsAsync(int idPrioridad)
+    {
+        return await _context.Prioridad.AnyAsync(p => p.IdPrioridad == idPrioridad);
+    }
+
+    // Transiciones (sin AsNoTracking: el ChangeTracker detecta qué cambió).
+    // Trae el vehículo rastreado porque algunas transiciones lo modifican (el diagnóstico actualiza su kilometraje).
+    // El historial nuevo se agrega a HistorialEstados sin cargar los registros anteriores.
+    public async Task<OrdenMantenimiento?> GetForUpdateAsync(int id)
+    {
+        return await _context.OrdenMantenimiento
+            .Include(o => o.Activo)
+            .FirstOrDefaultAsync(o => o.IdOrden == id);
+    }
+
     // Inserta la orden y su registro inicial de historial con un solo SaveChangesAsync
     public async Task AddAsync(OrdenMantenimiento orden)
     {
         _context.OrdenMantenimiento.Add(orden);
+        await _context.SaveChangesAsync();
+    }
+
+    // Un solo SaveChangesAsync por transición: la orden, su historial y el vehículo se guardan juntos o nada
+    public async Task SaveChangesAsync()
+    {
         await _context.SaveChangesAsync();
     }
 }

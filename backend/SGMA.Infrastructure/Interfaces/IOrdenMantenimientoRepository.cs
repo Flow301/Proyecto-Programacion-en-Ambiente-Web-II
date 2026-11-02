@@ -11,6 +11,9 @@ public interface IOrdenMantenimientoRepository
     Task<OrdenMantenimiento?> GetByIdAsync(int id);
     Task<int> GetUltimoConsecutivoAsync(int anio);
     Task<TipoMantenimiento?> GetTipoMantenimientoAsync(int idTipoMantenimiento);
+    Task<bool> PrioridadExistsAsync(int idPrioridad);
     // Escritura
+    Task<OrdenMantenimiento?> GetForUpdateAsync(int id);
     Task AddAsync(OrdenMantenimiento orden);
+    Task SaveChangesAsync();
 }

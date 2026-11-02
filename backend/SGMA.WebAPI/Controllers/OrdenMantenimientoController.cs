@@ -96,4 +96,32 @@ public class OrdenMantenimientoController : ControllerBase
         // 201 Created + encabezado Location: /api/OrdenMantenimiento/{id}
         return CreatedAtRoute("GetOrdenMantenimientoById", new { id = result.Data!.IdOrden }, result);
     }
+
+    /// <summary>
+    /// Diagnostica una orden Solicitada: pasa a Diagnosticada.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Coordinador/Técnico. Guarda el diagnóstico, la prioridad y el kilometraje, que no puede ser menor que el
+    /// actual del vehículo y lo actualiza. Puede corregir el tipo de mantenimiento: si el vehículo está En Mantenimiento,
+    /// el tipo nuevo debe ser de naturaleza Emergencia. Registra la transición en el historial de la orden.
+    /// </remarks>
+    /// <param name="id" example="1">Id de la orden.</param>
+    /// <param name="diagnostico">Diagnóstico, prioridad, kilometraje, tipo corregido (opcional) y observación (opcional).</param>
+    /// <response code="200">Orden diagnosticada; data = detalle de la orden.</response>
+    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="403">El rol no es Coordinador/Técnico.</response>
+    /// <response code="404">La orden, la prioridad o el tipo no existen, o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está Solicitada, el kilometraje es menor que el del vehículo, o el tipo corregido no es de emergencia con el vehículo En Mantenimiento.</response>
+    [HttpPost("{id:int}/diagnosticar")]
+    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DiagnosticarAsync([FromRoute] int id, [FromBody] OrdenMantenimientoDiagnosticoDto diagnostico)
+    {
+        var result = await _service.DiagnosticarAsync(id, diagnostico, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
 }

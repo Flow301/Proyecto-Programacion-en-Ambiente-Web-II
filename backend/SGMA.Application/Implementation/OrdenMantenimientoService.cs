@@ -144,6 +144,102 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             $"Orden {entity.Codigo} registrada.");
     }
 
+    // Solicitada → Diagnosticada (docs/matriz-estados.md). Orden de las validaciones, igual en todas las transiciones:
+    // 1) la orden existe (404); 2) la matriz permite la transición para el rol (409); 3) las condiciones propias (404/409);
+    // 4) los efectos y el historial en un solo SaveChangesAsync.
+    public async Task<Result<OrdenMantenimientoDetailDto>> DiagnosticarAsync(int id, OrdenMantenimientoDiagnosticoDto diagnostico, int idUsuario)
+    {
+        var orden = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenDiagnosticada, usuario.Rol.Nombre);
+
+        if (!await _repository.PrioridadExistsAsync(diagnostico.IdPrioridad))
+            throw new RecursoNoEncontradoException($"La prioridad {diagnostico.IdPrioridad} no existe.");
+
+        var activo = orden.Activo;
+        var kilometraje = diagnostico.KilometrajeDiagnostico!.Value;
+
+        if (kilometraje < activo.KilometrajeActual)
+        {
+            _logger.LogWarning("Diagnóstico de la orden {Codigo} rechazado: {Kilometraje} km es menor que los {Actual} km del vehículo {CodigoActivo}",
+                orden.Codigo, kilometraje, activo.KilometrajeActual, activo.Codigo);
+            throw new ReglaNegocioException(
+                $"El kilometraje no puede ser menor que el actual del vehículo {activo.Codigo}: {activo.KilometrajeActual} km.");
+        }
+
+        // Corrección del tipo (decisión del equipo): si cambia, se vuelve a validar el bloqueo por En Mantenimiento
+        var idTipoNuevo = diagnostico.IdTipoMantenimiento ?? orden.IdTipoMantenimiento;
+        if (idTipoNuevo != orden.IdTipoMantenimiento)
+        {
+            var tipo = await _repository.GetTipoMantenimientoAsync(idTipoNuevo)
+                ?? throw new RecursoNoEncontradoException($"El tipo de mantenimiento {idTipoNuevo} no existe.");
+
+            if (activo.IdEstadoActivo == SeedIds.EstadoActivoEnMantenimiento && tipo.IdNaturaleza != SeedIds.NaturalezaEmergencia)
+            {
+                _logger.LogWarning("Diagnóstico de la orden {Codigo} rechazado: tipo {Naturaleza} con el vehículo {CodigoActivo} En Mantenimiento",
+                    orden.Codigo, tipo.Naturaleza.Nombre, activo.Codigo);
+                throw new ReglaNegocioException(
+                    $"El vehículo {activo.Codigo} está En Mantenimiento: el tipo solo puede corregirse a uno de naturaleza Emergencia.");
+            }
+
+            orden.IdTipoMantenimiento = idTipoNuevo;
+        }
+
+        orden.Diagnostico = diagnostico.Diagnostico!.Trim();
+        orden.IdPrioridad = diagnostico.IdPrioridad;
+        orden.KilometrajeDiagnostico = kilometraje;
+        activo.KilometrajeActual = kilometraje;    // el diagnóstico actualiza el kilometraje del vehículo
+
+        AplicarTransicion(orden, SeedIds.EstadoOrdenDiagnosticada, idUsuario, diagnostico.Observacion);
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Orden {Codigo} diagnosticada con prioridad {IdPrioridad} y {Kilometraje} km. Usuario: {IdUsuario}",
+            orden.Codigo, orden.IdPrioridad, kilometraje, idUsuario);
+
+        return await DetalleAsync(id, $"Orden {orden.Codigo} diagnosticada.");
+    }
+
+    // Único punto que cambia el estado de la orden y escribe HistorialEstadoOrden (docs/matriz-estados.md, "Historial").
+    // No guarda: quien lo llama hace un solo SaveChangesAsync. Los estados finales registran la fecha de cierre.
+    private static void AplicarTransicion(OrdenMantenimiento orden, int idEstadoNuevo, int idUsuario, string? observacion)
+    {
+        var ahora = DateTime.Now;
+
+        orden.HistorialEstados.Add(new HistorialEstadoOrden
+        {
+            IdEstadoAnterior = orden.IdEstadoOrden,
+            IdEstadoNuevo = idEstadoNuevo,
+            FechaCambio = ahora,
+            IdUsuario = idUsuario,
+            Observacion = string.IsNullOrWhiteSpace(observacion) ? null : observacion.Trim()
+        });
+
+        orden.IdEstadoOrden = idEstadoNuevo;
+
+        if (idEstadoNuevo is SeedIds.EstadoOrdenRechazada or SeedIds.EstadoOrdenCompletada or SeedIds.EstadoOrdenCancelada)
+            orden.FechaCierre = ahora;
+    }
+
+    // Vuelve a leer la orden con sus relaciones para responder con los nombres y los costos
+    private async Task<Result<OrdenMantenimientoDetailDto>> DetalleAsync(int id, string detalle)
+    {
+        var orden = await _repository.GetByIdAsync(id);
+        return Result<OrdenMantenimientoDetailDto>.Success(MapearDetalle(orden!), 200, "OK", detalle);
+    }
+
+    // Usuario responsable con su rol de la base: la matriz lo usa para la segunda validación del rol
+    private async Task<Usuario> UsuarioResponsableAsync(int idUsuario)
+    {
+        var usuario = await _usuarioRepository.GetByIdAsync(idUsuario);
+
+        if (usuario is null || !usuario.Estado)
+            throw new RecursoNoEncontradoException($"El usuario {idUsuario} no existe o está inactivo.");
+
+        return usuario;
+    }
+
     // Con la orden cerrada se usan los costos congelados; abierta, se calculan en vivo.
     // Horas por tarifa se redondea a 2 decimales igual que SQL Server al guardarlo en decimal(18,2) al congelarlo.
     private OrdenMantenimientoDetailDto MapearDetalle(OrdenMantenimiento orden)
