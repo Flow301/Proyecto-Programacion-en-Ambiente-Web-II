@@ -124,4 +124,58 @@ public class OrdenMantenimientoController : ControllerBase
         var result = await _service.DiagnosticarAsync(id, diagnostico, User.GetIdUsuario());
         return StatusCode(result.Status, result);
     }
+
+    /// <summary>
+    /// Aprueba una orden Diagnosticada: pasa a Aprobada.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Administrador. La fecha programada es obligatoria y no puede ser anterior a hoy; se guarda sin hora.
+    /// Registra la transición en el historial de la orden.
+    /// </remarks>
+    /// <param name="id" example="3">Id de la orden.</param>
+    /// <param name="aprobacion">Fecha programada y observación opcional.</param>
+    /// <response code="200">Orden aprobada; data = detalle de la orden.</response>
+    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="403">El rol no es Administrador.</response>
+    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está Diagnosticada o la fecha programada es anterior a hoy.</response>
+    [HttpPost("{id:int}/aprobar")]
+    [Authorize(Roles = Roles.Administrador)]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AprobarAsync([FromRoute] int id, [FromBody] OrdenMantenimientoAprobacionDto aprobacion)
+    {
+        var result = await _service.AprobarAsync(id, aprobacion, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Rechaza una orden Diagnosticada: pasa a Rechazada, que es un estado final.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Administrador. La observación con el motivo es opcional y el cuerpo puede ir vacío.
+    /// Registra la fecha de cierre y la transición en el historial de la orden. El vehículo no cambia.
+    /// </remarks>
+    /// <param name="id" example="3">Id de la orden.</param>
+    /// <param name="rechazo">Observación opcional.</param>
+    /// <response code="200">Orden rechazada; data = detalle de la orden.</response>
+    /// <response code="400">La observación supera los 500 caracteres.</response>
+    /// <response code="403">El rol no es Administrador.</response>
+    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está Diagnosticada.</response>
+    [HttpPost("{id:int}/rechazar")]
+    [Authorize(Roles = Roles.Administrador)]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RechazarAsync([FromRoute] int id, [FromBody] OrdenMantenimientoObservacionDto? rechazo)
+    {
+        var result = await _service.RechazarAsync(id, rechazo?.Observacion, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
 }

@@ -201,6 +201,52 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return await DetalleAsync(id, $"Orden {orden.Codigo} diagnosticada.");
     }
 
+    // Diagnosticada → Aprobada (docs/matriz-estados.md): el Administrador fija la fecha programada
+    public async Task<Result<OrdenMantenimientoDetailDto>> AprobarAsync(int id, OrdenMantenimientoAprobacionDto aprobacion, int idUsuario)
+    {
+        var orden = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenAprobada, usuario.Rol.Nombre);
+
+        // Solo cuenta el día: hoy es válido aunque la hora ya haya pasado
+        var fechaProgramada = aprobacion.FechaProgramada!.Value.Date;
+        if (fechaProgramada < DateTime.Today)
+        {
+            _logger.LogWarning("Aprobación de la orden {Codigo} rechazada: la fecha {Fecha:yyyy-MM-dd} ya pasó", orden.Codigo, fechaProgramada);
+            throw new ReglaNegocioException($"La fecha programada no puede ser anterior a hoy ({DateTime.Today:yyyy-MM-dd}).");
+        }
+
+        orden.FechaProgramada = fechaProgramada;
+
+        AplicarTransicion(orden, SeedIds.EstadoOrdenAprobada, idUsuario, aprobacion.Observacion);
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Orden {Codigo} aprobada para el {Fecha:yyyy-MM-dd}. Usuario: {IdUsuario}",
+            orden.Codigo, fechaProgramada, idUsuario);
+
+        return await DetalleAsync(id, $"Orden {orden.Codigo} aprobada.");
+    }
+
+    // Diagnosticada → Rechazada (docs/matriz-estados.md): estado final; AplicarTransicion registra la fecha de cierre.
+    // El vehículo no cambia, porque la orden nunca lo puso En Mantenimiento.
+    public async Task<Result<OrdenMantenimientoDetailDto>> RechazarAsync(int id, string? observacion, int idUsuario)
+    {
+        var orden = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenRechazada, usuario.Rol.Nombre);
+
+        AplicarTransicion(orden, SeedIds.EstadoOrdenRechazada, idUsuario, observacion);
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Orden {Codigo} rechazada. Usuario: {IdUsuario}", orden.Codigo, idUsuario);
+
+        return await DetalleAsync(id, $"Orden {orden.Codigo} rechazada.");
+    }
+
     // Único punto que cambia el estado de la orden y escribe HistorialEstadoOrden (docs/matriz-estados.md, "Historial").
     // No guarda: quien lo llama hace un solo SaveChangesAsync. Los estados finales registran la fecha de cierre.
     private static void AplicarTransicion(OrdenMantenimiento orden, int idEstadoNuevo, int idUsuario, string? observacion)

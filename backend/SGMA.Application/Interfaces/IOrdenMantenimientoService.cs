@@ -12,4 +12,6 @@ public interface IOrdenMantenimientoService
 
     // Transiciones (docs/matriz-estados.md): idUsuario sale del token
     Task<Result<OrdenMantenimientoDetailDto>> DiagnosticarAsync(int id, OrdenMantenimientoDiagnosticoDto diagnostico, int idUsuario);
+    Task<Result<OrdenMantenimientoDetailDto>> AprobarAsync(int id, OrdenMantenimientoAprobacionDto aprobacion, int idUsuario);
+    Task<Result<OrdenMantenimientoDetailDto>> RechazarAsync(int id, string? observacion, int idUsuario);
 }
