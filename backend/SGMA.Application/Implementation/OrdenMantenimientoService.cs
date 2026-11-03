@@ -144,6 +144,52 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             $"Orden {entity.Codigo} registrada.");
     }
 
+    // Editar la solicitud (docs/matriz-estados.md, "Acciones que no cambian el estado"): solo el Administrador y solo
+    // en Solicitada. Cambia el motivo y el tipo; el vehículo no se cambia. No es una transición: no usa la matriz
+    // ni escribe historial.
+    public async Task<Result<OrdenMantenimientoDetailDto>> UpdateAsync(int id, OrdenMantenimientoUpdateDto orden, int idUsuario)
+    {
+        var entity = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        // [Authorize] revisa el rol del token; esto cubre al usuario desactivado o cambiado de rol con un token aún vigente
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        if (usuario.Rol.Nombre != Roles.Administrador)
+            throw new ReglaNegocioException("Solo el Administrador puede editar solicitudes de mantenimiento.");
+
+        if (entity.IdEstadoOrden != SeedIds.EstadoOrdenSolicitada)
+        {
+            _logger.LogWarning("Intento de editar la orden {Codigo}, que está {Estado}",
+                entity.Codigo, MatrizTransicionesOrden.Nombre(entity.IdEstadoOrden));
+            throw new ReglaNegocioException(
+                $"La orden {entity.Codigo} está {MatrizTransicionesOrden.Nombre(entity.IdEstadoOrden)}: solo se puede editar mientras está Solicitada.");
+        }
+
+        var tipo = await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento)
+            ?? throw new RecursoNoEncontradoException($"El tipo de mantenimiento {orden.IdTipoMantenimiento} no existe.");
+
+        // El bloqueo por En Mantenimiento se vuelve a validar solo si cambia el tipo (docs/requerimientos.md, 7.5):
+        // así una orden creada como emergencia no se convierte en correctiva para saltarse la regla
+        if (tipo.IdTipoMantenimiento != entity.IdTipoMantenimiento
+            && entity.Activo.IdEstadoActivo == SeedIds.EstadoActivoEnMantenimiento
+            && tipo.IdNaturaleza != SeedIds.NaturalezaEmergencia)
+        {
+            _logger.LogWarning("Edición de la orden {Codigo} rechazada: tipo {Naturaleza} con el vehículo {CodigoActivo} En Mantenimiento",
+                entity.Codigo, tipo.Naturaleza.Nombre, entity.Activo.Codigo);
+            throw new ReglaNegocioException(
+                $"El vehículo {entity.Activo.Codigo} está En Mantenimiento: el tipo solo puede cambiar a uno de naturaleza Emergencia.");
+        }
+
+        _mapper.Map(orden, entity);
+        entity.Motivo = entity.Motivo.Trim();
+
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Orden {Codigo} editada. Usuario: {IdUsuario}", entity.Codigo, idUsuario);
+
+        return await DetalleAsync(id, $"Orden {entity.Codigo} actualizada.");
+    }
+
     // Solicitada → Diagnosticada (docs/matriz-estados.md). Orden de las validaciones, igual en todas las transiciones:
     // 1) la orden existe (404); 2) la matriz permite la transición para el rol (409); 3) las condiciones propias (404/409);
     // 4) los efectos y el historial en un solo SaveChangesAsync.

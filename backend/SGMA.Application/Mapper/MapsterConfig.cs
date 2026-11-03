@@ -118,6 +118,24 @@ public static class MapsterConfig
                 dest => dest.RepuestosPendientes,
                 dest => dest.HistorialEstados);     // el registro inicial lo agrega el servicio
 
+        // El PUT copia el DTO sobre la entidad rastreada: solo cambian Motivo e IdTipoMantenimiento
+        TypeAdapterConfig<OrdenMantenimientoUpdateDto, OrdenMantenimiento>
+            .NewConfig()
+            .Ignore(dest => dest.IdOrden,           // viene de la ruta, no del body
+                dest => dest.Codigo,                // inmutable
+                dest => dest.IdActivo,              // el vehículo de una orden no se cambia
+                dest => dest.IdEstadoOrden,         // cambia solo con las transiciones
+                dest => dest.IdUsuarioSolicitante,
+                dest => dest.Activo,
+                dest => dest.TipoMantenimiento,
+                dest => dest.Prioridad,
+                dest => dest.EstadoOrden,
+                dest => dest.UsuarioSolicitante,
+                dest => dest.Asignaciones,
+                dest => dest.Detalles,
+                dest => dest.RepuestosPendientes,
+                dest => dest.HistorialEstados);
+
         // Usuario (Usuario → UsuarioDto no necesita configuración: RolNombre ← Rol.Nombre)
         TypeAdapterConfig<UsuarioCreateDto, Usuario>
             .NewConfig()

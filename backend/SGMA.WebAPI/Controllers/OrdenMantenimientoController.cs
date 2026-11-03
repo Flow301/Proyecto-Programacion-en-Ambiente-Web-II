@@ -11,7 +11,7 @@ namespace SGMA.WebAPI.Controllers;
 /// <summary>
 /// Órdenes de mantenimiento: creación de solicitudes y consulta. El resto del ciclo de vida llega en el Avance 2.
 /// Los tres roles consultan (sin [Authorize] en la clase: basta la política por defecto);
-/// solo el Administrador y el Solicitante/Consulta crean órdenes.
+/// solo el Administrador y el Solicitante/Consulta crean órdenes, y solo el Administrador las edita.
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
@@ -95,6 +95,34 @@ public class OrdenMantenimientoController : ControllerBase
             return StatusCode(result.Status, result);
         // 201 Created + encabezado Location: /api/OrdenMantenimiento/{id}
         return CreatedAtRoute("GetOrdenMantenimientoById", new { id = result.Data!.IdOrden }, result);
+    }
+
+    /// <summary>
+    /// Edita el motivo y el tipo de una solicitud de mantenimiento.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Administrador y solo mientras la orden está Solicitada. El vehículo no se cambia.
+    /// Si cambia el tipo y el vehículo está En Mantenimiento, el nuevo tipo debe ser de naturaleza Emergencia.
+    /// Editar no es un cambio de estado, así que no agrega registros al historial.
+    /// </remarks>
+    /// <param name="id" example="2">Id de la orden (de la ruta, nunca del cuerpo).</param>
+    /// <param name="orden">Tipo de mantenimiento y motivo nuevos.</param>
+    /// <response code="200">Orden actualizada; data = detalle de la orden.</response>
+    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="403">El rol no es Administrador.</response>
+    /// <response code="404">La orden o el tipo de mantenimiento no existen, o el usuario fue desactivado.</response>
+    /// <response code="409">La orden ya no está Solicitada, o el vehículo está En Mantenimiento y el nuevo tipo no es de emergencia.</response>
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = Roles.Administrador)]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateAsync([FromRoute] int id, [FromBody] OrdenMantenimientoUpdateDto orden)
+    {
+        var result = await _service.UpdateAsync(id, orden, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
     }
 
     /// <summary>
