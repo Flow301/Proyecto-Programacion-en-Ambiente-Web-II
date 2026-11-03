@@ -178,4 +178,32 @@ public class OrdenMantenimientoController : ControllerBase
         var result = await _service.RechazarAsync(id, rechazo?.Observacion, User.GetIdUsuario());
         return StatusCode(result.Status, result);
     }
+
+    /// <summary>
+    /// Cancela una orden Solicitada, Diagnosticada o Aprobada: pasa a Cancelada, que es un estado final.
+    /// </summary>
+    /// <remarks>
+    /// El Administrador o el Coordinador/Técnico. La observación es opcional y el cuerpo puede ir vacío.
+    /// Registra la fecha de cierre y la transición en el historial de la orden. El vehículo conserva su estado.
+    /// La cancelación durante la ejecución (En Ejecución o En Espera de Repuesto) llega con la ejecución.
+    /// </remarks>
+    /// <param name="id" example="7">Id de la orden.</param>
+    /// <param name="cancelacion">Observación opcional.</param>
+    /// <response code="200">Orden cancelada; data = detalle de la orden.</response>
+    /// <response code="400">La observación supera los 500 caracteres.</response>
+    /// <response code="403">El rol es Solicitante/Consulta.</response>
+    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
+    /// <response code="409">La orden ya está en un estado final, o está en ejecución.</response>
+    [HttpPost("{id:int}/cancelar")]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CancelarAsync([FromRoute] int id, [FromBody] OrdenMantenimientoObservacionDto? cancelacion)
+    {
+        var result = await _service.CancelarAsync(id, cancelacion?.Observacion, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
 }

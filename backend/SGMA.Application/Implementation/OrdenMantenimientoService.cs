@@ -247,6 +247,34 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return await DetalleAsync(id, $"Orden {orden.Codigo} rechazada.");
     }
 
+    // Solicitada, Diagnosticada o Aprobada → Cancelada (docs/matriz-estados.md): estado final con fecha de cierre.
+    // El vehículo conserva su estado, porque todavía no había entrado a mantenimiento por esta orden.
+    public async Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario)
+    {
+        var orden = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenCancelada, usuario.Rol.Nombre);
+
+        // La matriz permite cancelar desde la ejecución, pero ese caso tiene efectos propios (congelar costos, eliminar
+        // pendientes, devolver el vehículo a Operativo) que llegan con la ejecución en la semana 9. Hasta entonces se rechaza
+        // para no dejar la orden cerrada con el vehículo En Mantenimiento.
+        if (orden.IdEstadoOrden is SeedIds.EstadoOrdenEnEjecucion or SeedIds.EstadoOrdenEnEsperaDeRepuesto)
+        {
+            _logger.LogWarning("Intento de cancelar la orden {Codigo} durante la ejecución, todavía no disponible", orden.Codigo);
+            throw new ReglaNegocioException(
+                $"La orden {orden.Codigo} está {MatrizTransicionesOrden.Nombre(orden.IdEstadoOrden)}: la cancelación durante la ejecución todavía no está disponible.");
+        }
+
+        AplicarTransicion(orden, SeedIds.EstadoOrdenCancelada, idUsuario, observacion);
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Orden {Codigo} cancelada. Usuario: {IdUsuario}", orden.Codigo, idUsuario);
+
+        return await DetalleAsync(id, $"Orden {orden.Codigo} cancelada.");
+    }
+
     // Único punto que cambia el estado de la orden y escribe HistorialEstadoOrden (docs/matriz-estados.md, "Historial").
     // No guarda: quien lo llama hace un solo SaveChangesAsync. Los estados finales registran la fecha de cierre.
     private static void AplicarTransicion(OrdenMantenimiento orden, int idEstadoNuevo, int idUsuario, string? observacion)
