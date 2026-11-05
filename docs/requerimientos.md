@@ -611,8 +611,8 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 **Ciclo de vida de la orden**
 
 - [ ] Diagnosticar, aprobar, rechazar, iniciar, reanudar, completar y cancelar según la matriz y los roles.
-- [ ] Excepción de negocio propia en toda transición no permitida.
-- [ ] Edición solo en estado Solicitada.
+- [x] Excepción de negocio propia en toda transición no permitida.
+- [x] Edición solo en estado Solicitada.
 - [ ] Cambios automáticos del vehículo a En Mantenimiento y de vuelta a Operativo, con sus casos borde.
 - [ ] Kilometraje en el diagnóstico y reinicio del contador al completar una preventiva.
 - [ ] Costos en vivo y congelados al cierre.
