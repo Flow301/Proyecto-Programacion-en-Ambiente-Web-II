@@ -61,7 +61,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         if (orden is null || (esSolicitante && orden.IdUsuarioSolicitante != idUsuario))
             return Result<OrdenMantenimientoDetailDto>.Failure(404, "Recurso no encontrado", $"La orden {id} no existe.");
 
-        return Result<OrdenMantenimientoDetailDto>.Success(MapearDetalle(orden));
+        return Result<OrdenMantenimientoDetailDto>.Success(MapearDetalle(orden, ocultarCostos: esSolicitante));
     }
 
     // Todos los roles lo consultan; el Solicitante/Consulta solo el de sus órdenes, con el mismo 404 que el detalle
@@ -92,7 +92,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             return Result<OrdenMantenimientoDetailDto>.Failure(404, "Recurso no encontrado",
                 $"El tipo de mantenimiento {orden.IdTipoMantenimiento} no existe.");
 
-        await ValidarSolicitanteAsync(idUsuario);
+        var solicitante = await ValidarSolicitanteAsync(idUsuario);
 
         if (activo.IdEstadoActivo == SeedIds.EstadoActivoDadoDeBaja)
         {
@@ -155,7 +155,8 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
         var creada = await _repository.GetByIdAsync(entity.IdOrden);
 
-        return Result<OrdenMantenimientoDetailDto>.Success(MapearDetalle(creada!), 201, "Creado",
+        return Result<OrdenMantenimientoDetailDto>.Success(
+            MapearDetalle(creada!, ocultarCostos: solicitante.IdRol == SeedIds.RolSolicitanteConsulta), 201, "Creado",
             $"Orden {entity.Codigo} registrada.");
     }
 
@@ -377,21 +378,29 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
     // Con la orden cerrada se usan los costos congelados; abierta, se calculan en vivo.
     // Horas por tarifa se redondea a 2 decimales igual que SQL Server al guardarlo en decimal(18,2) al congelarlo.
-    private OrdenMantenimientoDetailDto MapearDetalle(OrdenMantenimiento orden)
+    // El Solicitante/Consulta ve el estado y el historial, pero no los costos (docs/requerimientos.md, 7.5): quedan en null.
+    private OrdenMantenimientoDetailDto MapearDetalle(OrdenMantenimiento orden, bool ocultarCostos = false)
     {
         var data = _mapper.Map<OrdenMantenimientoDetailDto>(orden);
+
+        // Mapster ya copió los costos congelados de la entidad (mismo nombre): se borran explícitamente
+        if (ocultarCostos)
+        {
+            data.CostoRepuestos = data.CostoManoObra = data.CostoTotal = null;
+            return data;
+        }
 
         data.CostoRepuestos = orden.CostoRepuestos ?? orden.Detalles.Sum(d => d.Subtotal);
         data.CostoManoObra = orden.CostoManoObra
             ?? Math.Round(orden.Asignaciones.Sum(a => a.HorasTrabajadas * (a.TarifaAplicada ?? a.Tecnico.TarifaHora)), 2, MidpointRounding.AwayFromZero);
-        data.CostoTotal = orden.CostoTotal ?? data.CostoRepuestos + data.CostoManoObra;
+        data.CostoTotal = orden.CostoTotal ?? data.CostoRepuestos.Value + data.CostoManoObra.Value;
 
         return data;
     }
 
     // [Authorize] ya valida el rol del token; esto cubre al usuario desactivado o cambiado de rol con un token aún vigente.
     // El Coordinador/Técnico no crea órdenes (docs/requerimientos.md, 7.5).
-    private async Task ValidarSolicitanteAsync(int idUsuario)
+    private async Task<Usuario> ValidarSolicitanteAsync(int idUsuario)
     {
         var usuario = await _usuarioRepository.GetByIdAsync(idUsuario);
 
@@ -400,5 +409,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
         if (usuario.IdRol != SeedIds.RolAdministrador && usuario.IdRol != SeedIds.RolSolicitanteConsulta)
             throw new ReglaNegocioException("Solo el Administrador o el Solicitante/Consulta pueden crear órdenes.");
+
+        return usuario;
     }
 }

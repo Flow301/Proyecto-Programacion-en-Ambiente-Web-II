@@ -90,15 +90,15 @@ public record class OrdenMantenimientoDetailDto
     /// <example>null</example>
     public DateTime? FechaCierre { get; set; }
 
-    /// <summary>Costo de repuestos en colones: suma de los subtotales del detalle.</summary>
+    /// <summary>Costo de repuestos en colones: suma de los subtotales del detalle. null para el Solicitante/Consulta, que no ve costos.</summary>
     /// <example>113000</example>
-    public decimal CostoRepuestos { get; set; }
+    public decimal? CostoRepuestos { get; set; }
 
-    /// <summary>Costo de mano de obra en colones: horas por tarifa de cada técnico.</summary>
+    /// <summary>Costo de mano de obra en colones: horas por tarifa de cada técnico. null para el Solicitante/Consulta.</summary>
     /// <example>57200</example>
-    public decimal CostoManoObra { get; set; }
+    public decimal? CostoManoObra { get; set; }
 
-    /// <summary>Costo total en colones: repuestos más mano de obra.</summary>
+    /// <summary>Costo total en colones: repuestos más mano de obra. null para el Solicitante/Consulta.</summary>
     /// <example>170200</example>
-    public decimal CostoTotal { get; set; }
+    public decimal? CostoTotal { get; set; }
 }

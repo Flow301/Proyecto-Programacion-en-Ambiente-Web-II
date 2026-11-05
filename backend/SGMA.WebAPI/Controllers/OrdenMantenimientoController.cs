@@ -52,7 +52,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Mientras la orden está abierta, los costos de repuestos, mano de obra y total se calculan en vivo.
-    /// El Solicitante/Consulta solo ve las órdenes que él creó.
+    /// El Solicitante/Consulta solo ve las órdenes que él creó, y sin costos: costoRepuestos, costoManoObra y costoTotal van en null.
     /// </remarks>
     /// <param name="id" example="1">Id de la orden.</param>
     /// <response code="200">Detalle de la orden con su vehículo, tipo, estado y costos.</response>
