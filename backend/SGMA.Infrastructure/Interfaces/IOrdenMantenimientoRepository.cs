@@ -9,6 +9,8 @@ public interface IOrdenMantenimientoRepository
     Task<IEnumerable<OrdenMantenimiento>> GetPaginationAsync(int pageNumber, int pageSize, int? idSolicitante = null);
     Task<int> CountAsync(int? idSolicitante = null);
     Task<OrdenMantenimiento?> GetByIdAsync(int id);
+    Task<int?> GetIdSolicitanteAsync(int id);
+    Task<IEnumerable<HistorialEstadoOrden>> GetHistorialAsync(int idOrden);
     Task<int> GetUltimoConsecutivoAsync(int anio);
     Task<TipoMantenimiento?> GetTipoMantenimientoAsync(int idTipoMantenimiento);
     Task<bool> PrioridadExistsAsync(int idPrioridad);

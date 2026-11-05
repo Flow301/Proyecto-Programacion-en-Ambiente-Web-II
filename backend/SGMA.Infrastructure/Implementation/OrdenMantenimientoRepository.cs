@@ -74,6 +74,29 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .FirstOrDefaultAsync(t => t.IdTipoMantenimiento == idTipoMantenimiento);
     }
 
+    // Solicitante de la orden, o null si la orden no existe: basta para el filtro por dueño sin traer la orden entera
+    public async Task<int?> GetIdSolicitanteAsync(int id)
+    {
+        return await _context.OrdenMantenimiento
+            .Where(o => o.IdOrden == id)
+            .Select(o => (int?)o.IdUsuarioSolicitante)
+            .FirstOrDefaultAsync();
+    }
+
+    // Historial de solo lectura, del más antiguo al más reciente, con los nombres de los estados y del usuario
+    public async Task<IEnumerable<HistorialEstadoOrden>> GetHistorialAsync(int idOrden)
+    {
+        return await _context.HistorialEstadoOrden
+            .AsNoTracking()
+            .Include(h => h.EstadoAnterior)
+            .Include(h => h.EstadoNuevo)
+            .Include(h => h.Usuario)
+            .Where(h => h.IdOrden == idOrden)
+            .OrderBy(h => h.FechaCambio)
+            .ThenBy(h => h.IdHistorial)
+            .ToListAsync();
+    }
+
     public async Task<bool> PrioridadExistsAsync(int idPrioridad)
     {
         return await _context.Prioridad.AnyAsync(p => p.IdPrioridad == idPrioridad);

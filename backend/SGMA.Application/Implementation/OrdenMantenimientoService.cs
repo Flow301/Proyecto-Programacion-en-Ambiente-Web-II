@@ -64,6 +64,21 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return Result<OrdenMantenimientoDetailDto>.Success(MapearDetalle(orden));
     }
 
+    // Todos los roles lo consultan; el Solicitante/Consulta solo el de sus órdenes, con el mismo 404 que el detalle
+    public async Task<Result<IEnumerable<HistorialEstadoOrdenDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante)
+    {
+        var idSolicitante = await _repository.GetIdSolicitanteAsync(id);
+
+        if (idSolicitante is null || (esSolicitante && idSolicitante != idUsuario))
+            return Result<IEnumerable<HistorialEstadoOrdenDto>>.Failure(404, "Recurso no encontrado", $"La orden {id} no existe.");
+
+        var historial = await _repository.GetHistorialAsync(id);
+
+        var data = _mapper.Map<IEnumerable<HistorialEstadoOrdenDto>>(historial);
+
+        return Result<IEnumerable<HistorialEstadoOrdenDto>>.Success(data);
+    }
+
     // Creación → Solicitada (docs/matriz-estados.md): 404 si algo no existe, 409 si falla una condición
     public async Task<Result<OrdenMantenimientoDetailDto>> AddAsync(OrdenMantenimientoCreateDto orden, int idUsuario)
     {

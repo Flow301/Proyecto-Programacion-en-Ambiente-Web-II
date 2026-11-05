@@ -67,6 +67,25 @@ public class OrdenMantenimientoController : ControllerBase
     }
 
     /// <summary>
+    /// Consulta el historial de estados de una orden.
+    /// </summary>
+    /// <remarks>
+    /// Los tres roles; el Solicitante/Consulta solo el de las órdenes que él creó. Incluye el registro inicial,
+    /// con el estado anterior vacío, y cada transición con su usuario y observación. Es de solo lectura.
+    /// </remarks>
+    /// <param name="id" example="3">Id de la orden.</param>
+    /// <response code="200">Cambios de estado de la orden, del más antiguo al más reciente.</response>
+    /// <response code="404">La orden no existe, o el usuario es Solicitante/Consulta y la orden no es suya.</response>
+    [HttpGet("{id:int}/historial")]
+    [ProducesResponseType<Result<IEnumerable<HistorialEstadoOrdenDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetHistorialAsync(int id)
+    {
+        var result = await _service.GetHistorialAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta));
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
     /// Crea una solicitud de mantenimiento y genera su código.
     /// </summary>
     /// <remarks>
