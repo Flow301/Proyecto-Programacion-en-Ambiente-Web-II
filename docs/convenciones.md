@@ -42,7 +42,15 @@ Es la misma distribución de paquetes del material de clase, con tres diferencia
 
 ### Frontend
 
-**Pendiente (Avance 2).** React con JavaScript, sin TypeScript, creado con Vite, porque Create React App está deprecado. Las versiones de Node.js, React y cada dependencia se fijan y se verifican al crear el proyecto.
+React con JavaScript, sin TypeScript, creado con Vite, porque Create React App está deprecado. Versiones verificadas en npm el 7 de noviembre de 2026, fijadas sin `^` en `package.json`:
+
+- Node.js 26.4.0 o superior.
+- `react` y `react-dom` 19.3.1.
+- `react-router` 8.5.1, para las rutas y la redirección al login.
+- `vite` 8.3.6 y `@vitejs/plugin-react` 6.2.1.
+- `oxlint` 1.92.0, el linter que trae la plantilla de Vite.
+
+`npm audit` sale sin vulnerabilidades.
 
 ### Reglas sobre dependencias
 
@@ -115,10 +123,13 @@ Cada entidad principal tiene su par de interfaz e implementación: `IActivoRepos
 
 **Operaciones que tocan varias entidades.** Por ejemplo, iniciar una orden cambia la orden, crea asignaciones, cambia el vehículo y escribe dos historiales. Los pasos intermedios solo modifican entidades rastreadas por EF, sin guardar, y el último paso guarda una sola vez. Como todos los repositorios de una petición comparten el mismo `AppDbContext` (`AddScoped`), ese único `SaveChangesAsync` aplica todo en una sola transacción: se guarda todo o nada.
 
+**Dos peticiones a la vez.** El estado de la orden (`IdEstadoOrden`) y el del vehículo (`IdEstadoActivo`) son tokens de concurrencia en `AppDbContext`: el `UPDATE` lleva en el `WHERE` el estado que se leyó, igual que la anulación de facturas del material pone "todavía no está anulada" dentro del `UPDATE`. Si dos usuarios hacen una transición de la misma orden a la vez, solo una se guarda; la otra no toca ninguna fila, no guarda nada y responde 409. Cuando una operación necesite además `ExecuteUpdateAsync` (por ejemplo, descontar stock con la condición "alcanza" en el `WHERE`), se usa la transacción explícita del material: `CreateExecutionStrategy`, `BeginTransactionAsync`, `CommitAsync` y `RollbackAsync` dentro del repositorio.
+
 ### Respuestas y errores
 
 - **Forma única de respuesta:** `Result<T>` y `BaseResult`, en `SGMA.Domain/DTO/PatternResult`, copiados del material. El código HTTP se repite en `status` dentro del body.
 - **Errores esperados del CRUD** (no existe, nombre repetido, tiene relaciones): el servicio devuelve `Result<T>.Failure`, como en el material. El orden de las verificaciones es 404 y después 409.
+- **Id inexistente en el cuerpo** (una categoría, un rol, un tipo de mantenimiento, una prioridad): 400 "Solicitud inválida", como en el registro de facturas del material, porque lo inválido es el cuerpo. El 404 queda para el recurso de la ruta y para el usuario del token que fue desactivado.
 - **Reglas del flujo de estados:** el servicio lanza una excepción de negocio propia, porque el enunciado lo exige (sección 9). El manejador global la convierte en la misma forma `Result<T>`, así el cliente nunca ve dos formatos.
 - **Validación de formato:** la hace `[ApiController]` con las DataAnnotations del DTO y responde 400. Como en el material, `InvalidModelStateResponseFactory` (en `Program.cs`) la devuelve también como `Result<T>`, con los errores de cada campo en `data`:
 
@@ -131,7 +142,8 @@ Cada entidad principal tiene su par de interfaz e implementación: `IActivoRepos
     "data": { "Nombre": ["El campo Nombre es obligatorio."] }
   }
   ```
-- **Conflictos en la base:** si SQL Server rechaza un cambio por una FK, un índice único o una llave primaria (por ejemplo, dos peticiones que crean el mismo código a la vez), el manejador global responde 409, como en el material.
+- **Conflictos en la base:** si SQL Server rechaza un cambio por una FK, un índice único o una llave primaria, el manejador global responde 409, como en el material. Al generar un código (`PKP-0001`, `OM-2026-00001`), el repositorio atrapa el choque con el índice único y devuelve `false`, como `CreateAsync` en el material; el servicio reintenta una vez con el siguiente número. La capa Application nunca usa EF Core directamente.
+- **Concurrencia:** si otra petición cambió el estado de la orden o del vehículo entre la lectura y el guardado, el manejador global responde 409 indicando que no se guardó nada.
 - **Errores inesperados:** el manejador global responde 500 con un mensaje genérico en español, sin detalles internos. El mensaje incluye el código de seguimiento (`TraceId`) que también queda en el log junto con la excepción completa, la ruta y el usuario.
 
 ### Lugares fijos
@@ -174,7 +186,7 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 ### Validación
 
 - Doble validación:
-  - **Formato:** DataAnnotations en los DTO de entrada, que ASP.NET responde con 400. Las reglas que comparan campos del mismo DTO o no dependen de la base (el margen menor que el intervalo, una fecha que no puede ser futura) van en el propio DTO con `IValidatableObject`, como en el material.
+  - **Formato:** DataAnnotations en los DTO de entrada, que ASP.NET responde con 400. Todo texto libre lleva además `[RegularExpression(@"^[^<>]*$")]`, que rechaza `<` y `>` contra XSS, como en el material (Laboratorio 13); quedan fuera las contraseñas, que nunca se muestran, y los campos que ya tienen un formato estricto (prefijo, cédula, teléfono, identificación). Las reglas que comparan campos del mismo DTO o no dependen de la base (el margen menor que el intervalo, una fecha que no puede ser futura) van en el propio DTO con `IValidatableObject`, como en el material.
   - **Negocio:** en el servicio, con excepciones propias.
   - La base tiene además restricciones `UNIQUE` y `CHECK` como última defensa.
 - En el Avance 2 se suma la validación en el cliente, que no reemplaza la del servidor.
@@ -186,6 +198,10 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 - El seeder siempre crea al menos un Administrador.
 - Ningún secreto va al repositorio. La cadena de conexión, la contraseña del administrador inicial y la clave del JWT (`Jwt:Key`) viven en User Secrets. La contraseña común de los usuarios de demostración no cuenta como secreto: es pública y solo existe en Development (ver [modelo de datos](modelo-datos.md)).
 - Ningún endpoint queda abierto por olvido: la política por defecto exige token, y solo `api/Auth/login` lleva `[AllowAnonymous]`.
+- Como en el material (Laboratorio 13), en `Program.cs`:
+  - **CORS:** la política `Frontend` solo admite los orígenes de `Cors:AllowedOrigins` (`appsettings.json`), los verbos GET, POST, PUT y DELETE, y los encabezados `Content-Type` y `Authorization`. Expone `Location` para que React lea el de un 201.
+  - **Encabezados de seguridad** en todas las respuestas: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` y `Content-Security-Policy`, salvo en Scalar, que necesita sus scripts.
+  - **Sin encabezado `Server`:** Kestrel no anuncia su nombre.
 
 ### Autenticación y autorización
 
@@ -252,7 +268,13 @@ El material de clase no trae JWT, así que esto lo decidimos nosotros:
 
 ### React
 
-**Pendiente (Avance 2).** Lo definimos con la estructura que indique el profesor: componentes en `PascalCase` con extensión `.jsx`, hooks con prefijo `use` y un único módulo para las llamadas a la API.
+El material de clase todavía no trae React; si el profesor muestra otra estructura, la ajustamos.
+
+- Componentes en `PascalCase` con extensión `.jsx`, y hooks con prefijo `use`.
+- `src/api/api.js` es el único módulo que llama a la API: agrega el token, convierte los errores `Result<T>` en `ErrorApi` y, ante un 401 con sesión, la cierra y vuelve al login.
+- `src/context/`: la sesión (`AuthProvider` y `useAuth`), que también la cierra cuando vence el token.
+- `src/components/`: piezas reutilizables, como `RutaProtegida`.
+- `src/pages/`: una pantalla por archivo.
 
 ---
 
@@ -366,10 +388,8 @@ Un módulo solo cuenta como terminado, y se marca en la [checklist de cobertura]
 
 ## 8. Pendiente de confirmar con el profesor
 
-El material de clase (proyecto ERP) cubre las consultas, el CRUD completo con `Result<T>`, las DataAnnotations, el mapeo con Mapster y los seeders. Para estos temas aplicamos lo descrito en este documento hasta tener el material correspondiente:
+El material de clase (proyecto ERP) cubre las consultas, el CRUD completo con `Result<T>`, las DataAnnotations, el mapeo con Mapster, los seeders, el manejo global de excepciones con `IExceptionHandler`, las transacciones (registro y anulación de facturas) y la seguridad de la API (CORS, encabezados y validación contra XSS). Todo eso ya está aplicado como en el material. Para estos temas aplicamos lo descrito en este documento hasta tener el material correspondiente:
 
-- Manejo global de excepciones con `IExceptionHandler`.
-- Transacciones entre varios repositorios. Mientras tanto, un solo `SaveChangesAsync` al final de cada operación (ver [Recorrido de una petición](#recorrido-de-una-petición)).
-- Subida de imágenes.
+- Subida de imágenes: el material solo valida la extensión del nombre; nosotros validamos el tamaño y el tipo real por los primeros bytes del archivo.
 - JWT: el material no lo trae. Lo resolvimos como se describe en [Autenticación y autorización](#autenticación-y-autorización); si el profesor muestra otra forma, la ajustamos.
 - Estructura del proyecto React y forma de consumir la API.

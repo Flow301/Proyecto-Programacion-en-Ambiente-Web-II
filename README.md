@@ -50,7 +50,7 @@ Las transiciones permitidas, quién puede ejecutar cada una y sus efectos autom�
 - **Documentación de la API:** OpenAPI y Scalar.
 - **Contraseñas:** `PasswordHasher` de ASP.NET Core Identity (hash PBKDF2 con *salt*).
 - **Autenticación:** JWT con roles (`Microsoft.AspNetCore.Authentication.JwtBearer`).
-- **Frontend:** React con JavaScript, sin TypeScript. **Pendiente (Avance 2).**
+- **Frontend:** React 19 con JavaScript, sin TypeScript, creado con Vite, y React Router para las rutas.
 - **Control de versiones:** Git y GitHub.
 
 Las versiones exactas y las reglas sobre dependencias están en [convenciones](docs/convenciones.md).
@@ -73,7 +73,7 @@ Seguimos la organización de capas y los patrones vistos en clase (Clean Archite
 │   ├── SGMA.Application/         Interfaces/, Implementation/ y Mapper/
 │   ├── SGMA.Shared/              Excepciones de negocio y constantes compartidas
 │   └── SGMA.WebAPI/              Controllers/, Handlers/, Security/, Program.cs, appsettings.json y wwwroot/imagenes/
-└── frontend/                     Pendiente (Avance 2)
+└── frontend/                     React con Vite: src/api (único módulo de llamadas), context/ (sesión), components/ y pages/
 ```
 
 Qué hace cada proyecto y a cuáles referencia:
@@ -102,7 +102,7 @@ Qué hace cada proyecto y a cuáles referencia:
   dotnet tool update --global dotnet-ef --version 10.0.*
   ```
 
-- Node.js. **Pendiente (Avance 2):** la versión se fija al crear el frontend.
+- Node.js 26.4 o superior, con npm.
 
 ### 1. Clonar el repositorio
 
@@ -166,7 +166,17 @@ El token dura 60 minutos. Sin token, la API responde 401; con un rol sin permiso
 
 ### 5. Ejecutar el frontend
 
-> **Pendiente (Avance 2):** versión de Node.js, instalación de dependencias, URL de la API y comando para levantar la aplicación.
+Con la API corriendo en el perfil `https` (paso 4):
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+La aplicación queda en `http://localhost:5173`. La URL de la API está en `frontend/.env.development` (`VITE_API_URL`); si se cambia el puerto de Vite, hay que agregar el origen nuevo en `Cors:AllowedOrigins` de `appsettings.json`.
+
+El token del login se guarda en el navegador. Cuando vence (60 minutos) o la API responde 401, la aplicación cierra la sesión y vuelve al login.
 
 ### Usuarios de prueba
 

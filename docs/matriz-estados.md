@@ -186,8 +186,8 @@ Cada método del servicio que cambia el estado sigue este orden:
 
 1. Busca la orden. Si no existe, lanza `RecursoNoEncontradoException`, que la API responde con **404**.
 2. Comprueba en la matriz que la transición esté permitida desde el estado actual y para el rol del usuario. Si no lo está, lanza `TransicionNoPermitidaException`, que se responde con **409**.
-3. Verifica las condiciones propias de la transición (técnicos, stock, horas, fechas). Si alguna falla, lanza `ReglaNegocioException`, también con **409**.
-4. Aplica todos los efectos y el historial en una sola transacción.
+3. Verifica las condiciones propias de la transición (técnicos, stock, horas, fechas). Si el cuerpo trae un id que no existe (una prioridad, un tipo), responde **400**. Si falla una regla, lanza `ReglaNegocioException`, con **409**.
+4. Aplica todos los efectos y el historial en una sola transacción. El `UPDATE` de la orden lleva en el `WHERE` el estado que se leyó (token de concurrencia): si otra petición lo cambió mientras tanto, no se guarda nada y responde **409**.
 
 Las excepciones viven en `SGMA.Shared/Exceptions`. El manejador global de excepciones de `SGMA.WebAPI` las traduce a la respuesta estándar `Result<T>` con un mensaje en español, nunca a un error genérico. Por ejemplo:
 
