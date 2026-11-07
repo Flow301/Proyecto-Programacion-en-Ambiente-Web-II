@@ -24,6 +24,9 @@ using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Kestrel no anuncia su nombre en el encabezado Server (como en el material, Laboratorio 13)
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
 // Serilog reemplaza al proveedor de logging por defecto (como en el material)
 builder.Services.AddSerilog((services, logConfig) => logConfig
     .MinimumLevel.Information()                                             // nivel general
@@ -132,6 +135,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
+// CORS: solo el frontend autorizado, leído desde appsettings.json (como en el material, Laboratorio 13)
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+builder.Services.AddCors(options =>
+    options.AddPolicy("Frontend", policy => policy
+        .WithOrigins(allowedOrigins)                        // orígenes desde la configuración, no desde el código
+        .WithMethods("GET", "POST", "PUT", "DELETE")        // solo los verbos que usa la API
+        .WithHeaders("Content-Type", "Authorization")       // Authorization lleva el token JWT
+        .WithExposedHeaders("Location")                     // React puede leer el Location de un 201
+        .SetPreflightMaxAge(TimeSpan.FromMinutes(10))));    // el navegador recuerda el permiso 10 minutos
+
 // Seeders en tiempo de ejecución, ver docs/modelo-datos.md
 // Primero el MasterSeeder (admin, con la contraseña de Seed:AdminPassword) y después,
 // solo en Development, el DevelopmentSeeder.
@@ -197,8 +211,31 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 
+// Encabezados de seguridad en todas las respuestas, también en las de error (como en el material, Laboratorio 13)
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        var headers = context.Response.Headers;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["X-Frame-Options"] = "DENY";
+        headers["Referrer-Policy"] = "no-referrer";
+        headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+
+        // La API solo entrega JSON e imágenes: no necesita cargar scripts, estilos ni marcos.
+        // Scalar sí es una página con scripts, por eso queda fuera de esta política.
+        if (!context.Request.Path.StartsWithSegments("/scalar"))
+            headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
+
 app.UseSerilogRequestLogging(); // una línea de log por petición: método, ruta, código y duración
 app.UseExceptionHandler();      // todo lo que viene después queda protegido por el manejador global
+app.UseCors("Frontend");        // antes de la autenticación: la petición previa (OPTIONS) del navegador no lleva token
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
