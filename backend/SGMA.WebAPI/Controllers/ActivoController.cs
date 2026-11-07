@@ -88,9 +88,9 @@ public class ActivoController : ControllerBase
     /// </remarks>
     /// <param name="activo">Datos del vehículo. El usuario responsable es el del token.</param>
     /// <response code="201">Vehículo creado; el encabezado Location apunta a GET api/Activo/{id}.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos o la categoría no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">La categoría no existe.</response>
+    /// <response code="404">El usuario del token fue desactivado.</response>
     /// <response code="409">La placa ya existe o la categoría alcanzó el máximo de códigos.</response>
     [HttpPost]
     [Authorize(Roles = Roles.Administrador)]
@@ -118,10 +118,10 @@ public class ActivoController : ControllerBase
     /// <param name="id" example="1">Id del vehículo (de la ruta, nunca del cuerpo).</param>
     /// <param name="activo">Datos nuevos del vehículo.</param>
     /// <response code="200">Vehículo actualizado.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos o la categoría no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">El vehículo o la categoría no existen.</response>
-    /// <response code="409">La placa pertenece a otro vehículo o el kilometraje disminuye.</response>
+    /// <response code="404">El vehículo no existe.</response>
+    /// <response code="409">La placa pertenece a otro vehículo o el kilometraje disminuye, u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPut("{id:int}")]
     [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
@@ -173,10 +173,10 @@ public class ActivoController : ControllerBase
     /// <param name="id" example="1">Id del vehículo.</param>
     /// <param name="estado">Estado destino y observación. El usuario responsable es el del token.</param>
     /// <response code="200">Estado cambiado; data = detalle del vehículo.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos o el estado no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">El vehículo o el estado no existen.</response>
-    /// <response code="409">La transición no está permitida o el vehículo tiene órdenes abiertas (al dar de baja).</response>
+    /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">La transición no está permitida, el vehículo tiene órdenes abiertas (al dar de baja) u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/estado")]
     [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]

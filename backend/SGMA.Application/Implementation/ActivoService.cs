@@ -183,8 +183,10 @@ public class ActivoService : IActivoService
         var activo = await _repository.GetForUpdateAsync(id)
             ?? throw new RecursoNoEncontradoException($"El vehículo {id} no existe.");
 
-        var destino = await _repository.GetEstadoAsync(idEstadoNuevo)
-            ?? throw new RecursoNoEncontradoException($"El estado de vehículo {idEstadoNuevo} no existe.");
+        // Un estado que no existe responde 400: lo inválido es el cuerpo, no el vehículo
+        var destino = await _repository.GetEstadoAsync(idEstadoNuevo);
+        if (destino is null)
+            return Result<ActivoDetailDto>.Failure(400, "Solicitud inválida", $"El estado de vehículo {idEstadoNuevo} no existe.");
 
         await ValidarAdministradorAsync(idUsuario);
 
@@ -315,8 +317,9 @@ public class ActivoService : IActivoService
         entity.Marca = entity.Marca.Trim();
         entity.Modelo = entity.Modelo.Trim();
 
+        // Una categoría que no existe responde 400: lo inválido es el cuerpo, no un recurso de la ruta
         if (!await _categoriaRepository.ExistsAsync(entity.IdCategoria))
-            return Result<ActivoDetailDto>.Failure(404, "Recurso no encontrado",
+            return Result<ActivoDetailDto>.Failure(400, "Solicitud inválida",
                 $"La categoría {entity.IdCategoria} no existe.");
 
         int? excludeId = entity.IdActivo == 0 ? null : entity.IdActivo;

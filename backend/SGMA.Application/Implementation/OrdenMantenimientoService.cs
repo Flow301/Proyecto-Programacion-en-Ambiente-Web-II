@@ -79,18 +79,16 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return Result<IEnumerable<HistorialEstadoOrdenDto>>.Success(data);
     }
 
-    // Creación → Solicitada (docs/matriz-estados.md): 404 si algo no existe, 409 si falla una condición
+    // Creación → Solicitada (docs/matriz-estados.md): 400 si el cuerpo trae un id que no existe, 409 si falla una condición
     public async Task<Result<OrdenMantenimientoDetailDto>> AddAsync(OrdenMantenimientoCreateDto orden, int idUsuario)
     {
         var activo = await _activoRepository.GetByIdAsync(orden.IdActivo);
         if (activo is null)
-            return Result<OrdenMantenimientoDetailDto>.Failure(404, "Recurso no encontrado",
-                $"El vehículo {orden.IdActivo} no existe.");
+            return CuerpoInvalido($"El vehículo {orden.IdActivo} no existe.");
 
         var tipo = await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento);
         if (tipo is null)
-            return Result<OrdenMantenimientoDetailDto>.Failure(404, "Recurso no encontrado",
-                $"El tipo de mantenimiento {orden.IdTipoMantenimiento} no existe.");
+            return CuerpoInvalido($"El tipo de mantenimiento {orden.IdTipoMantenimiento} no existe.");
 
         var solicitante = await ValidarSolicitanteAsync(idUsuario);
 
@@ -181,8 +179,9 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
                 $"La orden {entity.Codigo} está {MatrizTransicionesOrden.Nombre(entity.IdEstadoOrden)}: solo se puede editar mientras está Solicitada.");
         }
 
-        var tipo = await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento)
-            ?? throw new RecursoNoEncontradoException($"El tipo de mantenimiento {orden.IdTipoMantenimiento} no existe.");
+        var tipo = await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento);
+        if (tipo is null)
+            return CuerpoInvalido($"El tipo de mantenimiento {orden.IdTipoMantenimiento} no existe.");
 
         // El bloqueo por En Mantenimiento se vuelve a validar solo si cambia el tipo (docs/requerimientos.md, 7.5):
         // así una orden creada como emergencia no se convierte en correctiva para saltarse la regla
@@ -207,8 +206,9 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
     }
 
     // Solicitada → Diagnosticada (docs/matriz-estados.md). Orden de las validaciones, igual en todas las transiciones:
-    // 1) la orden existe (404); 2) la matriz permite la transición para el rol (409); 3) las condiciones propias (404/409);
-    // 4) los efectos y el historial en un solo SaveChangesAsync.
+    // 1) la orden existe (404); 2) la matriz permite la transición para el rol (409); 3) las condiciones propias
+    // (400 si el cuerpo trae un id que no existe, 409 si falla una regla); 4) los efectos y el historial en un solo
+    // SaveChangesAsync, que falla con 409 si otra petición cambió el estado mientras tanto.
     public async Task<Result<OrdenMantenimientoDetailDto>> DiagnosticarAsync(int id, OrdenMantenimientoDiagnosticoDto diagnostico, int idUsuario)
     {
         var orden = await _repository.GetForUpdateAsync(id)
@@ -218,7 +218,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenDiagnosticada, usuario.Rol.Nombre);
 
         if (!await _repository.PrioridadExistsAsync(diagnostico.IdPrioridad))
-            throw new RecursoNoEncontradoException($"La prioridad {diagnostico.IdPrioridad} no existe.");
+            return CuerpoInvalido($"La prioridad {diagnostico.IdPrioridad} no existe.");
 
         var activo = orden.Activo;
         var kilometraje = diagnostico.KilometrajeDiagnostico!.Value;
@@ -235,8 +235,9 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         var idTipoNuevo = diagnostico.IdTipoMantenimiento ?? orden.IdTipoMantenimiento;
         if (idTipoNuevo != orden.IdTipoMantenimiento)
         {
-            var tipo = await _repository.GetTipoMantenimientoAsync(idTipoNuevo)
-                ?? throw new RecursoNoEncontradoException($"El tipo de mantenimiento {idTipoNuevo} no existe.");
+            var tipo = await _repository.GetTipoMantenimientoAsync(idTipoNuevo);
+            if (tipo is null)
+                return CuerpoInvalido($"El tipo de mantenimiento {idTipoNuevo} no existe.");
 
             if (activo.IdEstadoActivo == SeedIds.EstadoActivoEnMantenimiento && tipo.IdNaturaleza != SeedIds.NaturalezaEmergencia)
             {
@@ -357,6 +358,10 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         if (idEstadoNuevo is SeedIds.EstadoOrdenRechazada or SeedIds.EstadoOrdenCompletada or SeedIds.EstadoOrdenCancelada)
             orden.FechaCierre = ahora;
     }
+
+    // Un id del cuerpo que no existe responde 400, como en el material: lo inválido es el cuerpo, no la orden de la ruta
+    private static Result<OrdenMantenimientoDetailDto> CuerpoInvalido(string detalle) =>
+        Result<OrdenMantenimientoDetailDto>.Failure(400, "Solicitud inválida", detalle);
 
     // Vuelve a leer la orden con sus relaciones para responder con los nombres y los costos
     private async Task<Result<OrdenMantenimientoDetailDto>> DetalleAsync(int id, string detalle)

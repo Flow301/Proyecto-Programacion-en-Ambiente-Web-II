@@ -9,7 +9,7 @@ using SGMA.WebAPI.Security;
 namespace SGMA.WebAPI.Controllers;
 
 /// <summary>
-/// Órdenes de mantenimiento: creación de solicitudes y consulta. El resto del ciclo de vida llega en el Avance 2.
+/// Órdenes de mantenimiento: solicitud, consulta, edición, historial y las transiciones de la matriz de estados.
 /// Los tres roles consultan (sin [Authorize] en la clase: basta la política por defecto);
 /// solo el Administrador y el Solicitante/Consulta crean órdenes, y solo el Administrador las edita.
 /// </summary>
@@ -96,9 +96,9 @@ public class OrdenMantenimientoController : ControllerBase
     /// </remarks>
     /// <param name="orden">Vehículo, tipo y motivo. El solicitante es el usuario del token.</param>
     /// <response code="201">Orden creada; el encabezado Location apunta a GET api/OrdenMantenimiento/{id}.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos, o el vehículo o el tipo de mantenimiento no existen; data indica el error de cada campo.</response>
     /// <response code="403">El rol es Coordinador/Técnico.</response>
-    /// <response code="404">El vehículo o el tipo de mantenimiento no existen, o el usuario fue desactivado.</response>
+    /// <response code="404">El usuario del token fue desactivado.</response>
     /// <response code="409">El usuario ya no puede crear órdenes (le cambiaron el rol con el token vigente), el vehículo está dado de baja o está En Mantenimiento y el tipo no es de emergencia.</response>
     [HttpPost]
     [Authorize(Roles = $"{Roles.Administrador},{Roles.SolicitanteConsulta}")]
@@ -127,10 +127,10 @@ public class OrdenMantenimientoController : ControllerBase
     /// <param name="id" example="2">Id de la orden (de la ruta, nunca del cuerpo).</param>
     /// <param name="orden">Tipo de mantenimiento y motivo nuevos.</param>
     /// <response code="200">Orden actualizada; data = detalle de la orden.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos o el tipo de mantenimiento no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">La orden o el tipo de mantenimiento no existen, o el usuario fue desactivado.</response>
-    /// <response code="409">La orden ya no está Solicitada, o el vehículo está En Mantenimiento y el nuevo tipo no es de emergencia.</response>
+    /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">La orden ya no está Solicitada, o el vehículo está En Mantenimiento y el nuevo tipo no es de emergencia, u otro usuario cambió el estado de la orden al mismo tiempo.</response>
     [HttpPut("{id:int}")]
     [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
@@ -155,10 +155,10 @@ public class OrdenMantenimientoController : ControllerBase
     /// <param name="id" example="1">Id de la orden.</param>
     /// <param name="diagnostico">Diagnóstico, prioridad, kilometraje, tipo corregido (opcional) y observación (opcional).</param>
     /// <response code="200">Orden diagnosticada; data = detalle de la orden.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos, o la prioridad o el tipo no existen; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Coordinador/Técnico.</response>
-    /// <response code="404">La orden, la prioridad o el tipo no existen, o el usuario fue desactivado.</response>
-    /// <response code="409">La orden no está Solicitada, el kilometraje es menor que el del vehículo, o el tipo corregido no es de emergencia con el vehículo En Mantenimiento.</response>
+    /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">La orden no está Solicitada, el kilometraje es menor que el del vehículo, el tipo corregido no es de emergencia con el vehículo En Mantenimiento, u otro usuario cambió el estado de la orden al mismo tiempo.</response>
     [HttpPost("{id:int}/diagnosticar")]
     [Authorize(Roles = Roles.CoordinadorTecnico)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
@@ -184,8 +184,8 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="200">Orden aprobada; data = detalle de la orden.</response>
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
-    /// <response code="409">La orden no está Diagnosticada o la fecha programada es anterior a hoy.</response>
+    /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">La orden no está Diagnosticada, la fecha programada es anterior a hoy, u otro usuario cambió el estado de la orden al mismo tiempo.</response>
     [HttpPost("{id:int}/aprobar")]
     [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
@@ -209,10 +209,10 @@ public class OrdenMantenimientoController : ControllerBase
     /// <param name="id" example="3">Id de la orden.</param>
     /// <param name="rechazo">Observación opcional.</param>
     /// <response code="200">Orden rechazada; data = detalle de la orden.</response>
-    /// <response code="400">La observación supera los 500 caracteres.</response>
+    /// <response code="400">La observación supera los 500 caracteres o contiene los caracteres &lt; o &gt;.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
-    /// <response code="409">La orden no está Diagnosticada.</response>
+    /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">La orden no está Diagnosticada u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/rechazar")]
     [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
@@ -237,10 +237,10 @@ public class OrdenMantenimientoController : ControllerBase
     /// <param name="id" example="7">Id de la orden.</param>
     /// <param name="cancelacion">Observación opcional.</param>
     /// <response code="200">Orden cancelada; data = detalle de la orden.</response>
-    /// <response code="400">La observación supera los 500 caracteres.</response>
+    /// <response code="400">La observación supera los 500 caracteres o contiene los caracteres &lt; o &gt;.</response>
     /// <response code="403">El rol es Solicitante/Consulta.</response>
-    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
-    /// <response code="409">La orden ya está en un estado final, o está en ejecución.</response>
+    /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">La orden ya está en un estado final, está en ejecución, u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/cancelar")]
     [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
