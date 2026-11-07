@@ -10,6 +10,7 @@ public record class TecnicoCreateDto
     /// <summary>Nombre completo: obligatorio, máximo 100 caracteres.</summary>
     /// <example>Andrea Vargas Rojas</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(100, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? NombreCompleto { get; set; }
 
     /// <summary>Identificación: obligatoria, formato 1-0845-0231 (máximo 20 caracteres) y no se repite.</summary>
@@ -27,6 +28,7 @@ public record class TecnicoCreateDto
     /// <summary>Correo: obligatorio, máximo 100 caracteres y con formato válido.</summary>
     /// <example>andrea.vargas@sgma.test</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(100, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres."), EmailAddress(ErrorMessage = "El campo {0} no tiene un formato de correo válido.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Correo { get; set; }
 
     /// <summary>Si el técnico puede recibir asignaciones. Por defecto true.</summary>

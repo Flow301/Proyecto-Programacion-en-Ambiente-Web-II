@@ -13,6 +13,7 @@ public record class OrdenMantenimientoDiagnosticoDto
     /// <summary>Diagnóstico del taller: obligatorio, máximo 1000 caracteres.</summary>
     /// <example>Pastillas traseras gastadas al 90 % y disco con rayaduras leves.</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(1000, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Diagnostico { get; set; }
 
     /// <summary>Id de la prioridad: 1 Baja, 2 Media, 3 Alta, 4 Crítica.</summary>
@@ -33,5 +34,6 @@ public record class OrdenMantenimientoDiagnosticoDto
     /// <summary>Observación opcional para el historial de la orden, máximo 500 caracteres.</summary>
     /// <example>Se revisó en el taller central.</example>
     [StringLength(500, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Observacion { get; set; }
 }

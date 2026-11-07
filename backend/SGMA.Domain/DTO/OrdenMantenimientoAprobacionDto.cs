@@ -17,5 +17,6 @@ public record class OrdenMantenimientoAprobacionDto
     /// <summary>Observación opcional para el historial de la orden, máximo 500 caracteres.</summary>
     /// <example>Aprobada con el presupuesto del mes.</example>
     [StringLength(500, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Observacion { get; set; }
 }

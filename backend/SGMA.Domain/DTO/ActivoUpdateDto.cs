@@ -11,11 +11,13 @@ public record class ActivoUpdateDto : IValidatableObject
     /// <summary>Nombre: obligatorio, máximo 100 caracteres.</summary>
     /// <example>Pickup de supervisión de rutas</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(100, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Nombre { get; set; }
 
     /// <summary>Descripción: opcional, máximo 250 caracteres.</summary>
     /// <example>Pickup doble cabina para supervisión de rutas y apoyo en carretera.</example>
     [StringLength(250, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Descripcion { get; set; }
 
     /// <summary>Id de una categoría existente.</summary>
@@ -37,16 +39,19 @@ public record class ActivoUpdateDto : IValidatableObject
     /// <summary>Placa: obligatoria, máximo 10 caracteres y no puede ser la de otro vehículo.</summary>
     /// <example>CL-284731</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(10, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Placa { get; set; }
 
     /// <summary>Marca: obligatoria, máximo 40 caracteres.</summary>
     /// <example>Toyota</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(40, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Marca { get; set; }
 
     /// <summary>Modelo: obligatorio, máximo 40 caracteres.</summary>
     /// <example>Hilux 2.4 4x4</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(40, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Modelo { get; set; }
 
     /// <summary>Año del vehículo: entre 1950 y 2100.</summary>

@@ -21,5 +21,6 @@ public record class OrdenMantenimientoCreateDto
     /// <summary>Motivo de la solicitud: obligatorio, máximo 500 caracteres.</summary>
     /// <example>Ruido metálico al frenar en las ruedas traseras.</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(500, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Motivo { get; set; }
 }

@@ -10,11 +10,13 @@ public record class CategoriaActivoUpdateDto : IValidatableObject
     /// <summary>Nombre: obligatorio, máximo 60 caracteres y no puede ser el de otra categoría.</summary>
     /// <example>Pickup</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(60, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Nombre { get; set; }
 
     /// <summary>Descripción: opcional, máximo 250 caracteres.</summary>
     /// <example>Vehículos de carga liviana con cajón abierto.</example>
     [StringLength(250, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Descripcion { get; set; }
 
     /// <summary>Prefijo: tres letras. No cambia si la categoría ya tiene vehículos.</summary>

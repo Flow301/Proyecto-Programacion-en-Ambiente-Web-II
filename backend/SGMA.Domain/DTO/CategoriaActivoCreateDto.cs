@@ -11,11 +11,13 @@ public record class CategoriaActivoCreateDto : IValidatableObject
     /// <summary>Nombre: obligatorio, máximo 60 caracteres y no se repite.</summary>
     /// <example>Grúa</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(60, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Nombre { get; set; }
 
     /// <summary>Descripción: opcional, máximo 250 caracteres.</summary>
     /// <example>Vehículos de arrastre para traslado de unidades averiadas.</example>
     [StringLength(250, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Descripcion { get; set; }
 
     /// <summary>Prefijo: exactamente tres letras, no se repite y se guarda en mayúscula.</summary>
