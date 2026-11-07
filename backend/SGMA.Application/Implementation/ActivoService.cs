@@ -1,5 +1,4 @@
 using MapsterMapper;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
@@ -120,15 +119,17 @@ public class ActivoService : IActivoService
 
             entity.Codigo = $"{categoria.Prefijo}-{consecutivo:D4}";
 
-            try
-            {
-                await _repository.AddAsync(entity);
+            if (await _repository.AddAsync(entity))
                 break;
-            }
-            catch (DbUpdateException) when (intento == 1)
+
+            if (intento == 2)
             {
-                _logger.LogWarning("El código {Codigo} ya fue tomado por otro registro; se reintenta con el siguiente", entity.Codigo);
+                _logger.LogWarning("Registro del vehículo {Placa} rechazado dos veces por un conflicto con otro registro", entity.Placa);
+                return Result<ActivoDetailDto>.Failure(409, "Conflicto",
+                    "Otro registro simultáneo entró en conflicto con este vehículo. No se guardó nada; intente de nuevo.");
             }
+
+            _logger.LogWarning("El código {Codigo} ya fue tomado por otro registro; se reintenta con el siguiente", entity.Codigo);
         }
 
         _logger.LogInformation("Vehículo {IdActivo} creado: {Codigo}", entity.IdActivo, entity.Codigo);

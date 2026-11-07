@@ -1,5 +1,4 @@
 using MapsterMapper;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
@@ -137,15 +136,18 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
             entity.Codigo = $"OM-{anio}-{consecutivo:D5}";
 
-            try
-            {
-                await _repository.AddAsync(entity);
+            if (await _repository.AddAsync(entity))
                 break;
-            }
-            catch (DbUpdateException) when (intento == 1)
+
+            if (intento == 2)
             {
-                _logger.LogWarning("El código {Codigo} ya fue tomado por otro registro; se reintenta con el siguiente", entity.Codigo);
+                _logger.LogWarning("Registro de la orden para el vehículo {CodigoActivo} rechazado dos veces por un conflicto con otro registro",
+                    activo.Codigo);
+                return Result<OrdenMantenimientoDetailDto>.Failure(409, "Conflicto",
+                    "Otro registro simultáneo entró en conflicto con esta orden. No se guardó nada; intente de nuevo.");
             }
+
+            _logger.LogWarning("El código {Codigo} ya fue tomado por otro registro; se reintenta con el siguiente", entity.Codigo);
         }
 
         _logger.LogInformation("Orden {IdOrden} creada: {Codigo} para el vehículo {CodigoActivo}. Usuario: {IdUsuario}",

@@ -105,11 +105,21 @@ public class ActivoRepository : IActivoRepository
             .FirstOrDefaultAsync(a => a.IdActivo == id);
     }
 
-    // Inserta el vehículo y su registro inicial de historial con un solo SaveChangesAsync
-    public async Task AddAsync(Activo activo)
+    // Inserta el vehículo y su registro inicial de historial con un solo SaveChangesAsync.
+    // Devuelve false si SQL Server lo rechaza por un índice único (otro registro simultáneo tomó el mismo código):
+    // el vehículo sigue en el ChangeTracker como Added, así que el servicio puede reintentar con otro código.
+    public async Task<bool> AddAsync(Activo activo)
     {
         _context.Activo.Add(activo);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            return false;
+        }
     }
 
     public async Task UpdateAsync(Activo activo)

@@ -16,6 +16,6 @@ public interface IOrdenMantenimientoRepository
     Task<bool> PrioridadExistsAsync(int idPrioridad);
     // Escritura
     Task<OrdenMantenimiento?> GetForUpdateAsync(int id);
-    Task AddAsync(OrdenMantenimiento orden);
+    Task<bool> AddAsync(OrdenMantenimiento orden);
     Task SaveChangesAsync();
 }

@@ -18,7 +18,7 @@ public interface IActivoRepository
     Task<bool> HasOrdenesDelSolicitanteAsync(int id, int idUsuario);
     // Escritura
     Task<Activo?> GetForUpdateAsync(int id);
-    Task AddAsync(Activo activo);
+    Task<bool> AddAsync(Activo activo);
     Task UpdateAsync(Activo activo);
     Task SaveChangesAsync();
 }

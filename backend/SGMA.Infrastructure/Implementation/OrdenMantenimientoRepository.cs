@@ -112,11 +112,21 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .FirstOrDefaultAsync(o => o.IdOrden == id);
     }
 
-    // Inserta la orden y su registro inicial de historial con un solo SaveChangesAsync
-    public async Task AddAsync(OrdenMantenimiento orden)
+    // Inserta la orden y su registro inicial de historial con un solo SaveChangesAsync.
+    // Devuelve false si SQL Server lo rechaza por un índice único (otro registro simultáneo tomó el mismo código):
+    // la orden sigue en el ChangeTracker como Added, así que el servicio puede reintentar con otro código.
+    public async Task<bool> AddAsync(OrdenMantenimiento orden)
     {
         _context.OrdenMantenimiento.Add(orden);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            return false;
+        }
     }
 
     // Un solo SaveChangesAsync por transición: la orden, su historial y el vehículo se guardan juntos o nada
