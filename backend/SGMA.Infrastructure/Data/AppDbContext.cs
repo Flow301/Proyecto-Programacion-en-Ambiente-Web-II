@@ -155,6 +155,11 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.IdActivo)
                 .HasName("PK_Activo");
 
+            // Control de concurrencia: el UPDATE lleva "AND IdEstadoActivo = <el estado leído>" en el WHERE.
+            // Si otra petición cambió el estado mientras tanto, no se actualiza ninguna fila y no se guarda nada.
+            entity.Property(e => e.IdEstadoActivo)
+                .IsConcurrencyToken();
+
             entity.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_Activo_KilometrajeActual", "[KilometrajeActual] >= 0");
@@ -496,6 +501,12 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.IdOrden)
                 .HasName("PK_OrdenMantenimiento");
+
+            // Control de concurrencia, como la condición del UPDATE en la anulación de facturas del material:
+            // el UPDATE lleva "AND IdEstadoOrden = <el estado leído>" en el WHERE. Si dos usuarios hacen una transición
+            // de la misma orden a la vez, solo una se guarda; la otra no toca ninguna fila y no guarda nada.
+            entity.Property(e => e.IdEstadoOrden)
+                .IsConcurrencyToken();
 
             entity.HasIndex(e => e.Codigo, "UQ_OrdenMantenimiento_Codigo")
                 .IsUnique();

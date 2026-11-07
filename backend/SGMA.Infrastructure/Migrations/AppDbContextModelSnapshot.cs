@@ -55,6 +55,7 @@ namespace SGMA.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("IdEstadoActivo")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<string>("Imagen")
@@ -735,6 +736,7 @@ namespace SGMA.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("IdEstadoOrden")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<int?>("IdPrioridad")
