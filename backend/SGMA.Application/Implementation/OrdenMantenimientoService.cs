@@ -444,6 +444,118 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             $"Se registraron {horas} h al técnico {idTecnico} en la orden {orden.Codigo}.");
     }
 
+    // Repuestos usados y pendientes de la orden (docs/requerimientos.md, 7.6), con su estado actual
+    public async Task<Result<OrdenRepuestosDto>> GetRepuestosAsync(int id)
+    {
+        var idEstado = await _repository.GetIdEstadoAsync(id);
+        if (idEstado is null)
+            return Result<OrdenRepuestosDto>.Failure(404, "Recurso no encontrado", $"La orden {id} no existe.");
+
+        return Result<OrdenRepuestosDto>.Success(await RepuestosAsync(id, idEstado.Value));
+    }
+
+    // Registrar repuestos (docs/requerimientos.md, 7.6, y docs/matriz-estados.md): solo el Coordinador/Técnico y solo
+    // En Ejecución. Cada línea con stock suficiente se descuenta y pasa al detalle con el costo vigente; una línea sin stock
+    // completo queda entera como pendiente (sin surtidos parciales) y la orden pasa sola a En Espera de Repuesto.
+    // Todo en una transacción: el descuento de stock y el guardado de la orden se confirman juntos o nada.
+    public async Task<Result<OrdenRepuestosDto>> RegistrarRepuestosAsync(int id, OrdenMantenimientoRepuestosDto repuestos, int idUsuario)
+    {
+        var orden = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        await ValidarCoordinadorEnEjecucionAsync(orden, idUsuario, "registrar repuestos");
+
+        // Varias líneas del mismo repuesto se suman en una sola, en el orden en que llegaron
+        var lineas = repuestos.Repuestos!
+            .GroupBy(l => l.IdRepuesto)
+            .Select(g => (IdRepuesto: g.Key, Cantidad: g.Sum(l => (long)l.Cantidad)))
+            .ToList();
+
+        var excedida = lineas.FirstOrDefault(l => l.Cantidad > int.MaxValue);
+        if (excedida != default)
+            return Result<OrdenRepuestosDto>.Failure(400, "Solicitud inválida",
+                $"La cantidad total del repuesto {excedida.IdRepuesto} supera el máximo permitido.");
+
+        var catalogo = (await _repository.GetRepuestosAsync(lineas.Select(l => l.IdRepuesto))).ToDictionary(r => r.IdRepuesto);
+
+        var inexistentes = lineas.Where(l => !catalogo.ContainsKey(l.IdRepuesto)).Select(l => l.IdRepuesto).ToList();
+        if (inexistentes.Count > 0)
+            return Result<OrdenRepuestosDto>.Failure(400, "Solicitud inválida", $"No existe el repuesto {string.Join(", ", inexistentes)}.");
+
+        var inactivo = lineas.Select(l => catalogo[l.IdRepuesto]).FirstOrDefault(r => !r.Estado);
+        if (inactivo is not null)
+            throw new ReglaNegocioException($"El repuesto {inactivo.Codigo} está inactivo.");
+
+        var faltantes = new List<string>();
+
+        await _repository.EjecutarEnTransaccionAsync(async () =>
+        {
+            var ahora = DateTime.Now;
+            var numeroLinea = await _repository.GetUltimaLineaAsync(id);
+
+            foreach (var (idRepuesto, total) in lineas)
+            {
+                var repuesto = catalogo[idRepuesto];
+                var cantidad = (int)total;
+
+                // El UPDATE solo descuenta si alcanza: si no, la línea completa queda pendiente
+                if (await _repository.DescontarStockAsync(idRepuesto, cantidad))
+                {
+                    orden.Detalles.Add(new DetalleRepuesto
+                    {
+                        NumeroLinea = ++numeroLinea,
+                        IdRepuesto = idRepuesto,
+                        Cantidad = cantidad,
+                        CostoUnitario = repuesto.CostoUnitario,      // costo vigente al momento del uso
+                        Subtotal = Math.Round(cantidad * repuesto.CostoUnitario, 2, MidpointRounding.AwayFromZero),
+                        FechaRegistro = ahora
+                    });
+                }
+                else
+                {
+                    orden.RepuestosPendientes.Add(new RepuestoPendiente
+                    {
+                        IdRepuesto = idRepuesto,
+                        Cantidad = cantidad,
+                        FechaRegistro = ahora
+                    });
+                    faltantes.Add($"Stock insuficiente de {repuesto.Codigo}: requeridos {cantidad}, disponibles {repuesto.StockActual}");
+                }
+            }
+
+            // En Ejecución → En Espera de Repuesto, automática, con la observación de lo que falta.
+            // El vehículo sigue En Mantenimiento.
+            if (faltantes.Count > 0)
+            {
+                var observacion = string.Join("; ", faltantes);
+                if (observacion.Length > 500)
+                    observacion = observacion[..497] + "...";
+
+                MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenEnEsperaDeRepuesto, Roles.CoordinadorTecnico);
+                AplicarTransicion(orden, SeedIds.EstadoOrdenEnEsperaDeRepuesto, idUsuario, observacion);
+            }
+
+            await _repository.SaveChangesAsync();
+        });
+
+        var registrados = lineas.Count - faltantes.Count;
+
+        if (faltantes.Count > 0)
+        {
+            _logger.LogWarning("Orden {Codigo} en espera de repuesto: {Faltantes}. Usuario: {IdUsuario}",
+                orden.Codigo, string.Join("; ", faltantes), idUsuario);
+        }
+
+        _logger.LogInformation("{Registrados} repuestos registrados en la orden {Codigo}. Usuario: {IdUsuario}",
+            registrados, orden.Codigo, idUsuario);
+
+        var detalle = faltantes.Count == 0
+            ? (registrados == 1 ? $"Se registró 1 repuesto en la orden {orden.Codigo}." : $"Se registraron {registrados} repuestos en la orden {orden.Codigo}.")
+            : $"La orden {orden.Codigo} pasó a En Espera de Repuesto. {string.Join("; ", faltantes)}.";
+
+        return Result<OrdenRepuestosDto>.Success(await RepuestosAsync(id, orden.IdEstadoOrden), 200, "OK", detalle);
+    }
+
     // Solicitada, Diagnosticada o Aprobada - Cancelada (docs/matriz-estados.md): estado final con fecha de cierre.
     // El vehículo conserva su estado, porque todavía no había entrado a mantenimiento por esta orden.
     public async Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario)
@@ -544,6 +656,21 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             dto.Subtotal = Math.Round(a.HorasTrabajadas * dto.TarifaHora, 2, MidpointRounding.AwayFromZero);
             return dto;
         }).ToList();
+    }
+
+    // Detalle y pendientes de la orden, con el estado que se indica
+    private async Task<OrdenRepuestosDto> RepuestosAsync(int idOrden, int idEstadoOrden)
+    {
+        var detalles = await _repository.GetDetallesAsync(idOrden);
+        var pendientes = await _repository.GetPendientesAsync(idOrden);
+
+        return new OrdenRepuestosDto
+        {
+            IdEstadoOrden = idEstadoOrden,
+            EstadoOrdenNombre = MatrizTransicionesOrden.Nombre(idEstadoOrden),
+            Detalle = _mapper.Map<List<DetalleRepuestoDto>>(detalles),
+            Pendientes = _mapper.Map<List<RepuestoPendienteDto>>(pendientes)
+        };
     }
 
     // Un id del cuerpo que no existe responde 400, como en el material: lo inválido es el cuerpo, no la orden de la ruta

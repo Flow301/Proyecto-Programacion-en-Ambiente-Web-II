@@ -333,6 +333,57 @@ public class OrdenMantenimientoController : ControllerBase
     }
 
     /// <summary>
+    /// Consulta los repuestos de una orden: lo usado (detalle) y lo que falta (pendientes).
+    /// </summary>
+    /// <remarks>
+    /// El Administrador y el Coordinador/Técnico. Incluye el estado actual de la orden y, en cada pendiente,
+    /// el stock actual del repuesto, para saber si ya se puede reanudar.
+    /// </remarks>
+    /// <param name="id" example="6">Id de la orden.</param>
+    /// <response code="200">Estado de la orden, detalle por número de línea y pendientes.</response>
+    /// <response code="403">El rol es Solicitante/Consulta.</response>
+    /// <response code="404">La orden no existe.</response>
+    [HttpGet("{id:int}/repuestos")]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
+    [ProducesResponseType<Result<OrdenRepuestosDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRepuestosAsync(int id)
+    {
+        var result = await _service.GetRepuestosAsync(id);
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Registra repuestos usados en una orden En Ejecución.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Coordinador/Técnico y solo En Ejecución. Varias líneas del mismo repuesto se suman en una. Cada línea con
+    /// stock suficiente se descuenta y se agrega al detalle con el costo unitario vigente. Si una línea no tiene stock
+    /// completo, queda entera como pendiente (sin surtidos parciales) y la orden pasa automáticamente a En Espera de
+    /// Repuesto: la respuesta trae el nuevo estado y lo que falta. El stock nunca queda negativo.
+    /// </remarks>
+    /// <param name="id" example="6">Id de la orden.</param>
+    /// <param name="repuestos">Repuestos y cantidades.</param>
+    /// <response code="200">Repuestos registrados; data = estado de la orden, detalle y pendientes; detail indica lo que falta.</response>
+    /// <response code="400">Datos inválidos: sin líneas, cantidad no positiva o un repuesto que no existe.</response>
+    /// <response code="403">El rol no es Coordinador/Técnico.</response>
+    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está En Ejecución o un repuesto está inactivo.</response>
+    [HttpPost("{id:int}/repuestos")]
+    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [ProducesResponseType<Result<OrdenRepuestosDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RegistrarRepuestosAsync([FromRoute] int id, [FromBody] OrdenMantenimientoRepuestosDto repuestos)
+    {
+        var result = await _service.RegistrarRepuestosAsync(id, repuestos, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
     /// Cancela una orden Solicitada, Diagnosticada o Aprobada: pasa a Cancelada, que es un estado final.
     /// </summary>
     /// <remarks>

@@ -17,6 +17,15 @@ public interface IOrdenMantenimientoRepository
     Task<IEnumerable<Tecnico>> GetTecnicosAsync(IEnumerable<int> idTecnicos);
     Task<IEnumerable<AsignacionTecnico>> GetAsignacionesAsync(int idOrden);
     Task<int> SumarHorasAsync(int idOrden, int idTecnico, decimal horas);
+
+    // Repuestos de la orden
+    Task<int?> GetIdEstadoAsync(int id);
+    Task<IEnumerable<Repuesto>> GetRepuestosAsync(IEnumerable<int> idRepuestos);
+    Task<IEnumerable<DetalleRepuesto>> GetDetallesAsync(int idOrden);
+    Task<IEnumerable<RepuestoPendiente>> GetPendientesAsync(int idOrden);
+    Task<int> GetUltimaLineaAsync(int idOrden);
+    Task<bool> DescontarStockAsync(int idRepuesto, int cantidad);
+    Task EjecutarEnTransaccionAsync(Func<Task> operacion);
     // Escritura
     Task<OrdenMantenimiento?> GetForUpdateAsync(int id);
     Task<bool> AddAsync(OrdenMantenimiento orden);

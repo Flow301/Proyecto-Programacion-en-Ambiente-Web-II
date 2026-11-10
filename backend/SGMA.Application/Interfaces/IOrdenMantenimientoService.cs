@@ -22,5 +22,9 @@ public interface IOrdenMantenimientoService
     Task<Result<IEnumerable<AsignacionTecnicoDto>>> GetTecnicosAsync(int id);
     Task<Result<IEnumerable<AsignacionTecnicoDto>>> AgregarTecnicosAsync(int id, OrdenMantenimientoTecnicosDto tecnicos, int idUsuario);
     Task<Result<IEnumerable<AsignacionTecnicoDto>>> RegistrarHorasAsync(int id, int idTecnico, decimal horas, int idUsuario);
+
+    // Repuestos de la orden (docs/requerimientos.md, 7.6)
+    Task<Result<OrdenRepuestosDto>> GetRepuestosAsync(int id);
+    Task<Result<OrdenRepuestosDto>> RegistrarRepuestosAsync(int id, OrdenMantenimientoRepuestosDto repuestos, int idUsuario);
     Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario);
 }

@@ -133,6 +133,87 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.HorasTrabajadas, a => a.HorasTrabajadas + horas));
     }
 
+    // Estado de la orden, o null si no existe: basta para responder la consulta de repuestos
+    public async Task<int?> GetIdEstadoAsync(int id)
+    {
+        return await _context.OrdenMantenimiento
+            .Where(o => o.IdOrden == id)
+            .Select(o => (int?)o.IdEstadoOrden)
+            .FirstOrDefaultAsync();
+    }
+
+    // Repuestos que se van a registrar, incluidos los inactivos: el servicio decide qué responder
+    public async Task<IEnumerable<Repuesto>> GetRepuestosAsync(IEnumerable<int> idRepuestos)
+    {
+        return await _context.Repuesto
+            .AsNoTracking()
+            .Where(r => idRepuestos.Contains(r.IdRepuesto))
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<DetalleRepuesto>> GetDetallesAsync(int idOrden)
+    {
+        return await _context.DetalleRepuesto
+            .AsNoTracking()
+            .Include(d => d.Repuesto)
+            .Where(d => d.IdOrden == idOrden)
+            .OrderBy(d => d.NumeroLinea)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<RepuestoPendiente>> GetPendientesAsync(int idOrden)
+    {
+        return await _context.RepuestoPendiente
+            .AsNoTracking()
+            .Include(p => p.Repuesto)
+            .Where(p => p.IdOrden == idOrden)
+            .OrderBy(p => p.FechaRegistro)
+            .ThenBy(p => p.IdRepuesto)
+            .ToListAsync();
+    }
+
+    // Último número de línea del detalle de la orden (0 si no tiene): las líneas nuevas siguen desde ahí
+    public async Task<int> GetUltimaLineaAsync(int idOrden)
+    {
+        return await _context.DetalleRepuesto
+            .Where(d => d.IdOrden == idOrden)
+            .MaxAsync(d => (int?)d.NumeroLinea) ?? 0;
+    }
+
+    // Descuenta stock en un solo UPDATE con la condición "alcanza" en el WHERE (docs/convenciones.md):
+    // UPDATE Repuesto SET StockActual = StockActual - @cantidad WHERE IdRepuesto = @id AND Estado = 1 AND StockActual >= @cantidad.
+    // Devuelve false si no alcanzó: el stock nunca queda negativo y dos órdenes no gastan la misma unidad.
+    public async Task<bool> DescontarStockAsync(int idRepuesto, int cantidad)
+    {
+        var filas = await _context.Repuesto
+            .Where(r => r.IdRepuesto == idRepuesto && r.Estado && r.StockActual >= cantidad)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.StockActual, r => r.StockActual - cantidad));
+
+        return filas == 1;
+    }
+
+    // Transacción explícita del material: los UPDATE de stock (ExecuteUpdateAsync) y el SaveChangesAsync de la orden
+    // se confirman juntos o se deshacen juntos. Si la operación lanza una excepción, nada queda guardado.
+    public async Task EjecutarEnTransaccionAsync(Func<Task> operacion)
+    {
+        var estrategia = _context.Database.CreateExecutionStrategy();
+
+        await estrategia.ExecuteAsync(async () =>
+        {
+            await using var transaccion = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                await operacion();
+                await transaccion.CommitAsync();
+            }
+            catch
+            {
+                await transaccion.RollbackAsync();
+                throw;
+            }
+        });
+    }
+
     public async Task<bool> PrioridadExistsAsync(int idPrioridad)
     {
         return await _context.Prioridad.AnyAsync(p => p.IdPrioridad == idPrioridad);
