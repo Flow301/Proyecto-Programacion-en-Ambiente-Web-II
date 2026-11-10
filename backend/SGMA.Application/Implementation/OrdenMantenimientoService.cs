@@ -373,6 +373,77 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return await DetalleAsync(id, $"Orden {orden.Codigo} en ejecución.");
     }
 
+    // Técnicos y horas de la orden (docs/requerimientos.md, 7.7). La tarifa es la congelada si la orden se cerró;
+    // si sigue abierta, la vigente del técnico, igual que el costo de mano de obra del detalle.
+    public async Task<Result<IEnumerable<AsignacionTecnicoDto>>> GetTecnicosAsync(int id)
+    {
+        if (await _repository.GetIdSolicitanteAsync(id) is null)
+            return Result<IEnumerable<AsignacionTecnicoDto>>.Failure(404, "Recurso no encontrado", $"La orden {id} no existe.");
+
+        return Result<IEnumerable<AsignacionTecnicoDto>>.Success(await AsignacionesAsync(id));
+    }
+
+    // Agregar técnicos mientras la orden sigue En Ejecución (docs/matriz-estados.md, "Acciones que no cambian el estado").
+    // Mismas reglas que al iniciar, más una: el técnico no puede estar ya asignado a la orden.
+    public async Task<Result<IEnumerable<AsignacionTecnicoDto>>> AgregarTecnicosAsync(int id, OrdenMantenimientoTecnicosDto tecnicos, int idUsuario)
+    {
+        var orden = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        await ValidarCoordinadorEnEjecucionAsync(orden, idUsuario, "agregar técnicos");
+
+        var idTecnicos = tecnicos.IdTecnicos!;
+        var encontrados = (await _repository.GetTecnicosAsync(idTecnicos)).ToList();
+
+        var inexistentes = idTecnicos.Except(encontrados.Select(t => t.IdTecnico)).ToList();
+        if (inexistentes.Count > 0)
+            return Result<IEnumerable<AsignacionTecnicoDto>>.Failure(400, "Solicitud inválida",
+                $"No existe el técnico {string.Join(", ", inexistentes)}.");
+
+        var asignados = (await _repository.GetAsignacionesAsync(id)).Select(a => a.IdTecnico).ToHashSet();
+        var repetido = encontrados.FirstOrDefault(t => asignados.Contains(t.IdTecnico));
+        if (repetido is not null)
+            throw new ReglaNegocioException($"El técnico {repetido.NombreCompleto} ya está asignado a la orden {orden.Codigo}.");
+
+        var tipo = (await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento))!;
+        ValidarTecnicosAsignables(orden.Codigo, encontrados, tipo);
+
+        var ahora = DateTime.Now;
+        foreach (var tecnico in encontrados)
+            orden.Asignaciones.Add(new AsignacionTecnico { IdTecnico = tecnico.IdTecnico, FechaAsignacion = ahora, HorasTrabajadas = 0 });
+
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Técnicos {IdTecnicos} agregados a la orden {Codigo}. Usuario: {IdUsuario}", idTecnicos, orden.Codigo, idUsuario);
+
+        return Result<IEnumerable<AsignacionTecnicoDto>>.Success(await AsignacionesAsync(id), 200, "OK",
+            $"Técnicos agregados a la orden {orden.Codigo}.");
+    }
+
+    // Registrar horas (docs/requerimientos.md, 7.7): solo En Ejecución; cada registro se suma a las del técnico
+    // en esa orden y va de más de 0 a 24 horas (lo valida el DTO).
+    public async Task<Result<IEnumerable<AsignacionTecnicoDto>>> RegistrarHorasAsync(int id, int idTecnico, decimal horas, int idUsuario)
+    {
+        var orden = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        await ValidarCoordinadorEnEjecucionAsync(orden, idUsuario, "registrar horas");
+
+        if ((await _repository.GetAsignacionesAsync(id)).All(a => a.IdTecnico != idTecnico))
+            throw new RecursoNoEncontradoException($"El técnico {idTecnico} no está asignado a la orden {orden.Codigo}.");
+
+        // La suma va en un solo UPDATE con la condición "sigue En Ejecución": 0 filas = la orden cambió mientras tanto
+        if (await _repository.SumarHorasAsync(id, idTecnico, horas) == 0)
+            throw new ReglaNegocioException(
+                $"La orden {orden.Codigo} dejó de estar En Ejecución mientras se registraban las horas. No se guardó nada.");
+
+        _logger.LogInformation("{Horas} h registradas al técnico {IdTecnico} en la orden {Codigo}. Usuario: {IdUsuario}",
+            horas, idTecnico, orden.Codigo, idUsuario);
+
+        return Result<IEnumerable<AsignacionTecnicoDto>>.Success(await AsignacionesAsync(id), 200, "OK",
+            $"Se registraron {horas} h al técnico {idTecnico} en la orden {orden.Codigo}.");
+    }
+
     // Solicitada, Diagnosticada o Aprobada - Cancelada (docs/matriz-estados.md): estado final con fecha de cierre.
     // El vehículo conserva su estado, porque todavía no había entrado a mantenimiento por esta orden.
     public async Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario)
@@ -441,6 +512,38 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
                 throw new ReglaNegocioException($"El técnico {tecnico.NombreCompleto} {motivo}.");
             }
         }
+    }
+
+    // Acciones de la ejecución que no cambian el estado: solo el Coordinador/Técnico (rol de la base, por si el token
+    // es viejo) y solo con la orden En Ejecución (docs/matriz-estados.md)
+    private async Task ValidarCoordinadorEnEjecucionAsync(OrdenMantenimiento orden, int idUsuario, string accion)
+    {
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        if (usuario.Rol.Nombre != Roles.CoordinadorTecnico)
+            throw new ReglaNegocioException($"Solo el Coordinador/Técnico puede {accion}.");
+
+        if (orden.IdEstadoOrden != SeedIds.EstadoOrdenEnEjecucion)
+        {
+            _logger.LogWarning("Intento de {Accion} en la orden {Codigo}, que está {Estado}",
+                accion, orden.Codigo, MatrizTransicionesOrden.Nombre(orden.IdEstadoOrden));
+            throw new ReglaNegocioException(
+                $"La orden {orden.Codigo} está {MatrizTransicionesOrden.Nombre(orden.IdEstadoOrden)}: solo se puede {accion} mientras está En Ejecución.");
+        }
+    }
+
+    // Asignaciones con la tarifa que corresponde y su subtotal, redondeado igual que el costo de mano de obra
+    private async Task<IEnumerable<AsignacionTecnicoDto>> AsignacionesAsync(int idOrden)
+    {
+        var asignaciones = await _repository.GetAsignacionesAsync(idOrden);
+
+        return asignaciones.Select(a =>
+        {
+            var dto = _mapper.Map<AsignacionTecnicoDto>(a);
+            dto.TarifaHora = a.TarifaAplicada ?? a.Tecnico.TarifaHora;
+            dto.TarifaCongelada = a.TarifaAplicada.HasValue;
+            dto.Subtotal = Math.Round(a.HorasTrabajadas * dto.TarifaHora, 2, MidpointRounding.AwayFromZero);
+            return dto;
+        }).ToList();
     }
 
     // Un id del cuerpo que no existe responde 400, como en el material: lo inválido es el cuerpo, no la orden de la ruta

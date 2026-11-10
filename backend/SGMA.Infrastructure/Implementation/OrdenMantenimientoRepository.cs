@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SGMA.Domain.Entities;
 using SGMA.Infrastructure.Data;
+using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Interfaces;
 
 namespace SGMA.Infrastructure.Implementation;
@@ -107,6 +108,29 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .Include(t => t.TecnicoEspecialidades)
             .Where(t => idTecnicos.Contains(t.IdTecnico))
             .ToListAsync();
+    }
+
+    // Técnicos de la orden con sus horas, en el orden en que se asignaron
+    public async Task<IEnumerable<AsignacionTecnico>> GetAsignacionesAsync(int idOrden)
+    {
+        return await _context.AsignacionTecnico
+            .AsNoTracking()
+            .Include(a => a.Tecnico)
+            .Where(a => a.IdOrden == idOrden)
+            .OrderBy(a => a.FechaAsignacion)
+            .ThenBy(a => a.IdTecnico)
+            .ToListAsync();
+    }
+
+    // Suma las horas en un solo UPDATE: la suma la hace SQL Server (HorasTrabajadas = HorasTrabajadas + @horas),
+    // así dos registros simultáneos no se pisan, igual que la entrada de stock. La condición del estado va en el WHERE:
+    // si la orden dejó de estar En Ejecución mientras tanto, no se actualiza ninguna fila y devuelve 0.
+    public async Task<int> SumarHorasAsync(int idOrden, int idTecnico, decimal horas)
+    {
+        return await _context.AsignacionTecnico
+            .Where(a => a.IdOrden == idOrden && a.IdTecnico == idTecnico
+                && a.Orden.IdEstadoOrden == SeedIds.EstadoOrdenEnEjecucion)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.HorasTrabajadas, a => a.HorasTrabajadas + horas));
     }
 
     public async Task<bool> PrioridadExistsAsync(int idPrioridad)

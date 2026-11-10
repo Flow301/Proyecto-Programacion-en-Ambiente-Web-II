@@ -15,6 +15,8 @@ public interface IOrdenMantenimientoRepository
     Task<TipoMantenimiento?> GetTipoMantenimientoAsync(int idTipoMantenimiento);
     Task<bool> PrioridadExistsAsync(int idPrioridad);
     Task<IEnumerable<Tecnico>> GetTecnicosAsync(IEnumerable<int> idTecnicos);
+    Task<IEnumerable<AsignacionTecnico>> GetAsignacionesAsync(int idOrden);
+    Task<int> SumarHorasAsync(int idOrden, int idTecnico, decimal horas);
     // Escritura
     Task<OrdenMantenimiento?> GetForUpdateAsync(int id);
     Task<bool> AddAsync(OrdenMantenimiento orden);

@@ -256,6 +256,83 @@ public class OrdenMantenimientoController : ControllerBase
     }
 
     /// <summary>
+    /// Consulta los técnicos asignados a una orden, con sus horas y su costo.
+    /// </summary>
+    /// <remarks>
+    /// El Administrador y el Coordinador/Técnico. La tarifa es la congelada si la orden ya se cerró; si sigue abierta,
+    /// la vigente del técnico.
+    /// </remarks>
+    /// <param name="id" example="6">Id de la orden.</param>
+    /// <response code="200">Técnicos de la orden en el orden en que se asignaron; vacía si todavía no se inicia.</response>
+    /// <response code="403">El rol es Solicitante/Consulta.</response>
+    /// <response code="404">La orden no existe.</response>
+    [HttpGet("{id:int}/tecnicos")]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
+    [ProducesResponseType<Result<IEnumerable<AsignacionTecnicoDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetTecnicosAsync(int id)
+    {
+        var result = await _service.GetTecnicosAsync(id);
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Agrega técnicos a una orden En Ejecución.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Coordinador/Técnico y solo En Ejecución. Mismas reglas que al iniciar: cada técnico activo, disponible y con
+    /// la especialidad que requiere el tipo; además, no puede estar ya asignado a la orden. Empieza con 0 horas.
+    /// </remarks>
+    /// <param name="id" example="6">Id de la orden.</param>
+    /// <param name="tecnicos">Técnicos que se agregan.</param>
+    /// <response code="200">Técnicos agregados; data = todos los técnicos de la orden.</response>
+    /// <response code="400">Datos inválidos: sin técnicos, repetidos o un técnico que no existe.</response>
+    /// <response code="403">El rol no es Coordinador/Técnico.</response>
+    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está En Ejecución, o un técnico ya está asignado, está inactivo, no disponible o sin la especialidad.</response>
+    [HttpPost("{id:int}/tecnicos")]
+    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [ProducesResponseType<Result<IEnumerable<AsignacionTecnicoDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AgregarTecnicosAsync([FromRoute] int id, [FromBody] OrdenMantenimientoTecnicosDto tecnicos)
+    {
+        var result = await _service.AgregarTecnicosAsync(id, tecnicos, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Registra horas trabajadas de un técnico en una orden En Ejecución.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Coordinador/Técnico y solo En Ejecución. Cada registro, de más de 0 y hasta 24 horas, se suma a las horas
+    /// que el técnico ya tenía en esa orden.
+    /// </remarks>
+    /// <param name="id" example="6">Id de la orden.</param>
+    /// <param name="idTecnico" example="3">Id del técnico asignado.</param>
+    /// <param name="horas">Horas de este registro.</param>
+    /// <response code="200">Horas registradas; data = todos los técnicos de la orden con sus horas.</response>
+    /// <response code="400">Horas fuera de rango.</response>
+    /// <response code="403">El rol no es Coordinador/Técnico.</response>
+    /// <response code="404">La orden no existe, el técnico no está asignado a ella o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está En Ejecución.</response>
+    [HttpPost("{id:int}/tecnicos/{idTecnico:int}/horas")]
+    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [ProducesResponseType<Result<IEnumerable<AsignacionTecnicoDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RegistrarHorasAsync([FromRoute] int id, [FromRoute] int idTecnico, [FromBody] OrdenMantenimientoHorasDto horas)
+    {
+        var result = await _service.RegistrarHorasAsync(id, idTecnico, horas.Horas!.Value, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
     /// Cancela una orden Solicitada, Diagnosticada o Aprobada: pasa a Cancelada, que es un estado final.
     /// </summary>
     /// <remarks>
