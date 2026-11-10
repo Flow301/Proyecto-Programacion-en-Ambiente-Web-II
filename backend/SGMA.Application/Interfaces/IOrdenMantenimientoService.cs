@@ -16,5 +16,6 @@ public interface IOrdenMantenimientoService
     Task<Result<OrdenMantenimientoDetailDto>> DiagnosticarAsync(int id, OrdenMantenimientoDiagnosticoDto diagnostico, int idUsuario);
     Task<Result<OrdenMantenimientoDetailDto>> AprobarAsync(int id, OrdenMantenimientoAprobacionDto aprobacion, int idUsuario);
     Task<Result<OrdenMantenimientoDetailDto>> RechazarAsync(int id, string? observacion, int idUsuario);
+    Task<Result<OrdenMantenimientoDetailDto>> IniciarAsync(int id, OrdenMantenimientoInicioDto inicio, int idUsuario);
     Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario);
 }

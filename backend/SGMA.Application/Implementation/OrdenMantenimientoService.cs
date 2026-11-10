@@ -312,7 +312,68 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return await DetalleAsync(id, $"Orden {orden.Codigo} rechazada.");
     }
 
-    // Solicitada, Diagnosticada o Aprobada → Cancelada (docs/matriz-estados.md): estado final con fecha de cierre.
+    // Aprobada - En Ejecución (docs/matriz-estados.md): asigna los técnicos y lleva el vehículo a En Mantenimiento.
+    // Decisión del equipo (docs/requerimientos.md, 7.7): iniciar recibe al menos un técnico y asigna e inicia en una sola operación.
+    public async Task<Result<OrdenMantenimientoDetailDto>> IniciarAsync(int id, OrdenMantenimientoInicioDto inicio, int idUsuario)
+    {
+        var orden = await _repository.GetForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenEnEjecucion, usuario.Rol.Nombre);
+
+        var idTecnicos = inicio.IdTecnicos!;
+        var tecnicos = (await _repository.GetTecnicosAsync(idTecnicos)).ToList();
+
+        // Un id del cuerpo que no existe responde 400
+        var inexistentes = idTecnicos.Except(tecnicos.Select(t => t.IdTecnico)).ToList();
+        if (inexistentes.Count > 0)
+            return CuerpoInvalido($"No existe el técnico {string.Join(", ", inexistentes)}.");
+
+        var tipo = (await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento))!;
+        ValidarTecnicosAsignables(orden.Codigo, tecnicos, tipo);
+
+        var activo = orden.Activo;
+        if (activo.IdEstadoActivo == SeedIds.EstadoActivoDadoDeBaja)
+            throw new ReglaNegocioException($"El vehículo {activo.Codigo} está Dado de Baja: la orden no se puede ejecutar.");
+
+        var ahora = DateTime.Now;
+        foreach (var tecnico in tecnicos)
+        {
+            orden.Asignaciones.Add(new AsignacionTecnico
+            {
+                IdTecnico = tecnico.IdTecnico,
+                FechaAsignacion = ahora,
+                HorasTrabajadas = 0      // las horas se registran durante la ejecución
+            });
+        }
+
+        // Operativo o Fuera de Servicio - En Mantenimiento, con la orden que lo provocó en el historial del vehículo.
+        // Si ya estaba En Mantenimiento por otra orden (una emergencia, por ejemplo), no cambia ni se registra nada.
+        if (activo.IdEstadoActivo != SeedIds.EstadoActivoEnMantenimiento)
+        {
+            activo.HistorialEstados.Add(new HistorialEstadoActivo
+            {
+                IdEstadoAnterior = activo.IdEstadoActivo,
+                IdEstadoNuevo = SeedIds.EstadoActivoEnMantenimiento,
+                FechaCambio = ahora,
+                IdUsuario = idUsuario,
+                IdOrden = orden.IdOrden,
+                Observacion = $"Inicio de la ejecución de la orden {orden.Codigo}."
+            });
+            activo.IdEstadoActivo = SeedIds.EstadoActivoEnMantenimiento;
+        }
+
+        AplicarTransicion(orden, SeedIds.EstadoOrdenEnEjecucion, idUsuario, inicio.Observacion);
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Orden {Codigo} en ejecución con los técnicos {IdTecnicos}; vehículo {CodigoActivo} En Mantenimiento. Usuario: {IdUsuario}",
+            orden.Codigo, idTecnicos, activo.Codigo, idUsuario);
+
+        return await DetalleAsync(id, $"Orden {orden.Codigo} en ejecución.");
+    }
+
+    // Solicitada, Diagnosticada o Aprobada - Cancelada (docs/matriz-estados.md): estado final con fecha de cierre.
     // El vehículo conserva su estado, porque todavía no había entrado a mantenimiento por esta orden.
     public async Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario)
     {
@@ -359,6 +420,27 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
         if (idEstadoNuevo is SeedIds.EstadoOrdenRechazada or SeedIds.EstadoOrdenCompletada or SeedIds.EstadoOrdenCancelada)
             orden.FechaCierre = ahora;
+    }
+
+    // Cada técnico debe estar activo, disponible y poseer la especialidad que requiere el tipo (docs/requerimientos.md, 7.7).
+    // El nivel de certificación no bloquea: el enunciado solo exige poseer la especialidad.
+    private void ValidarTecnicosAsignables(string codigoOrden, IEnumerable<Tecnico> tecnicos, TipoMantenimiento tipo)
+    {
+        foreach (var tecnico in tecnicos)
+        {
+            string? motivo = !tecnico.Estado ? "está inactivo"
+                : !tecnico.Disponible ? "no está disponible"
+                : tecnico.TecnicoEspecialidades.All(e => e.IdEspecialidad != tipo.IdEspecialidadRequerida)
+                    ? $"no posee la especialidad {tipo.EspecialidadRequerida.Nombre}, que requiere el tipo {tipo.Nombre}"
+                : null;
+
+            if (motivo is not null)
+            {
+                _logger.LogWarning("Asignación del técnico {IdTecnico} a la orden {Codigo} rechazada: {Motivo}",
+                    tecnico.IdTecnico, codigoOrden, motivo);
+                throw new ReglaNegocioException($"El técnico {tecnico.NombreCompleto} {motivo}.");
+            }
+        }
     }
 
     // Un id del cuerpo que no existe responde 400, como en el material: lo inválido es el cuerpo, no la orden de la ruta

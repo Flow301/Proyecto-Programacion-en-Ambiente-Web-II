@@ -71,6 +71,7 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
         return await _context.TipoMantenimiento
             .AsNoTracking()
             .Include(t => t.Naturaleza)
+            .Include(t => t.EspecialidadRequerida)
             .FirstOrDefaultAsync(t => t.IdTipoMantenimiento == idTipoMantenimiento);
     }
 
@@ -94,6 +95,17 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .Where(h => h.IdOrden == idOrden)
             .OrderBy(h => h.FechaCambio)
             .ThenBy(h => h.IdHistorial)
+            .ToListAsync();
+    }
+
+    // Técnicos que se van a asignar, con sus especialidades para validar la que requiere el tipo de la orden.
+    // Trae también los inactivos y los no disponibles: el servicio decide qué responder en cada caso.
+    public async Task<IEnumerable<Tecnico>> GetTecnicosAsync(IEnumerable<int> idTecnicos)
+    {
+        return await _context.Tecnico
+            .AsNoTracking()
+            .Include(t => t.TecnicoEspecialidades)
+            .Where(t => idTecnicos.Contains(t.IdTecnico))
             .ToListAsync();
     }
 

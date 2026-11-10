@@ -227,6 +227,35 @@ public class OrdenMantenimientoController : ControllerBase
     }
 
     /// <summary>
+    /// Inicia la ejecución de una orden Aprobada: asigna los técnicos y pasa a En Ejecución.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Coordinador/Técnico. Al menos un técnico, sin repetir; cada uno debe estar activo, disponible y poseer
+    /// la especialidad que requiere el tipo de mantenimiento. Cada asignación empieza con 0 horas. Si el vehículo estaba
+    /// Operativo o Fuera de Servicio, pasa a En Mantenimiento y queda en su historial con esta orden; si ya estaba
+    /// En Mantenimiento por otra orden, no cambia. Registra la transición en el historial de la orden.
+    /// </remarks>
+    /// <param name="id" example="3">Id de la orden.</param>
+    /// <param name="inicio">Técnicos asignados y observación opcional.</param>
+    /// <response code="200">Orden en ejecución; data = detalle de la orden.</response>
+    /// <response code="400">Datos inválidos: sin técnicos, técnicos repetidos o un técnico que no existe.</response>
+    /// <response code="403">El rol no es Coordinador/Técnico.</response>
+    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está Aprobada, o un técnico está inactivo, no disponible o sin la especialidad requerida.</response>
+    [HttpPost("{id:int}/iniciar")]
+    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> IniciarAsync([FromRoute] int id, [FromBody] OrdenMantenimientoInicioDto inicio)
+    {
+        var result = await _service.IniciarAsync(id, inicio, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
     /// Cancela una orden Solicitada, Diagnosticada o Aprobada: pasa a Cancelada, que es un estado final.
     /// </summary>
     /// <remarks>
