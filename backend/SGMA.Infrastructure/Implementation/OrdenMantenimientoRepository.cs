@@ -248,6 +248,15 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
         _context.RepuestoPendiente.RemoveRange(pendientes);
     }
 
+    // ¿El vehículo tiene otra orden En Ejecución o En Espera de Repuesto? Si la tiene, sigue En Mantenimiento al cerrar esta
+    public async Task<bool> HasOtraOrdenEnCursoAsync(int idActivo, int idOrdenExcluida)
+    {
+        return await _context.OrdenMantenimiento.AnyAsync(o =>
+            o.IdActivo == idActivo
+            && o.IdOrden != idOrdenExcluida
+            && (o.IdEstadoOrden == SeedIds.EstadoOrdenEnEjecucion || o.IdEstadoOrden == SeedIds.EstadoOrdenEnEsperaDeRepuesto));
+    }
+
     // Inserta la orden y su registro inicial de historial con un solo SaveChangesAsync.
     // Devuelve false si SQL Server lo rechaza por un índice único (otro registro simultáneo tomó el mismo código):
     // la orden sigue en el ChangeTracker como Added, así que el servicio puede reintentar con otro código.

@@ -30,6 +30,7 @@ public interface IOrdenMantenimientoRepository
     Task<OrdenMantenimiento?> GetForUpdateAsync(int id);
     Task<OrdenMantenimiento?> GetCompletaForUpdateAsync(int id);
     void EliminarPendientes(IEnumerable<RepuestoPendiente> pendientes);
+    Task<bool> HasOtraOrdenEnCursoAsync(int idActivo, int idOrdenExcluida);
     Task<bool> AddAsync(OrdenMantenimiento orden);
     Task SaveChangesAsync();
 }
