@@ -229,6 +229,25 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .FirstOrDefaultAsync(o => o.IdOrden == id);
     }
 
+    // Para reanudar, completar y cancelar desde la ejecución: la orden rastreada con todo lo que esas transiciones tocan
+    // (vehículo, técnicos con su tarifa, detalle y pendientes con su repuesto)
+    public async Task<OrdenMantenimiento?> GetCompletaForUpdateAsync(int id)
+    {
+        return await _context.OrdenMantenimiento
+            .Include(o => o.Activo)
+            .Include(o => o.Asignaciones).ThenInclude(a => a.Tecnico)
+            .Include(o => o.Detalles)
+            .Include(o => o.RepuestosPendientes).ThenInclude(p => p.Repuesto)
+            .AsSplitQuery()     // varias colecciones: una consulta por cada una en lugar de un JOIN que multiplica filas
+            .FirstOrDefaultAsync(o => o.IdOrden == id);
+    }
+
+    // Marca los pendientes para borrarse; se borran con el SaveChangesAsync de la transición
+    public void EliminarPendientes(IEnumerable<RepuestoPendiente> pendientes)
+    {
+        _context.RepuestoPendiente.RemoveRange(pendientes);
+    }
+
     // Inserta la orden y su registro inicial de historial con un solo SaveChangesAsync.
     // Devuelve false si SQL Server lo rechaza por un índice único (otro registro simultáneo tomó el mismo código):
     // la orden sigue en el ChangeTracker como Added, así que el servicio puede reintentar con otro código.

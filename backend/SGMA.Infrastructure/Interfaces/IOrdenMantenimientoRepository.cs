@@ -28,6 +28,8 @@ public interface IOrdenMantenimientoRepository
     Task EjecutarEnTransaccionAsync(Func<Task> operacion);
     // Escritura
     Task<OrdenMantenimiento?> GetForUpdateAsync(int id);
+    Task<OrdenMantenimiento?> GetCompletaForUpdateAsync(int id);
+    void EliminarPendientes(IEnumerable<RepuestoPendiente> pendientes);
     Task<bool> AddAsync(OrdenMantenimiento orden);
     Task SaveChangesAsync();
 }
