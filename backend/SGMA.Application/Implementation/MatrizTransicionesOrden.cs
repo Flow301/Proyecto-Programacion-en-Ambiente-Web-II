@@ -88,6 +88,19 @@ public static class MatrizTransicionesOrden
                 $"El rol {rol} no puede pasar la orden {codigoOrden} de {origen} a {destino}.", origen, destino);
     }
 
+    /// <summary>
+    /// Para un destino al que se llega desde más de un estado (En Ejecución: iniciar desde Aprobada o reanudar desde
+    /// En Espera de Repuesto), exige el origen de la acción. Sin esto, "reanudar" una orden Aprobada la pondría En Ejecución
+    /// sin técnicos, y "iniciar" una En Espera la sacaría de la espera sin surtir los pendientes.
+    /// </summary>
+    public static void ValidarOrigen(string codigoOrden, int idEstadoActual, int idEstadoRequerido, int idEstadoDestino, string accion)
+    {
+        if (idEstadoActual != idEstadoRequerido)
+            throw new TransicionNoPermitidaException(
+                $"La orden {codigoOrden} está {Nombre(idEstadoActual)}: solo se puede {accion} una orden {Nombre(idEstadoRequerido)}.",
+                Nombre(idEstadoActual), Nombre(idEstadoDestino));
+    }
+
     public static string Nombre(int idEstadoOrden) =>
         Nombres.TryGetValue(idEstadoOrden, out var nombre) ? nombre : $"estado {idEstadoOrden}";
 }

@@ -320,6 +320,9 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
 
         var usuario = await UsuarioResponsableAsync(idUsuario);
+        // A En Ejecución se llega desde Aprobada (iniciar) o desde En Espera de Repuesto (reanudar): iniciar exige la primera
+        MatrizTransicionesOrden.ValidarOrigen(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenAprobada,
+            SeedIds.EstadoOrdenEnEjecucion, "iniciar");
         MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenEnEjecucion, usuario.Rol.Nombre);
 
         var idTecnicos = inicio.IdTecnicos!;
