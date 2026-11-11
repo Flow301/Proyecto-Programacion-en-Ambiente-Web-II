@@ -384,6 +384,64 @@ public class OrdenMantenimientoController : ControllerBase
     }
 
     /// <summary>
+    /// Reanuda una orden En Espera de Repuesto: vuelve a En Ejecución.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Coordinador/Técnico. Todos los repuestos pendientes deben tener stock suficiente; si falta alguno, se rechaza
+    /// indicando cuál. Cada pendiente pasa al detalle con el costo unitario vigente, se descuenta su stock y se elimina.
+    /// La observación es opcional y el cuerpo puede ir vacío. Registra la transición en el historial de la orden.
+    /// </remarks>
+    /// <param name="id" example="10">Id de la orden.</param>
+    /// <param name="reanudacion">Observación opcional.</param>
+    /// <response code="200">Orden reanudada; data = detalle de la orden.</response>
+    /// <response code="400">La observación supera los 500 caracteres.</response>
+    /// <response code="403">El rol no es Coordinador/Técnico.</response>
+    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está En Espera de Repuesto, o algún pendiente no tiene stock suficiente.</response>
+    [HttpPost("{id:int}/reanudar")]
+    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ReanudarAsync([FromRoute] int id, [FromBody] OrdenMantenimientoObservacionDto? reanudacion)
+    {
+        var result = await _service.ReanudarAsync(id, reanudacion?.Observacion, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Completa una orden En Ejecución: pasa a Completada, que es un estado final.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Coordinador/Técnico. No debe tener repuestos pendientes y al menos un técnico debe tener horas registradas.
+    /// Congela la tarifa de cada técnico y los costos de repuestos, mano de obra y total, y registra la fecha de cierre.
+    /// Si el tipo es Preventivo, el kilometraje del último preventivo del vehículo pasa a ser el del diagnóstico.
+    /// El vehículo vuelve a Operativo, salvo que tenga otra orden En Ejecución o En Espera de Repuesto.
+    /// La observación es opcional y el cuerpo puede ir vacío.
+    /// </remarks>
+    /// <param name="id" example="10">Id de la orden.</param>
+    /// <param name="completado">Observación opcional.</param>
+    /// <response code="200">Orden completada; data = detalle de la orden con los costos congelados.</response>
+    /// <response code="400">La observación supera los 500 caracteres o contiene los caracteres &lt; o &gt;.</response>
+    /// <response code="403">El rol no es Coordinador/Técnico.</response>
+    /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
+    /// <response code="409">La orden no está En Ejecución, tiene repuestos pendientes o no tiene horas registradas.</response>
+    [HttpPost("{id:int}/completar")]
+    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CompletarAsync([FromRoute] int id, [FromBody] OrdenMantenimientoObservacionDto? completado)
+    {
+        var result = await _service.CompletarAsync(id, completado?.Observacion, User.GetIdUsuario());
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
     /// Cancela una orden Solicitada, Diagnosticada o Aprobada: pasa a Cancelada, que es un estado final.
     /// </summary>
     /// <remarks>
