@@ -559,6 +559,73 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return Result<OrdenRepuestosDto>.Success(await RepuestosAsync(id, orden.IdEstadoOrden), 200, "OK", detalle);
     }
 
+    // En Espera de Repuesto → En Ejecución (docs/matriz-estados.md): todos los pendientes deben tener stock; si falta
+    // alguno, se rechaza indicando cuál. Cada pendiente pasa al detalle con el costo vigente, se descuenta su stock y se
+    // elimina. Todo en una transacción: si un descuento no alcanza a última hora, no se guarda nada.
+    public async Task<Result<OrdenMantenimientoDetailDto>> ReanudarAsync(int id, string? observacion, int idUsuario)
+    {
+        var orden = await _repository.GetCompletaForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        // A En Ejecución se llega desde Aprobada (iniciar) o desde En Espera de Repuesto (reanudar): reanudar exige la segunda
+        MatrizTransicionesOrden.ValidarOrigen(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenEnEsperaDeRepuesto,
+            SeedIds.EstadoOrdenEnEjecucion, "reanudar");
+        MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenEnEjecucion, usuario.Rol.Nombre);
+
+        var pendientes = orden.RepuestosPendientes.OrderBy(p => p.FechaRegistro).ThenBy(p => p.IdRepuesto).ToList();
+
+        // Primero se revisa todo, para responder con la lista completa de lo que falta
+        var faltantes = pendientes
+            .Where(p => !p.Repuesto.Estado || p.Repuesto.StockActual < p.Cantidad)
+            .Select(p => p.Repuesto.Estado
+                ? $"Stock insuficiente de {p.Repuesto.Codigo}: requeridos {p.Cantidad}, disponibles {p.Repuesto.StockActual}"
+                : $"El repuesto {p.Repuesto.Codigo} está inactivo")
+            .ToList();
+
+        if (faltantes.Count > 0)
+        {
+            _logger.LogWarning("Reanudación de la orden {Codigo} rechazada: {Faltantes}", orden.Codigo, string.Join("; ", faltantes));
+            throw new ReglaNegocioException($"No se puede reanudar la orden {orden.Codigo}. {string.Join("; ", faltantes)}.");
+        }
+
+        await _repository.EjecutarEnTransaccionAsync(async () =>
+        {
+            var ahora = DateTime.Now;
+            var numeroLinea = orden.Detalles.Select(d => d.NumeroLinea).DefaultIfEmpty(0).Max();
+
+            foreach (var pendiente in pendientes)
+            {
+                var repuesto = pendiente.Repuesto;
+
+                // Otra orden pudo gastar el stock entre la revisión y este UPDATE: se cancela todo
+                if (!await _repository.DescontarStockAsync(repuesto.IdRepuesto, pendiente.Cantidad))
+                    throw new ReglaNegocioException(
+                        $"No se puede reanudar la orden {orden.Codigo}: el stock de {repuesto.Codigo} se agotó mientras se reanudaba. No se guardó nada.");
+
+                orden.Detalles.Add(new DetalleRepuesto
+                {
+                    NumeroLinea = ++numeroLinea,
+                    IdRepuesto = repuesto.IdRepuesto,
+                    Cantidad = pendiente.Cantidad,
+                    CostoUnitario = repuesto.CostoUnitario,      // costo vigente al reanudar
+                    Subtotal = Math.Round(pendiente.Cantidad * repuesto.CostoUnitario, 2, MidpointRounding.AwayFromZero),
+                    FechaRegistro = ahora
+                });
+            }
+
+            _repository.EliminarPendientes(pendientes);
+            AplicarTransicion(orden, SeedIds.EstadoOrdenEnEjecucion, idUsuario, observacion);
+
+            await _repository.SaveChangesAsync();
+        });
+
+        _logger.LogInformation("Orden {Codigo} reanudada: {Cantidad} pendientes pasaron al detalle. Usuario: {IdUsuario}",
+            orden.Codigo, pendientes.Count, idUsuario);
+
+        return await DetalleAsync(id, $"Orden {orden.Codigo} reanudada: {pendientes.Count} repuestos pendientes pasaron al detalle.");
+    }
+
     // Solicitada, Diagnosticada o Aprobada - Cancelada (docs/matriz-estados.md): estado final con fecha de cierre.
     // El vehículo conserva su estado, porque todavía no había entrado a mantenimiento por esta orden.
     public async Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario)
