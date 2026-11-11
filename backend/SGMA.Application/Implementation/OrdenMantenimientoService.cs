@@ -626,6 +626,49 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return await DetalleAsync(id, $"Orden {orden.Codigo} reanudada: {pendientes.Count} repuestos pendientes pasaron al detalle.");
     }
 
+    // En Ejecución → Completada (docs/matriz-estados.md): sin pendientes y con al menos un técnico con horas. Congela
+    // tarifas y costos, reinicia el contador preventivo si el tipo es Preventivo y devuelve el vehículo a Operativo si
+    // ninguna otra orden suya sigue en curso. Un solo SaveChangesAsync: orden, vehículo e historiales juntos o nada.
+    public async Task<Result<OrdenMantenimientoDetailDto>> CompletarAsync(int id, string? observacion, int idUsuario)
+    {
+        var orden = await _repository.GetCompletaForUpdateAsync(id)
+            ?? throw new RecursoNoEncontradoException($"La orden {id} no existe.");
+
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        // En Espera de Repuesto → Completada no está en la matriz: primero hay que reanudar
+        MatrizTransicionesOrden.Validar(orden.Codigo, orden.IdEstadoOrden, SeedIds.EstadoOrdenCompletada, usuario.Rol.Nombre);
+
+        if (orden.RepuestosPendientes.Count > 0)
+        {
+            _logger.LogWarning("Intento de completar la orden {Codigo} con {Cantidad} repuestos pendientes", orden.Codigo, orden.RepuestosPendientes.Count);
+            throw new ReglaNegocioException($"La orden {orden.Codigo} tiene repuestos pendientes: no se puede completar.");
+        }
+
+        if (!orden.Asignaciones.Any(a => a.HorasTrabajadas > 0))
+        {
+            _logger.LogWarning("Intento de completar la orden {Codigo} sin horas registradas", orden.Codigo);
+            throw new ReglaNegocioException(
+                $"La orden {orden.Codigo} no tiene horas registradas: al menos un técnico debe registrar horas antes de completarla.");
+        }
+
+        CongelarCostos(orden);
+
+        // Preventivo: el contador vuelve a empezar desde el kilometraje del diagnóstico (docs/decisiones-tecnicas.md)
+        var tipo = (await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento))!;
+        if (tipo.IdNaturaleza == SeedIds.NaturalezaPreventivo && orden.KilometrajeDiagnostico is int kilometraje)
+            orden.Activo.KilometrajeUltimoPreventivo = kilometraje;
+
+        await DevolverVehiculoAsync(orden, idUsuario, $"Orden {orden.Codigo} completada.");
+        AplicarTransicion(orden, SeedIds.EstadoOrdenCompletada, idUsuario, observacion);
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Orden {Codigo} completada: costo total {CostoTotal}; vehículo {CodigoActivo} {Estado}. Usuario: {IdUsuario}",
+            orden.Codigo, orden.CostoTotal, orden.Activo.Codigo,
+            orden.Activo.IdEstadoActivo == SeedIds.EstadoActivoOperativo ? "Operativo" : "sigue En Mantenimiento", idUsuario);
+
+        return await DetalleAsync(id, $"Orden {orden.Codigo} completada. Costo total: {orden.CostoTotal:N2}.");
+    }
+
     // Solicitada, Diagnosticada o Aprobada - Cancelada (docs/matriz-estados.md): estado final con fecha de cierre.
     // El vehículo conserva su estado, porque todavía no había entrado a mantenimiento por esta orden.
     public async Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario)
@@ -673,6 +716,44 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
         if (idEstadoNuevo is SeedIds.EstadoOrdenRechazada or SeedIds.EstadoOrdenCompletada or SeedIds.EstadoOrdenCancelada)
             orden.FechaCierre = ahora;
+    }
+
+    // Al cerrar desde la ejecución (completar o cancelar): cada asignación guarda la tarifa vigente y la orden guarda sus
+    // costos, que desde ahí no cambian aunque cambien las tarifas o los precios. Mismo redondeo que el cálculo en vivo.
+    private static void CongelarCostos(OrdenMantenimiento orden)
+    {
+        foreach (var asignacion in orden.Asignaciones)
+            asignacion.TarifaAplicada ??= asignacion.Tecnico.TarifaHora;
+
+        orden.CostoRepuestos = orden.Detalles.Sum(d => d.Subtotal);
+        orden.CostoManoObra = Math.Round(orden.Asignaciones.Sum(a => a.HorasTrabajadas * a.TarifaAplicada!.Value), 2, MidpointRounding.AwayFromZero);
+        orden.CostoTotal = orden.CostoRepuestos + orden.CostoManoObra;
+    }
+
+    // En Mantenimiento → Operativo al cerrar desde la ejecución, salvo que otra orden del vehículo siga En Ejecución o
+    // En Espera de Repuesto (docs/matriz-estados.md, casos borde). El cambio queda en el historial del vehículo con la orden.
+    private async Task DevolverVehiculoAsync(OrdenMantenimiento orden, int idUsuario, string observacion)
+    {
+        var activo = orden.Activo;
+        if (activo.IdEstadoActivo != SeedIds.EstadoActivoEnMantenimiento)
+            return;
+
+        if (await _repository.HasOtraOrdenEnCursoAsync(activo.IdActivo, orden.IdOrden))
+        {
+            _logger.LogInformation("El vehículo {CodigoActivo} sigue En Mantenimiento: tiene otra orden en curso", activo.Codigo);
+            return;
+        }
+
+        activo.HistorialEstados.Add(new HistorialEstadoActivo
+        {
+            IdEstadoAnterior = activo.IdEstadoActivo,
+            IdEstadoNuevo = SeedIds.EstadoActivoOperativo,
+            FechaCambio = DateTime.Now,
+            IdUsuario = idUsuario,
+            IdOrden = orden.IdOrden,
+            Observacion = observacion
+        });
+        activo.IdEstadoActivo = SeedIds.EstadoActivoOperativo;
     }
 
     // Cada técnico debe estar activo, disponible y poseer la especialidad que requiere el tipo (docs/requerimientos.md, 7.7).

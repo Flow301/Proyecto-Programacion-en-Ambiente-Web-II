@@ -27,5 +27,6 @@ public interface IOrdenMantenimientoService
     Task<Result<OrdenRepuestosDto>> GetRepuestosAsync(int id);
     Task<Result<OrdenRepuestosDto>> RegistrarRepuestosAsync(int id, OrdenMantenimientoRepuestosDto repuestos, int idUsuario);
     Task<Result<OrdenMantenimientoDetailDto>> ReanudarAsync(int id, string? observacion, int idUsuario);
+    Task<Result<OrdenMantenimientoDetailDto>> CompletarAsync(int id, string? observacion, int idUsuario);
     Task<Result<OrdenMantenimientoDetailDto>> CancelarAsync(int id, string? observacion, int idUsuario);
 }
