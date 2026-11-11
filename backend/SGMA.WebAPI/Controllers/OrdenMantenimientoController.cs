@@ -442,12 +442,15 @@ public class OrdenMantenimientoController : ControllerBase
     }
 
     /// <summary>
-    /// Cancela una orden Solicitada, Diagnosticada o Aprobada: pasa a Cancelada, que es un estado final.
+    /// Cancela una orden en cualquier estado no final: pasa a Cancelada, que es un estado final.
     /// </summary>
     /// <remarks>
     /// El Administrador o el Coordinador/Técnico. La observación es opcional y el cuerpo puede ir vacío.
-    /// Registra la fecha de cierre y la transición en el historial de la orden. El vehículo conserva su estado.
-    /// La cancelación durante la ejecución (En Ejecución o En Espera de Repuesto) llega con la ejecución.
+    /// Registra la fecha de cierre y la transición en el historial de la orden.
+    /// Desde Solicitada, Diagnosticada o Aprobada el vehículo conserva su estado.
+    /// Desde En Ejecución o En Espera de Repuesto: congela la tarifa de cada técnico y los costos de lo ya consumido,
+    /// elimina los repuestos pendientes (el stock ya descontado no se devuelve: si las piezas no se instalaron, el
+    /// Administrador registra una entrada) y el vehículo vuelve a Operativo, salvo que tenga otra orden en curso.
     /// </remarks>
     /// <param name="id" example="7">Id de la orden.</param>
     /// <param name="cancelacion">Observación opcional.</param>
@@ -455,7 +458,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="400">La observación supera los 500 caracteres o contiene los caracteres &lt; o &gt;.</response>
     /// <response code="403">El rol es Solicitante/Consulta.</response>
     /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
-    /// <response code="409">La orden ya está en un estado final, está en ejecución, u otro usuario cambió su estado al mismo tiempo.</response>
+    /// <response code="409">La orden ya está en un estado final, u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/cancelar")]
     [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
