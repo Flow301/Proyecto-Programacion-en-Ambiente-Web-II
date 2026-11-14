@@ -13,6 +13,11 @@ public class AuthService : IAuthService
 {
     private static readonly PasswordHasher<Usuario> Hasher = new();
 
+    // Hash de una contraseña que nadie conoce: se verifica cuando el login no existe para que la respuesta
+    // tarde lo mismo que con un usuario real. Así el tiempo no revela qué cuentas existen (como en el material).
+    private static readonly Usuario UsuarioFalso = new();
+    private static readonly string HashFalso = Hasher.HashPassword(UsuarioFalso, Guid.NewGuid().ToString());
+
     private readonly IUsuarioRepository _repository;
     private readonly ITokenService _tokenService;
     private readonly IMapper _mapper;
@@ -29,16 +34,19 @@ public class AuthService : IAuthService
 
     public async Task<Result<LoginRespuestaDto>> LoginAsync(LoginDto login)
     {
-        var usuario = await _repository.GetByLoginForUpdateAsync(login.Login!.Trim());
+        var nombre = login.Login!.Trim();
 
-        // Mismo mensaje para login inexistente, clave incorrecta o usuario inactivo: no revela qué cuentas existen
+        var usuario = await _repository.GetByLoginForUpdateAsync(nombre);
+
+        // Mismo mensaje para login inexistente, clave incorrecta o usuario inactivo: no revela qué cuentas existen.
+        // Si el login no existe se verifica igual contra un hash falso, para que la respuesta tarde lo mismo (como en el material).
         var verificacion = usuario is null
-            ? PasswordVerificationResult.Failed
+            ? VerificarContraHashFalso(login.Clave!)
             : Hasher.VerifyHashedPassword(usuario, usuario.ClaveHash, login.Clave!);
 
         if (usuario is null || !usuario.Estado || verificacion == PasswordVerificationResult.Failed)
         {
-            _logger.LogWarning("Inicio de sesión rechazado para {Login}", login.Login);
+            _logger.LogWarning("Inicio de sesión rechazado para {Login}", nombre);
             return Result<LoginRespuestaDto>.Failure(401, "No autorizado", "El usuario o la contraseña no son correctos.");
         }
 
@@ -92,6 +100,13 @@ public class AuthService : IAuthService
         _logger.LogInformation("Usuario {Login} cambió su contraseña", usuario.Login);
 
         return Result<int>.Success(usuario.IdUsuario, detail: "La contraseña se cambió correctamente.");
+    }
+
+    // Mismo costo que verificar una contraseña real, pero siempre falla
+    private static PasswordVerificationResult VerificarContraHashFalso(string clave)
+    {
+        Hasher.VerifyHashedPassword(UsuarioFalso, HashFalso, clave);
+        return PasswordVerificationResult.Failed;
     }
 
     private static Result<T> SesionInvalida<T>() =>
