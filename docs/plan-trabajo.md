@@ -199,6 +199,7 @@ La seguridad se adelantó a la semana 7, así que A adelanta el frontend base de
 
 - Pantalla de cambio de contraseña propia, disponible para los tres roles.
 - Plantilla general: menú según el rol con la sección activa, usuario y rol visibles, y la paleta como variables CSS.
+- Endpoints de solo lectura de los catálogos (`api/Catalogo`) para llenar los formularios: tipos de mantenimiento, prioridades, niveles de certificación y estados.
 
 **Integrante B**
 

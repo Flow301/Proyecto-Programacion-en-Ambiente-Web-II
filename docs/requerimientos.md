@@ -197,7 +197,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Costo de repuestos, costo de mano de obra y costo total.
 - Estado actual.
 
-**Catálogo de tipos de mantenimiento.** *Decisión del equipo:* el enunciado usa "tipo" para dos cosas: la emergencia ("orden de tipo emergencia") y la especialidad ("la especialidad requerida por el tipo de mantenimiento"). Por eso cada tipo tiene un nombre, una naturaleza (Preventivo, Correctivo o Emergencia) y la especialidad que requiere. Por ejemplo: "Servicio preventivo por kilometraje" es Preventivo y requiere mecánica general; "Reparación de frenos" es Correctivo y requiere frenos; "Auxilio por avería en ruta" es Emergencia y requiere mecánica general. El catálogo se carga con los seeders y todos los roles que crean o atienden órdenes lo pueden consultar.
+**Catálogo de tipos de mantenimiento.** *Decisión del equipo:* el enunciado usa "tipo" para dos cosas: la emergencia ("orden de tipo emergencia") y la especialidad ("la especialidad requerida por el tipo de mantenimiento"). Por eso cada tipo tiene un nombre, una naturaleza (Preventivo, Correctivo o Emergencia) y la especialidad que requiere. Por ejemplo: "Servicio preventivo por kilometraje" es Preventivo y requiere mecánica general; "Reparación de frenos" es Correctivo y requiere frenos; "Auxilio por avería en ruta" es Emergencia y requiere mecánica general. El catálogo se carga con los seeders y los tres roles lo consultan en `GET api/Catalogo/tipos-mantenimiento` (ver [Catálogos de consulta](#catálogos-de-consulta)).
 
 **Acciones.**
 
@@ -453,6 +453,26 @@ El cierre de sesión no tiene endpoint: el cliente descarta el token.
 
 ---
 
+## Catálogos de consulta
+
+**Objetivo.** Los formularios del frontend necesitan las opciones de los catálogos fijos. Como la sección 15 del enunciado prohíbe datos fijos en React, salen de la API.
+
+*Decisión del equipo:* estos catálogos los cargan los seeders y no se administran desde el sistema: el enunciado no los pide como módulo y cambiarlos alteraría reglas de negocio (por ejemplo, la naturaleza Emergencia o los estados de la matriz). Por eso solo tienen consulta.
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| GET | `api/Catalogo/tipos-mantenimiento` | Cualquier rol | Solicitar, editar y diagnosticar una orden. Trae la naturaleza y la especialidad requerida. |
+| GET | `api/Catalogo/prioridades` | Cualquier rol | Diagnosticar; ordenadas de la más baja a la más urgente. |
+| GET | `api/Catalogo/niveles-certificacion` | Administrador y Coordinador/Técnico | Asociar una especialidad a un técnico. El Solicitante no tiene acceso al módulo de técnicos. |
+| GET | `api/Catalogo/estados-orden` | Cualquier rol | Filtros y etiquetas de estado; marca los estados finales. |
+| GET | `api/Catalogo/estados-activo` | Cualquier rol | Filtros, etiquetas y el cambio manual de estado del vehículo. |
+
+Los roles salen de `api/Usuario/roles` (solo Administrador), junto con el resto de la gestión de usuarios.
+
+**Avance.** Avance 2.
+
+---
+
 ## Proceso principal de la orden (sección 8)
 
 La orden recorre este camino:
@@ -495,6 +515,7 @@ Todo esto corresponde al Avance 2.
 
 - **Navegación y sesión.**
   - El menú muestra solo lo que corresponde al rol e indica la sección activa.
+  - Dentro de cada pantalla, el usuario tampoco ve acciones ni datos que su rol no puede usar: por ejemplo, el Coordinador/Técnico no ve Aprobar ni Rechazar, y el Solicitante/Consulta no ve repuestos, horas ni costos. Se ocultan, no solo se deshabilitan, porque el enunciado pide que no se vean.
   - En todas las pantallas se ven el usuario autenticado, su rol y la opción de cerrar sesión.
   - Si el token expira o es inválido, la aplicación vuelve al login con un mensaje explicativo.
 - **Estados.**
@@ -603,7 +624,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 - [x] CRUD de usuarios con desactivación, reactivación y asignación de rol.
 - [x] Reseteo de contraseña por el Administrador.
 - [x] Protección del último Administrador activo.
-- [x] Autorización por rol en todos los endpoints, con 401 y 403. Hecho en activos, categorías, especialidades y técnicos; faltan repuestos, proveedores y órdenes.
+- [x] Autorización por rol en todos los endpoints, con 401 y 403.
 - [x] Solicitante/Consulta ve solo sus órdenes y el historial de los vehículos relacionados con ellas.
 - [x] El usuario responsable sale del token en todos los endpoints.
 
@@ -611,28 +632,28 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Ciclo de vida de la orden**
 
-- [ ] Diagnosticar, aprobar, rechazar, iniciar, reanudar, completar y cancelar según la matriz y los roles.
+- [x] Diagnosticar, aprobar, rechazar, iniciar, reanudar, completar y cancelar según la matriz y los roles.
 - [x] Excepción de negocio propia en toda transición no permitida.
 - [x] Edición solo en estado Solicitada.
-- [ ] Cambios automáticos del vehículo a En Mantenimiento y de vuelta a Operativo, con sus casos borde.
-- [ ] Kilometraje en el diagnóstico y reinicio del contador al completar una preventiva.
-- [ ] Costos en vivo y congelados al cierre.
+- [x] Cambios automáticos del vehículo a En Mantenimiento y de vuelta a Operativo, con sus casos borde.
+- [x] Kilometraje en el diagnóstico y reinicio del contador al completar una preventiva.
+- [x] Costos en vivo y congelados al cierre.
 
 **Detalle de repuestos**
 
-- [ ] Registro con validación de stock y descuento en la misma operación.
-- [ ] Paso automático a En Espera de Repuesto con pendientes y mensaje claro.
-- [ ] Reanudación que consume los pendientes o se rechaza indicando qué falta.
+- [x] Registro con validación de stock y descuento en la misma operación.
+- [x] Paso automático a En Espera de Repuesto con pendientes y mensaje claro.
+- [x] Reanudación que consume los pendientes o se rechaza indicando qué falta.
 
 **Asignación de técnicos**
 
-- [ ] Asignación con validación de especialidad, actividad y disponibilidad.
-- [ ] Registro de horas solo En Ejecución.
-- [ ] Costo de mano de obra con la tarifa congelada al cierre.
+- [x] Asignación con validación de especialidad, actividad y disponibilidad.
+- [x] Registro de horas solo En Ejecución.
+- [x] Costo de mano de obra con la tarifa congelada al cierre.
 
 **Historial**
 
-- [ ] Historial automático de órdenes y de los cambios automáticos del vehículo.
+- [x] Historial automático de órdenes y de los cambios automáticos del vehículo.
 - [ ] Solo lectura para todos los roles y visible desde el detalle en el frontend.
 
 **Mantenimiento preventivo**
@@ -650,6 +671,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Frontend**
 
+- [x] Catálogos de consulta en la API para llenar los formularios.
 - [ ] React consumiendo la API en todos los módulos, sin datos fijos.
 - [ ] Menú y pantallas según el rol, y manejo de token expirado.
 - [ ] Requerimientos de interfaz de la sección 12.
