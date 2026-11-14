@@ -119,6 +119,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 context.HandleResponse(); // reemplaza la respuesta vacía por defecto
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.Headers.WWWAuthenticate = "Bearer"; // indica qué credencial se espera (como en el material)
                 return context.Response.WriteAsJsonAsync(Result<object>.Failure(401, "No autorizado",
                     "Debe iniciar sesión: el token no se envió, no es válido o ya expiró."));
             },
