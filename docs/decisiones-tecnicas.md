@@ -191,9 +191,23 @@ Tomamos los colores de la señalización vial, que cualquier persona de una flot
 - **Verde** `#2E7D32`: estados correctos y mensajes de éxito.
 - **Rojo** `#C62828`: estados detenidos o vencidos y mensajes de error.
 - **Ámbar oscuro** `#B45309`: estados de espera.
-- **Gris** `#6B7280`: estados cerrados sin éxito.
+- **Gris** `#6B7280`: estados cerrados sin éxito, bordes e íconos decorativos.
+- **Gris texto** `#4B5563`: texto secundario (subtítulos, ayudas de los campos, fechas y datos complementarios).
 
 **Regla de contraste:** todo texto debe cumplir el contraste mínimo AA (4,5:1). Por eso el amarillo lleva texto oscuro y los demás colores de estado llevan texto blanco. Lo verificamos con un comprobador de contraste al aplicar la paleta.
+
+Contraste calculado (fórmula de WCAG 2.1):
+
+| Combinación | Contraste |
+|---|---|
+| Blanco sobre azul vial, índigo, rojo, Diagnosticada, verde y ámbar oscuro | entre 5,02 y 8,66 |
+| Blanco sobre gris (Cancelada, Dado de Baja) y gris azulado (Solicitada) | 4,83 y 4,76 |
+| Gris asfalto sobre amarillo preventivo | 7,01 |
+| Gris asfalto sobre el fondo gris claro | 11,69 |
+| Gris texto sobre el fondo gris claro y sobre blanco | 6,93 y 7,56 |
+| Gris `#6B7280` sobre el fondo gris claro | **4,43: no alcanza** |
+
+Por eso el gris `#6B7280` nunca se usa como color de texto sobre el fondo de la aplicación: el texto secundario usa el gris texto. Para bordes e íconos decorativos sí sirve, porque WCAG les pide 3:1.
 
 ### Estados de la orden
 
@@ -219,7 +233,7 @@ Usamos el mismo lenguaje visual que en las órdenes: el mismo significado lleva 
 
 ### Alertas del dashboard
 
-- **Preventivo:** Vencido en rojo, Próximo a vencer en amarillo, Al día en verde, y Orden en curso y En taller en azul.
+- **Preventivo:** Vencido en rojo, Próximo a vencer en amarillo, Al día en verde, y Orden en curso y En taller en el azul de Diagnosticada (`#2563EB`), no en el azul vial: el azul vial es el de la barra y los botones, y una alerta de ese color se confundiría con la interfaz. El `#2563EB` es de la misma familia saturada que los demás colores de estado y da 5,17 con texto blanco.
 - **Stock bajo el mínimo:** rojo.
 
 ### Reglas de uso

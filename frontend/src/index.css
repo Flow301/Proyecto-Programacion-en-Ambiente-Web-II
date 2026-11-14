@@ -7,7 +7,8 @@
   --verde: #2e7d32;
   --rojo: #c62828;
   --ambar-oscuro: #b45309;
-  --gris: #6b7280;
+  --gris: #6b7280;        /* bordes, íconos y estados cerrados; como texto sobre el fondo no llega a AA */
+  --gris-texto: #4b5563;  /* texto secundario */
 
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--gris-asfalto);
@@ -52,7 +53,7 @@ input {
   box-shadow: 0 2px 12px rgb(0 0 0 / 0.08);
 }
 .tarjeta h1 { margin: 0; color: var(--azul-vial); }
-.subtitulo { margin: 0 0 0.5rem; color: var(--gris); font-size: 0.9rem; }
+.subtitulo { margin: 0 0 0.5rem; color: var(--gris-texto); font-size: 0.9rem; }
 .tarjeta button { margin-top: 0.6rem; }
 
 .inicio header {
