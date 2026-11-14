@@ -135,6 +135,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
+// Contador de intentos fallidos de login por usuario (AuthService)
+builder.Services.AddMemoryCache();
+
 // CORS: solo el frontend autorizado, leído desde appsettings.json (como en el material, Laboratorio 13)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
