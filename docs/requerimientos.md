@@ -403,7 +403,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 | Método | Ruta | Quién | Qué hace |
 |---|---|---|---|
-| POST | `api/Auth/login` | Público | Valida las credenciales y devuelve el token, su expiración y el usuario. |
+| POST | `api/Auth/login` | Público | Valida las credenciales y devuelve el token, su expiración y el usuario. Bloquea al usuario 5 minutos tras 5 intentos fallidos (429). |
 | GET | `api/Auth/perfil` | Cualquier rol | Datos del usuario del token. |
 | PUT | `api/Auth/clave` | Cualquier rol | Cambia la contraseña propia; pide la actual. |
 | GET | `api/Usuario` | Administrador | Lista todos los usuarios, incluidos los inactivos. |
@@ -427,6 +427,7 @@ El cierre de sesión no tiene endpoint: el cliente descarta el token.
 - Los usuarios nunca se eliminan físicamente, solo se desactivan, porque tienen actividad registrada (órdenes, cambios de estado).
 - Un usuario inactivo no puede iniciar sesión aunque sus credenciales sean correctas.
   - El login responde 401 con el mismo mensaje si el usuario no existe, está inactivo o la contraseña es incorrecta, para no revelar qué cuentas existen.
+  - Tras 5 intentos fallidos seguidos, ese usuario queda bloqueado 5 minutos desde el último intento: el login responde 429, aunque la contraseña sea la correcta. Los demás usuarios no se ven afectados, y un usuario inexistente recibe el mismo trato para no revelar qué cuentas existen. Un login correcto reinicia la cuenta de fallos.
   - Caso borde: un token emitido antes de la desactivación sigue siendo válido hasta que expira. `api/Auth/perfil` sí responde 401 a ese usuario, y los servicios que validan al usuario responsable lo rechazan.
   - Caso borde: si se cambia el rol de un usuario con sesión abierta, su token conserva el rol anterior hasta que expira. El nuevo rol aplica desde su siguiente inicio de sesión.
 - Cambio de la contraseña propia:

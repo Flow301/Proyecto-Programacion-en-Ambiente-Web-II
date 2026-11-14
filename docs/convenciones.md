@@ -114,7 +114,7 @@ En la Clean Architecture de libro, Infrastructure depende de Application y no al
 
 ### Recorrido de una petición
 
-1. **Controlador** (`WebAPI/Controllers`). Recibe la petición, llama al servicio y responde con `StatusCode(result.Status, result)`. Al crear responde 201 con `CreatedAtRoute`, que agrega el encabezado `Location`. Se documenta para Scalar como en el material: comentarios XML (`<summary>`, `<remarks>`, `<param example>` y un `<response code>` por cada código) y un `[ProducesResponseType]` por código. El éxito usa `Result<Dto>`, el 400 de validación `Result<Dictionary<string, string[]>>`, los demás errores `Result<object>`, y la clase declara el 401 y el 500 para todas sus acciones (y el 403 si todas lo pueden dar). Los DTO llevan `<summary>` y `<example>` en cada propiedad. Declara los roles con `[Authorize(Roles = ...)]` usando las constantes de `SGMA.Shared/Constants/Roles.cs` (ver [Autenticación y autorización](#autenticación-y-autorización)) y toma el usuario responsable del token con `User.GetIdUsuario()`. No tiene lógica de negocio.
+1. **Controlador** (`WebAPI/Controllers`). Recibe la petición, llama al servicio y responde con `StatusCode(result.Status, result)`. Al crear responde 201 con `CreatedAtRoute`, que agrega el encabezado `Location`. Se documenta para Scalar como en el material: comentarios XML (`<summary>`, `<remarks>`, `<param example>` y un `<response code>` por cada código) y un `[ProducesResponseType]` por código. El éxito usa `Result<Dto>`, el 400 de validación `Result<Dictionary<string, string[]>>`, los demás errores `Result<object>`, y la clase declara el 401 y el 500 para todas sus acciones (y el 403 si todas lo pueden dar). Los DTO llevan `<summary>` y `<example>` en cada propiedad. Declara los permisos con `[Authorize(Policy = ...)]` usando las políticas de `SGMA.WebAPI/Security/AuthorizationPolicies.cs` (ver [Autenticación y autorización](#autenticación-y-autorización)) y toma el usuario responsable del token con `User.GetIdUsuario()`. No tiene lógica de negocio.
 2. **Servicio** (`Application/Implementation`). Aplica las reglas de negocio y convierte entidades en DTO con Mapster. Registra con `ILogger<T>` cada cambio guardado (`LogInformation`) y cada conflicto rechazado (`LogWarning`), como en el material. Devuelve siempre un `Result<T>`: `Success`, `Paged` o `Failure` con 400, 404 o 409 para los errores esperados del CRUD. Recibe el usuario responsable como parámetro (`int idUsuario`), que el controlador saca del token; nunca viaja en el cuerpo de la petición.
 3. **Repositorio** (`Infrastructure/Implementation`). Consulta y guarda con EF Core. Devuelve entidades, salvo en agregaciones (`GroupBy`, reportes, dashboard), que devuelven el DTO de resultado directamente. Cada método de escritura termina con un solo `SaveChangesAsync`, y los borrados físicos usan `ExecuteDeleteAsync`, igual que en el material.
 4. **`AppDbContext`** (`Infrastructure/Data`). Configura tablas, relaciones, índices y restricciones en `OnModelCreating`, y aplica los seeders.
@@ -205,26 +205,35 @@ Estas reglas no se discuten en cada cambio: si un cambio las rompe, no entra a `
 
 ### Autenticación y autorización
 
-El material de clase no trae JWT, así que esto lo decidimos nosotros:
+Como en el material (Laboratorios 9-1 y 9-2), con las diferencias que se indican:
 
 - **Token.** Lo genera `TokenService` (`SGMA.WebAPI/Security`) al hacer login, a través de la interfaz `ITokenService` de Application. Va firmado con HMAC-SHA256 y dura 60 minutos (`Jwt:ExpiraMinutos`). No hay refresh token.
 - **Claims.** Llevan su nombre corto, sin mapear: `sub` (IdUsuario), `name` (Login) y `role` (nombre del rol).
 - **Configuración.** `Jwt:Issuer`, `Jwt:Audience` y `Jwt:ExpiraMinutos` en `appsettings.json`. `Jwt:Key` (mínimo 32 caracteres) en User Secrets; si falta, la API no arranca.
-- **Roles en los controladores.** Con las constantes de `Roles.cs`, que deben coincidir exactamente con los nombres de la tabla `Rol`:
+- **Login.** Si el usuario no existe, la contraseña se verifica igual contra un hash falso, para que la respuesta tarde lo mismo y el tiempo no revele qué cuentas existen (como en el material).
+- **Intentos fallidos.** *Decisión del equipo:* el material limita el login con un `RateLimiter` global (5 por minuto para toda la API), así que los fallos de una persona bloquean a todas. En SGMA el límite es por usuario y lo lleva `AuthService`: tras 5 intentos fallidos seguidos (`IntentosLogin.cs`), ese usuario recibe 429 durante 5 minutos desde el último intento, aunque envíe la contraseña correcta; los demás usuarios no se ven afectados. Un login correcto reinicia la cuenta. El contador vive en memoria (`IMemoryCache`): se pierde al reiniciar la API.
+- **Políticas en los controladores.** Como en el material, con nombre: `AuthorizationPolicies.cs` (`SGMA.WebAPI/Security`) tiene los nombres y `Program.cs` indica qué roles exige cada una, con las constantes de `Roles.cs`, que deben coincidir exactamente con los nombres de la tabla `Rol`:
+
+  | Política | Roles |
+  |---|---|
+  | `SoloAdministrador` | Administrador |
+  | `SoloCoordinador` | Coordinador/Técnico |
+  | `AdministradorOCoordinador` | Administrador, Coordinador/Técnico |
+  | `AdministradorOSolicitante` | Administrador, Solicitante/Consulta |
 
   ```csharp
   // Clase: quién puede consultar
-  [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
+  [Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)]
   public class TecnicoController : ControllerBase
 
   // Acción: además, solo el Administrador escribe (los dos atributos se cumplen a la vez)
   [HttpPost]
-  [Authorize(Roles = Roles.Administrador)]
+  [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
   ```
 
   Si los tres roles pueden consultar, la clase no lleva `[Authorize]`: basta la política por defecto.
 - **Usuario responsable.** `User.GetIdUsuario()` en el controlador; el servicio lo recibe como `int idUsuario`.
-- **Respuestas.** El 401 (sin token, token inválido o vencido) y el 403 (rol sin permiso) salen de los eventos de `AddJwtBearer` en `Program.cs`, con la misma forma `Result<T>` que el resto de la API.
+- **Respuestas.** El 401 (sin token, token inválido o vencido, con el encabezado `WWW-Authenticate: Bearer`) y el 403 (rol sin permiso) salen de los eventos de `AddJwtBearer` en `Program.cs`, con la misma forma `Result<T>` que el resto de la API.
 - **Filtros por dueño.** Lo que el rol no alcanza a expresar ("el Solicitante ve solo sus órdenes") se resuelve en el servicio, que recibe el id del usuario y su rol.
 
 ---
