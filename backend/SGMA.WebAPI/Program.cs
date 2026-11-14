@@ -206,6 +206,8 @@ builder.Services.AddScoped<IRepuestoRepository, RepuestoRepository>();
 builder.Services.AddScoped<IRepuestoService, RepuestoService>();
 builder.Services.AddScoped<IOrdenMantenimientoRepository, OrdenMantenimientoRepository>();
 builder.Services.AddScoped<IOrdenMantenimientoService, OrdenMantenimientoService>();
+builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
+builder.Services.AddScoped<ICatalogoService, CatalogoService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
