@@ -37,9 +37,9 @@ Las transiciones permitidas, quién puede ejecutar cada una y sus efectos autom�
 
 ## Entregas
 
-**Avance 1 (semana 7) — en desarrollo.** API sin frontend con el CRUD de activos, categorías, técnicos, especialidades, repuestos y proveedores; relaciones 1:N y N:N; migraciones y seeders; validaciones; manejo global de excepciones; creación y consulta de órdenes de mantenimiento; y gestión de usuarios con login JWT, cambio y reseteo de contraseña y autorización por rol en todos los endpoints.
+**Avance 1 (semana 7) — entregado.** API sin frontend con el CRUD de activos, categorías, técnicos, especialidades, repuestos y proveedores; relaciones 1:N y N:N; migraciones y seeders; validaciones; manejo global de excepciones; creación y consulta de órdenes de mantenimiento; y gestión de usuarios con login JWT, cambio y reseteo de contraseña y autorización por rol en todos los endpoints.
 
-**Avance 2 (semana 13, entrega final) — pendiente.** Ciclo de vida completo de la orden, frontend en React, historial visible, reportes y dashboard.
+**Avance 2 (semana 13, entrega final) — en desarrollo.** Ciclo de vida completo de la orden, frontend en React, historial visible, reportes y dashboard. El avance de cada punto está en la checklist de los [requerimientos](docs/requerimientos.md#avance-2--semana-13).
 
 ## Stack
 
@@ -66,7 +66,7 @@ Seguimos la organización de capas y los patrones vistos en clase (Clean Archite
 ├── README.md
 ├── .gitignore
 ├── docs/                         Documentación del proyecto
-├── backend/                      En construcción (Avance 1)
+├── backend/                      API en ASP.NET Core
 │   ├── SGMA.slnx
 │   ├── SGMA.Domain/              Entities/ y DTO/
 │   ├── SGMA.Infrastructure/      Data/ (AppDbContext y Seed/), Interfaces/, Implementation/ y Migrations/
@@ -85,8 +85,6 @@ Qué hace cada proyecto y a cuáles referencia:
 - **`SGMA.WebAPI`:** controladores, manejo global de excepciones, generación y validación del JWT, configuración e imágenes de los activos. Referencia a Application, Domain, Infrastructure y Shared.
 
 ## Cómo levantar el proyecto
-
-> Los comandos del backend aplican desde que exista la solución en `backend/` (Avance 1).
 
 ### Requisitos
 
