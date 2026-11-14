@@ -93,7 +93,7 @@ public class ActivoController : ControllerBase
     /// <response code="404">El usuario del token fue desactivado.</response>
     /// <response code="409">La placa ya existe o la categoría alcanzó el máximo de códigos.</response>
     [HttpPost]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -123,7 +123,7 @@ public class ActivoController : ControllerBase
     /// <response code="404">El vehículo no existe.</response>
     /// <response code="409">La placa pertenece a otro vehículo o el kilometraje disminuye, u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -149,7 +149,7 @@ public class ActivoController : ControllerBase
     /// <response code="403">El rol no es Administrador.</response>
     /// <response code="404">El vehículo no existe.</response>
     [HttpPut("{id:int}/imagen")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -178,7 +178,7 @@ public class ActivoController : ControllerBase
     /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
     /// <response code="409">La transición no está permitida, el vehículo tiene órdenes abiertas (al dar de baja) u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/estado")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -205,7 +205,7 @@ public class ActivoController : ControllerBase
     /// <response code="404">El vehículo no existe.</response>
     /// <response code="409">El vehículo ya está dado de baja o en mantenimiento, o tiene órdenes abiertas.</response>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
-using SGMA.Shared.Constants;
+using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
 
@@ -15,7 +15,7 @@ namespace SGMA.WebAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
-[Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")] // escribir pide además Administrador
+[Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)] // escribir pide además Administrador
 [ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]           // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
@@ -98,7 +98,7 @@ public class RepuestoController : ControllerBase
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="409">Ya existe un repuesto con ese código.</response>
     [HttpPost]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<RepuestoDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
@@ -124,7 +124,7 @@ public class RepuestoController : ControllerBase
     /// <response code="404">El repuesto no existe o está inactivo.</response>
     /// <response code="409">El código pertenece a otro repuesto.</response>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<RepuestoDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -142,7 +142,7 @@ public class RepuestoController : ControllerBase
     /// <response code="200">Repuesto inactivado; data = Id.</response>
     /// <response code="404">El repuesto no existe o ya estaba inactivo.</response>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(int id)
@@ -164,7 +164,7 @@ public class RepuestoController : ControllerBase
     /// <response code="404">El repuesto no existe o está inactivo.</response>
     /// <response code="409">El stock resultante supera el máximo permitido.</response>
     [HttpPost("{id:int}/entrada")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<RepuestoDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -220,7 +220,7 @@ public class RepuestoController : ControllerBase
     /// <response code="404">El repuesto no existe o está inactivo.</response>
     /// <response code="409">El proveedor ya está asociado al repuesto.</response>
     [HttpPost("{id:int}/proveedores")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -241,7 +241,7 @@ public class RepuestoController : ControllerBase
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="404">El repuesto no existe, está inactivo o no tiene ese proveedor.</response>
     [HttpPut("{id:int}/proveedores/{idProveedor:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -259,7 +259,7 @@ public class RepuestoController : ControllerBase
     /// <response code="200">Proveedor desasociado; data = proveedores que quedan.</response>
     /// <response code="404">El repuesto no existe, está inactivo o no tiene ese proveedor.</response>
     [HttpDelete("{id:int}/proveedores/{idProveedor:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<IEnumerable<RepuestoProveedorDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DesasociarProveedorAsync(int id, int idProveedor)

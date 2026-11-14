@@ -101,7 +101,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">El usuario del token fue desactivado.</response>
     /// <response code="409">El usuario ya no puede crear órdenes (le cambiaron el rol con el token vigente), el vehículo está dado de baja o está En Mantenimiento y el tipo no es de emergencia.</response>
     [HttpPost]
-    [Authorize(Roles = $"{Roles.Administrador},{Roles.SolicitanteConsulta}")]
+    [Authorize(Policy = AuthorizationPolicies.AdministradorOSolicitante)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -132,7 +132,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
     /// <response code="409">La orden ya no está Solicitada, o el vehículo está En Mantenimiento y el nuevo tipo no es de emergencia, u otro usuario cambió el estado de la orden al mismo tiempo.</response>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -160,7 +160,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
     /// <response code="409">La orden no está Solicitada, el kilometraje es menor que el del vehículo, el tipo corregido no es de emergencia con el vehículo En Mantenimiento, u otro usuario cambió el estado de la orden al mismo tiempo.</response>
     [HttpPost("{id:int}/diagnosticar")]
-    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [Authorize(Policy = AuthorizationPolicies.SoloCoordinador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -187,7 +187,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
     /// <response code="409">La orden no está Diagnosticada, la fecha programada es anterior a hoy, u otro usuario cambió el estado de la orden al mismo tiempo.</response>
     [HttpPost("{id:int}/aprobar")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -214,7 +214,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
     /// <response code="409">La orden no está Diagnosticada u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/rechazar")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -243,7 +243,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
     /// <response code="409">La orden no está Aprobada, o un técnico está inactivo, no disponible o sin la especialidad requerida.</response>
     [HttpPost("{id:int}/iniciar")]
-    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [Authorize(Policy = AuthorizationPolicies.SoloCoordinador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -267,7 +267,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="403">El rol es Solicitante/Consulta.</response>
     /// <response code="404">La orden no existe.</response>
     [HttpGet("{id:int}/tecnicos")]
-    [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
+    [Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)]
     [ProducesResponseType<Result<IEnumerable<AsignacionTecnicoDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -292,7 +292,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
     /// <response code="409">La orden no está En Ejecución, o un técnico ya está asignado, está inactivo, no disponible o sin la especialidad.</response>
     [HttpPost("{id:int}/tecnicos")]
-    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [Authorize(Policy = AuthorizationPolicies.SoloCoordinador)]
     [ProducesResponseType<Result<IEnumerable<AsignacionTecnicoDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -320,7 +320,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe, el técnico no está asignado a ella o el usuario fue desactivado.</response>
     /// <response code="409">La orden no está En Ejecución.</response>
     [HttpPost("{id:int}/tecnicos/{idTecnico:int}/horas")]
-    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [Authorize(Policy = AuthorizationPolicies.SoloCoordinador)]
     [ProducesResponseType<Result<IEnumerable<AsignacionTecnicoDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -344,7 +344,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="403">El rol es Solicitante/Consulta.</response>
     /// <response code="404">La orden no existe.</response>
     [HttpGet("{id:int}/repuestos")]
-    [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
+    [Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)]
     [ProducesResponseType<Result<OrdenRepuestosDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -371,7 +371,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
     /// <response code="409">La orden no está En Ejecución o un repuesto está inactivo.</response>
     [HttpPost("{id:int}/repuestos")]
-    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [Authorize(Policy = AuthorizationPolicies.SoloCoordinador)]
     [ProducesResponseType<Result<OrdenRepuestosDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -399,7 +399,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
     /// <response code="409">La orden no está En Espera de Repuesto, o algún pendiente no tiene stock suficiente.</response>
     [HttpPost("{id:int}/reanudar")]
-    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [Authorize(Policy = AuthorizationPolicies.SoloCoordinador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -429,7 +429,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario fue desactivado.</response>
     /// <response code="409">La orden no está En Ejecución, tiene repuestos pendientes o no tiene horas registradas.</response>
     [HttpPost("{id:int}/completar")]
-    [Authorize(Roles = Roles.CoordinadorTecnico)]
+    [Authorize(Policy = AuthorizationPolicies.SoloCoordinador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -460,7 +460,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <response code="404">La orden no existe o el usuario del token fue desactivado.</response>
     /// <response code="409">La orden ya está en un estado final, u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/cancelar")]
-    [Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")]
+    [Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]

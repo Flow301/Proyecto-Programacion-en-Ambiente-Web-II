@@ -18,6 +18,7 @@ using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Implementation;
 using SGMA.Infrastructure.Interfaces;
 using SGMA.WebAPI.Handlers;
+using SGMA.Shared.Constants;
 using SGMA.WebAPI.Security;
 using Serilog;
 using Serilog.Events;
@@ -130,9 +131,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Políticas de la matriz de permisos (como en el material, Laboratorio 9-2): los controladores usan [Authorize(Policy = ...)]
 // Todo endpoint exige token salvo los marcados con [AllowAnonymous]: ninguno queda abierto por olvido.
-// Los roles de cada acción se indican con [Authorize(Roles = ...)] en los controladores.
 builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AuthorizationPolicies.SoloAdministrador, policy => policy.RequireRole(Roles.Administrador))
+    .AddPolicy(AuthorizationPolicies.SoloCoordinador, policy => policy.RequireRole(Roles.CoordinadorTecnico))
+    .AddPolicy(AuthorizationPolicies.AdministradorOCoordinador,
+        policy => policy.RequireRole(Roles.Administrador, Roles.CoordinadorTecnico))
+    .AddPolicy(AuthorizationPolicies.AdministradorOSolicitante,
+        policy => policy.RequireRole(Roles.Administrador, Roles.SolicitanteConsulta))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
 // Contador de intentos fallidos de login por usuario (AuthService)

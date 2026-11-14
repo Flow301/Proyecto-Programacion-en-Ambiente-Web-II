@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
-using SGMA.Shared.Constants;
+using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
 
@@ -14,7 +14,7 @@ namespace SGMA.WebAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
-[Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")] // escribir pide además Administrador
+[Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)] // escribir pide además Administrador
 [ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]           // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
@@ -97,7 +97,7 @@ public class TecnicoController : ControllerBase
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="409">Ya existe un técnico con esa identificación.</response>
     [HttpPost]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
@@ -123,7 +123,7 @@ public class TecnicoController : ControllerBase
     /// <response code="404">El técnico no existe o está inactivo.</response>
     /// <response code="409">La identificación pertenece a otro técnico.</response>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -141,7 +141,7 @@ public class TecnicoController : ControllerBase
     /// <response code="200">Técnico inactivado; data = Id.</response>
     /// <response code="404">El técnico no existe o ya estaba inactivo.</response>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(int id)
@@ -160,7 +160,7 @@ public class TecnicoController : ControllerBase
     /// <response code="404">El técnico no existe o está inactivo.</response>
     /// <response code="409">El técnico ya tiene esa especialidad.</response>
     [HttpPost("{id:int}/especialidades")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -179,7 +179,7 @@ public class TecnicoController : ControllerBase
     /// <response code="200">Especialidad desasociada; data = detalle del técnico.</response>
     /// <response code="404">El técnico no existe, está inactivo o no tiene esa especialidad.</response>
     [HttpDelete("{id:int}/especialidades/{idEspecialidad:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DesasociarEspecialidadAsync(int id, int idEspecialidad)

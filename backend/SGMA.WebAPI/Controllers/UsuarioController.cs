@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
-using SGMA.Shared.Constants;
 using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
@@ -15,7 +14,7 @@ namespace SGMA.WebAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
-[Authorize(Roles = Roles.Administrador)]                                         // todas las acciones
+[Authorize(Policy = AuthorizationPolicies.SoloAdministrador)] // todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]           // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones

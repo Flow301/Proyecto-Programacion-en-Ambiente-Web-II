@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
-using SGMA.Shared.Constants;
+using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
 
@@ -14,7 +14,7 @@ namespace SGMA.WebAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
-[Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")] // escribir pide además Administrador
+[Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)] // escribir pide además Administrador
 [ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]           // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
@@ -82,7 +82,7 @@ public class ProveedorController : ControllerBase
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="409">Ya existe un proveedor con esa cédula jurídica.</response>
     [HttpPost]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ProveedorDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
@@ -108,7 +108,7 @@ public class ProveedorController : ControllerBase
     /// <response code="404">El proveedor no existe o está inactivo.</response>
     /// <response code="409">La cédula jurídica pertenece a otro proveedor.</response>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ProveedorDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -129,7 +129,7 @@ public class ProveedorController : ControllerBase
     /// <response code="200">Proveedor inactivado; data = Id.</response>
     /// <response code="404">El proveedor no existe o ya estaba inactivo.</response>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(int id)
