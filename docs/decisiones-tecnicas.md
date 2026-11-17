@@ -84,6 +84,14 @@ El margen se define en kilómetros, no en porcentaje, porque así razona un jefe
 - **Vehículo con una orden preventiva abierta:** aparece como "orden en curso" y no se sugiere otra, para no duplicar órdenes.
 - **Vehículo En Mantenimiento:** aparece como "en taller" y no se sugiere la orden, porque crearla se rechazaría por el bloqueo de vehículos en mantenimiento. Se sugiere cuando vuelva a Operativo.
 - **Kilometraje del último preventivo mayor que el actual:** no puede ocurrir. Lo impiden la validación del servicio y la restricción `CHECK` de la tabla.
+- **La sugerencia cambió antes de confirmarla:** al generar la orden el vehículo se vuelve a evaluar, así que si mientras tanto se abrió otra orden preventiva, entró a mantenimiento o se corrigió su kilometraje, se rechaza con el motivo.
+- **Dos Administradores generan la orden del mismo vehículo al mismo tiempo:** podrían quedar dos órdenes preventivas abiertas, porque las dos evaluaciones ven el vehículo sin orden. Es un límite conocido: con un solo Administrador generando no ocurre, y la orden sobrante se cancela.
+
+### Dónde está en el código
+
+- `PreventivoRepository`: la consulta LINQ que proyecta al DTO; calcula el intervalo, los km recorridos y los restantes en la base, y busca la orden preventiva abierta.
+- `ClasificadorPreventivo`: la fórmula de arriba, escrita una sola vez. La usan la evaluación, la generación de la orden y el dashboard.
+- `PreventivoService.GenerarOrdenAsync`: vuelve a evaluar el vehículo y crea la orden con el mismo `AddAsync` de una solicitud normal.
 
 ---
 
