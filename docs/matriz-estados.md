@@ -175,6 +175,7 @@ Toda transición que no aparece arriba se rechaza. Estas son las que el enunciad
 - Aprobada no puede pasar directamente a Completada sin ejecución.
 - En Ejecución no puede completarse con repuestos pendientes.
 - En Espera de Repuesto solo puede reanudarse con stock suficiente; no puede completarse directamente.
+- A En Ejecución se llega por dos acciones distintas, y cada una exige su origen: iniciar solo desde Aprobada y reanudar solo desde En Espera de Repuesto. Reanudar una orden Aprobada o iniciar una En Espera se rechaza con `TransicionNoPermitidaException`.
 - Rechazada, Completada y Cancelada no admiten ninguna transición.
 - Ningún estado puede regresar a uno anterior, salvo En Espera de Repuesto → En Ejecución.
 
