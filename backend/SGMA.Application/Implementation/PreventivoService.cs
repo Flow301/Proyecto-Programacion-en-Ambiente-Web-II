@@ -1,7 +1,11 @@
+using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
+using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Interfaces;
+using SGMA.Shared.Constants;
+using SGMA.Shared.Exceptions;
 
 namespace SGMA.Application.Implementation;
 
@@ -9,10 +13,19 @@ namespace SGMA.Application.Implementation;
 public class PreventivoService : IPreventivoService
 {
     private readonly IPreventivoRepository _repository;
+    private readonly IActivoRepository _activoRepository;
+    private readonly IOrdenMantenimientoRepository _ordenRepository;
+    private readonly IOrdenMantenimientoService _ordenService;
+    private readonly ILogger<PreventivoService> _logger;
 
-    public PreventivoService(IPreventivoRepository repository)
+    public PreventivoService(IPreventivoRepository repository, IActivoRepository activoRepository,
+        IOrdenMantenimientoRepository ordenRepository, IOrdenMantenimientoService ordenService, ILogger<PreventivoService> logger)
     {
         _repository = repository;
+        _activoRepository = activoRepository;
+        _ordenRepository = ordenRepository;
+        _ordenService = ordenService;
+        _logger = logger;
     }
 
     // Todos los vehículos que no están dados de baja, del más urgente al que más km le faltan
@@ -34,4 +47,67 @@ public class PreventivoService : IPreventivoService
 
         return Result<IEnumerable<PreventivoEvaluacionDto>>.Success(data);
     }
+
+    // El sistema sugiere y el Administrador confirma (docs/requerimientos.md 7.9). Antes de crear se vuelve a evaluar
+    // el vehículo: la sugerencia que vio el Administrador pudo cambiar (otra orden, otro kilometraje).
+    // La orden se crea con AddAsync, así que nace Solicitada, con código, historial y las mismas validaciones
+    // que una solicitud normal, y con el Administrador como solicitante.
+    public async Task<Result<OrdenMantenimientoDetailDto>> GenerarOrdenAsync(int idActivo, PreventivoOrdenDto orden, int idUsuario)
+    {
+        var activo = await _activoRepository.GetByIdAsync(idActivo)
+            ?? throw new RecursoNoEncontradoException($"El vehículo {idActivo} no existe.");
+
+        if (activo.IdEstadoActivo == SeedIds.EstadoActivoDadoDeBaja)
+            throw new ReglaNegocioException($"El vehículo {activo.Codigo} está dado de baja y queda fuera de la evaluación preventiva.");
+
+        // Un id del cuerpo que no existe es 400, como al crear una orden
+        var tipo = await _ordenRepository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento);
+        if (tipo is null)
+            return Result<OrdenMantenimientoDetailDto>.Failure(400, "Solicitud inválida",
+                $"El tipo de mantenimiento {orden.IdTipoMantenimiento} no existe.");
+
+        if (tipo.IdNaturaleza != SeedIds.NaturalezaPreventivo)
+        {
+            _logger.LogWarning("Intento de generar una orden preventiva con el tipo {Tipo}, que es {Naturaleza}", tipo.Nombre, tipo.Naturaleza.Nombre);
+            throw new ReglaNegocioException($"El tipo {tipo.Nombre} es de naturaleza {tipo.Naturaleza.Nombre}: la orden preventiva necesita un tipo Preventivo.");
+        }
+
+        var evaluacion = ClasificadorPreventivo.Clasificar((await _repository.GetEvaluacionAsync(idActivo))!);
+
+        if (!evaluacion.SeSugiereOrden)
+        {
+            _logger.LogWarning("Orden preventiva no generada para {Codigo}: {Estado} {Situacion}", activo.Codigo, evaluacion.Estado, evaluacion.Situacion);
+            throw new ReglaNegocioException(MotivoRechazo(evaluacion));
+        }
+
+        var motivo = string.IsNullOrWhiteSpace(orden.Motivo) ? MotivoSugerido(evaluacion) : orden.Motivo;
+
+        var result = await _ordenService.AddAsync(new OrdenMantenimientoCreateDto
+        {
+            IdActivo = idActivo,
+            IdTipoMantenimiento = orden.IdTipoMantenimiento,
+            Motivo = motivo
+        }, idUsuario);
+
+        if (result.IsSuccess)
+        {
+            _logger.LogInformation("Orden preventiva {CodigoOrden} generada para {Codigo} ({Estado}, {KmRestantes} km restantes). Usuario: {IdUsuario}",
+                result.Data!.Codigo, activo.Codigo, evaluacion.Estado, evaluacion.KmRestantes, idUsuario);
+            result.Detail = $"Orden preventiva {result.Data.Codigo} generada para el vehículo {activo.Codigo} ({evaluacion.Estado}).";
+        }
+
+        return result;
+    }
+
+    // El mismo orden en que la evaluación descarta la sugerencia
+    private static string MotivoRechazo(PreventivoEvaluacionDto v) => v.Situacion switch
+    {
+        EstadoPreventivo.OrdenEnCurso => $"El vehículo {v.Codigo} ya tiene la orden preventiva {v.CodigoOrdenEnCurso} abierta: no se genera otra.",
+        EstadoPreventivo.EnTaller => $"El vehículo {v.Codigo} está En Mantenimiento: la orden preventiva se sugiere cuando vuelva a Operativo.",
+        _ => $"El vehículo {v.Codigo} está al día: le faltan {v.KmRestantes} km para el preventivo y el aviso empieza a los {v.MargenAvisoKm} km."
+    };
+
+    private static string MotivoSugerido(PreventivoEvaluacionDto v) => v.KmRestantes <= 0
+        ? $"Mantenimiento preventivo por kilometraje (Vencido): recorrió {v.KmRecorridos} km desde el último preventivo y su intervalo es de {v.IntervaloKm} km; lo superó por {-v.KmRestantes} km."
+        : $"Mantenimiento preventivo por kilometraje (Próximo a vencer): recorrió {v.KmRecorridos} km desde el último preventivo y su intervalo es de {v.IntervaloKm} km; le faltan {v.KmRestantes} km.";
 }
