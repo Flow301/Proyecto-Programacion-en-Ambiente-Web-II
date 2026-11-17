@@ -371,6 +371,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - *Decisión del equipo:* si el vehículo está En Mantenimiento, aparece como "en taller" y no se sugiere la orden: crearla se rechazaría, porque una orden preventiva no es de emergencia (ver 7.5). Se sugiere cuando el vehículo vuelva a Operativo.
 - *Decisión del equipo:* el sistema sugiere y el Administrador confirma. La orden generada nace Solicitada, con un tipo de naturaleza Preventivo y con el Administrador como solicitante.
 - Al completarse una orden preventiva, el contador del vehículo se reinicia (ver 7.5).
+- Al generar la orden, el vehículo se vuelve a evaluar: si ya no se sugiere (otra orden, otro kilometraje), se rechaza con 409 indicando por qué. El tipo debe ser de naturaleza Preventivo y, si el Administrador no escribe un motivo, se arma con los km de la evaluación.
 
 **Permisos.**
 
@@ -500,6 +501,7 @@ Todos los totales, conteos y promedios se calculan en el backend con consultas L
   - la cantidad de órdenes por estado;
   - los vehículos con preventivo vencido o próximo a vencer;
   - los repuestos con stock bajo el mínimo.
+  - Endpoint: `GET api/Dashboard`. Trae todos los estados (también los que tienen 0 órdenes), el total de órdenes y las abiertas, los conteos de vencidos y próximos, y las alertas y los repuestos con las mismas consultas de `api/Preventivo/alertas` y `api/Repuesto/bajo-minimo`.
 - **Reporte de costos por orden** (Administrador y Coordinador/Técnico): una orden o un rango por fecha de cierre, filtrable por tipo y prioridad.
   - Muestra el subtotal de repuestos, el costo de mano de obra y el total.
   - *Decisión del equipo:* como el enunciado no define "lo esperado", junto a cada orden mostramos el costo promedio de las órdenes completadas del mismo tipo y prioridad.
@@ -658,13 +660,13 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Mantenimiento preventivo**
 
-- [ ] Evaluación bajo demanda con estados Vencido, Próximo a vencer y Al día.
-- [ ] Exclusión de vehículos dados de baja y detección de órdenes preventivas en curso.
-- [ ] Generación de la orden preventiva confirmada por el Administrador.
+- [x] Evaluación bajo demanda con estados Vencido, Próximo a vencer y Al día.
+- [x] Exclusión de vehículos dados de baja y detección de órdenes preventivas en curso.
+- [x] Generación de la orden preventiva confirmada por el Administrador.
 
 **Reportes y dashboard**
 
-- [ ] Dashboard del Administrador.
+- [ ] Dashboard del Administrador. El endpoint está (`api/Dashboard`); falta la pantalla.
 - [ ] Reporte de costos por orden.
 - [ ] Reporte de historial de un vehículo.
 - [ ] Reporte de carga técnica.
