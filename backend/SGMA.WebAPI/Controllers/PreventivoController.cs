@@ -8,14 +8,14 @@ using SGMA.WebAPI.Security;
 namespace SGMA.WebAPI.Controllers;
 
 /// <summary>
-/// Mantenimiento preventivo por kilometraje: evaluación bajo demanda de la flota y alertas.
-/// El Administrador ejecuta la evaluación completa; el Coordinador/Técnico consulta las alertas.
+/// Mantenimiento preventivo por kilometraje: evaluación bajo demanda de la flota, alertas y generación de la orden.
+/// El Administrador ejecuta la evaluación completa y genera las órdenes; el Coordinador/Técnico consulta las alertas.
 /// El Solicitante/Consulta no tiene acceso.
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
-[Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)] // la evaluación completa pide además Administrador
+[Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)] // la evaluación completa y generar piden además Administrador
 [ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]           // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
@@ -61,5 +61,36 @@ public class PreventivoController : ControllerBase
     {
         var result = await _service.GetAlertasAsync();
         return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Genera la orden preventiva sugerida para un vehículo.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Administrador: el sistema sugiere y él confirma. Se vuelve a evaluar el vehículo al momento de generar:
+    /// debe estar Vencido o Próximo a vencer, sin otra orden preventiva abierta y sin estar En Mantenimiento.
+    /// La orden nace Solicitada, con el tipo indicado (de naturaleza Preventivo) y el Administrador como solicitante,
+    /// y sigue el ciclo de vida normal. Si no se envía motivo, se arma con los km de la evaluación.
+    /// </remarks>
+    /// <param name="idActivo" example="2">Id del vehículo.</param>
+    /// <param name="orden">Tipo de mantenimiento preventivo y motivo opcional.</param>
+    /// <response code="201">Orden generada; data = detalle de la orden. El encabezado Location apunta a la orden.</response>
+    /// <response code="400">Datos inválidos o el tipo de mantenimiento no existe.</response>
+    /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">El vehículo está dado de baja, al día, En Mantenimiento o ya tiene una orden preventiva abierta, o el tipo no es Preventivo.</response>
+    [HttpPost("{idActivo:int}/orden")]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
+    [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> GenerarOrdenAsync([FromRoute] int idActivo, [FromBody] PreventivoOrdenDto orden)
+    {
+        var result = await _service.GenerarOrdenAsync(idActivo, orden, User.GetIdUsuario());
+
+        if (!result.IsSuccess)
+            return StatusCode(result.Status, result);
+
+        return CreatedAtRoute("GetOrdenMantenimientoById", new { id = result.Data!.IdOrden }, result);
     }
 }
