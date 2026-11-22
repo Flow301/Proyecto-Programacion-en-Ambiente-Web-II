@@ -1,9 +1,9 @@
 namespace SGMA.Domain.DTO;
 
 /// <summary>
-/// Evaluación preventiva de un vehículo (DTO de salida). Se calcula en cada consulta con el kilometraje actual.
+/// Evaluación preventiva de un vehículo (DTO de salida). Se calcula en cada consulta con la última lectura de uso.
 /// </summary>
-// La consulta LINQ llena los datos y los km; Estado, Situacion y SeSugiereOrden los completa ClasificadorPreventivo.
+// La consulta LINQ llena los datos, los km y el porcentaje; Estado, Situacion y SeSugiereOrden los completa ClasificadorPreventivo.
 public record class PreventivoEvaluacionDto
 {
     /// <summary>Id del vehículo.</summary>
@@ -34,47 +34,59 @@ public record class PreventivoEvaluacionDto
     /// <example>Operativo</example>
     public string? EstadoActivoNombre { get; set; }
 
-    /// <summary>Kilometraje actual.</summary>
+    /// <summary>Lectura actual: el kilometraje de la última lectura de uso.</summary>
     /// <example>128900</example>
     public int KilometrajeActual { get; set; }
 
-    /// <summary>Kilometraje del último preventivo.</summary>
+    /// <summary>Fecha de la última lectura de uso; null si el vehículo no tiene lecturas.</summary>
+    /// <example>2026-11-20</example>
+    public DateTime? FechaUltimaLectura { get; set; }
+
+    /// <summary>Lectura base: el kilometraje con que se completó el último preventivo (o el de registro si nunca tuvo uno).</summary>
     /// <example>119500</example>
     public int KilometrajeUltimoPreventivo { get; set; }
 
-    /// <summary>Intervalo que se aplica: el propio del vehículo o, si no tiene, el de su categoría.</summary>
+    /// <summary>Umbral que se aplica: el intervalo propio del vehículo o, si no tiene, el de su categoría.</summary>
     /// <example>10000</example>
     public int IntervaloKm { get; set; }
 
-    /// <summary>true si el intervalo es el propio del vehículo; false si es el de la categoría.</summary>
+    /// <summary>true si el umbral es el propio del vehículo; false si es el de la categoría.</summary>
     /// <example>false</example>
     public bool IntervaloPropio { get; set; }
 
-    /// <summary>Margen de aviso de la categoría: con estos km o menos por recorrer, está próximo a vencer.</summary>
-    /// <example>1000</example>
-    public int MargenAvisoKm { get; set; }
+    /// <summary>Porcentaje de aviso de la categoría: desde ese porcentaje del umbral el vehículo queda Próximo.</summary>
+    /// <example>90</example>
+    public int PorcentajeAviso { get; set; }
 
-    /// <summary>Km recorridos desde el último preventivo.</summary>
+    /// <summary>Uso acumulado: km recorridos desde el último preventivo (lectura actual − lectura base).</summary>
     /// <example>9400</example>
     public int KmRecorridos { get; set; }
 
-    /// <summary>Km que faltan para el intervalo; negativo si ya lo superó.</summary>
+    /// <summary>Km que faltan para el umbral; negativo si ya lo superó.</summary>
     /// <example>600</example>
     public int KmRestantes { get; set; }
 
-    /// <summary>Vencido, Próximo a vencer o Al día.</summary>
-    /// <example>Próximo a vencer</example>
+    /// <summary>Porcentaje del umbral consumido (uso acumulado ÷ umbral × 100), con un decimal.</summary>
+    /// <example>94.0</example>
+    public decimal PorcentajeConsumido { get; set; }
+
+    /// <summary>Vencido, Próximo, Al día o Sin lecturas.</summary>
+    /// <example>Próximo</example>
     public string? Estado { get; set; }
 
     /// <summary>Orden en curso (ya tiene una orden preventiva abierta), En taller (está En Mantenimiento) o null.</summary>
     /// <example>null</example>
     public string? Situacion { get; set; }
 
+    /// <summary>Id de la orden preventiva abierta del vehículo, para enlazarla; null si no tiene.</summary>
+    /// <example>null</example>
+    public int? IdOrdenEnCurso { get; set; }
+
     /// <summary>Código de la orden preventiva abierta del vehículo; null si no tiene.</summary>
     /// <example>null</example>
     public string? CodigoOrdenEnCurso { get; set; }
 
-    /// <summary>true si se sugiere generar la orden: está vencido o próximo a vencer y no tiene situación que lo impida.</summary>
+    /// <summary>true si se sugiere generar la orden: está Vencido o Próximo y no tiene situación que lo impida.</summary>
     /// <example>true</example>
     public bool SeSugiereOrden { get; set; }
 }

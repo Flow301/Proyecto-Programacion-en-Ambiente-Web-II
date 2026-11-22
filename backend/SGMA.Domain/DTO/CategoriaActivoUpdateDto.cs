@@ -5,7 +5,7 @@ namespace SGMA.Domain.DTO;
 /// <summary>
 /// Datos nuevos de una categoría. Sin IdCategoria: viene de la ruta (PUT api/CategoriaActivo/{id}), nunca del cuerpo.
 /// </summary>
-public record class CategoriaActivoUpdateDto : IValidatableObject
+public record class CategoriaActivoUpdateDto
 {
     /// <summary>Nombre: obligatorio, máximo 60 caracteres y no puede ser el de otra categoría.</summary>
     /// <example>Pickup</example>
@@ -29,17 +29,8 @@ public record class CategoriaActivoUpdateDto : IValidatableObject
     [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int IntervaloKm { get; set; }
 
-    /// <summary>Kilómetros de aviso antes del preventivo: 0 o más y menor que el intervalo.</summary>
-    /// <example>1000</example>
-    // Que sea menor que el intervalo lo valida Validate: compara dos campos
-    [Range(0, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
-    public int MargenAvisoKm { get; set; }
-
-    // ASP.NET Core solo llama a Validate si todos los atributos de las propiedades pasaron
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-        if (MargenAvisoKm >= IntervaloKm)
-            yield return new ValidationResult(
-                "El margen de aviso debe ser menor que el intervalo de mantenimiento.", [nameof(MargenAvisoKm)]);
-    }
+    /// <summary>Porcentaje del intervalo desde el que el vehículo queda Próximo al preventivo: de 1 a 99.</summary>
+    /// <example>90</example>
+    [Range(1, 99, ErrorMessage = "El campo {0} debe estar entre {1} y {2}.")]
+    public int PorcentajeAviso { get; set; }
 }

@@ -9,6 +9,8 @@ public interface IActivoService
     Task<Result<ActivoDetailDto>> GetByIdAsync(int id);
     // idUsuario y esSolicitante salen del token: el Solicitante/Consulta ve solo vehículos con órdenes suyas
     Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante);
+    Task<Result<IEnumerable<LecturaUsoDto>>> GetLecturasAsync(int id, int pageNumber, int pageSize);
+    Task<Result<ActivoDetailDto>> RegistrarLecturaAsync(int id, LecturaUsoCreateDto lectura, int idUsuario);
     Task<Result<ActivoDetailDto>> AddAsync(ActivoCreateDto activo, int idUsuario);
     Task<Result<ActivoDetailDto>> UpdateAsync(int id, ActivoUpdateDto activo);
     Task<Result<ActivoDetailDto>> ActualizarImagenAsync(int id, Stream contenido, long tamano, int idUsuario, string carpetaWeb);

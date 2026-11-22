@@ -79,6 +79,62 @@ public class ActivoController : ControllerBase
     }
 
     /// <summary>
+    /// Consulta las lecturas de uso (kilometraje) de un vehículo.
+    /// </summary>
+    /// <remarks>
+    /// De la más reciente a la más antigua, paginadas. Cada lectura trae la fecha, el kilometraje, quién la registró y,
+    /// si la tomó el diagnóstico de una orden, el código de esa orden.
+    /// </remarks>
+    /// <param name="id" example="2">Id del vehículo.</param>
+    /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
+    /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <response code="200">Lecturas de la página, con los datos de paginación.</response>
+    /// <response code="400">Página o tamaño de página fuera de rango.</response>
+    /// <response code="404">El vehículo no existe.</response>
+    [HttpGet("{id:int}/lecturas/{pageNumber:int}/{pageSize:int}")]
+    [ProducesResponseType<Result<IEnumerable<LecturaUsoDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLecturasAsync(int id, int pageNumber = 1, int pageSize = 10)
+    {
+        var result = await _service.GetLecturasAsync(id, pageNumber, pageSize);
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Registra una lectura de uso (kilometraje) de un vehículo.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Administrador. Es la única forma de cambiar el kilometraje fuera del diagnóstico de una orden, porque
+    /// alimenta el mantenimiento preventivo. La lectura no puede ser menor que la anterior (el kilometraje es acumulativo),
+    /// ni tener una fecha futura o anterior a la última lectura. No se registran lecturas de vehículos dados de baja.
+    /// La respuesta trae el detalle del vehículo con el bloque preventivo ya recalculado.
+    /// </remarks>
+    /// <param name="id" example="2">Id del vehículo.</param>
+    /// <param name="lectura">Kilometraje y fecha (si se omite, hoy). El usuario responsable es el del token.</param>
+    /// <response code="201">Lectura registrada; data = detalle del vehículo con el nuevo porcentaje y estado preventivo.</response>
+    /// <response code="400">Datos inválidos, lectura menor que la anterior o fecha fuera de rango.</response>
+    /// <response code="403">El rol no es Administrador.</response>
+    /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">El vehículo está dado de baja u otra lectura se registró al mismo tiempo.</response>
+    [HttpPost("{id:int}/lecturas")]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RegistrarLecturaAsync([FromRoute] int id, [FromBody] LecturaUsoCreateDto lectura)
+    {
+        var result = await _service.RegistrarLecturaAsync(id, lectura, User.GetIdUsuario());
+
+        if (!result.IsSuccess)
+            return StatusCode(result.Status, result);
+
+        return CreatedAtRoute("GetActivoById", new { id }, result);
+    }
+
+    /// <summary>
     /// Registra un vehículo y genera su código.
     /// </summary>
     /// <remarks>
@@ -112,8 +168,8 @@ public class ActivoController : ControllerBase
     /// Actualiza los datos de un vehículo.
     /// </summary>
     /// <remarks>
-    /// No cambia el código, el estado (tiene sus acciones), la imagen ni la fecha de registro.
-    /// El kilometraje no puede disminuir.
+    /// No cambia el código, el estado (tiene sus acciones), la imagen, la fecha de registro ni los kilometrajes: el actual
+    /// cambia con POST api/Activo/{id}/lecturas y el del último preventivo, al completar una orden preventiva.
     /// </remarks>
     /// <param name="id" example="1">Id del vehículo (de la ruta, nunca del cuerpo).</param>
     /// <param name="activo">Datos nuevos del vehículo.</param>
@@ -121,7 +177,7 @@ public class ActivoController : ControllerBase
     /// <response code="400">Datos inválidos o la categoría no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
     /// <response code="404">El vehículo no existe.</response>
-    /// <response code="409">La placa pertenece a otro vehículo o el kilometraje disminuye, u otro usuario cambió su estado al mismo tiempo.</response>
+    /// <response code="409">La placa pertenece a otro vehículo, u otro usuario cambió su estado o su kilometraje al mismo tiempo.</response>
     [HttpPut("{id:int}")]
     [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]

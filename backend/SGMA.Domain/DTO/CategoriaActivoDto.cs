@@ -25,7 +25,7 @@ public record class CategoriaActivoDto
     /// <example>10000</example>
     public int IntervaloKm { get; set; }
 
-    /// <summary>Kilómetros antes del preventivo en que se empieza a avisar.</summary>
-    /// <example>1000</example>
-    public int MargenAvisoKm { get; set; }
+    /// <summary>Porcentaje del intervalo desde el que el vehículo queda Próximo al preventivo.</summary>
+    /// <example>90</example>
+    public int PorcentajeAviso { get; set; }
 }

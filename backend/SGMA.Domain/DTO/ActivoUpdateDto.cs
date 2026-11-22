@@ -59,31 +59,17 @@ public record class ActivoUpdateDto : IValidatableObject
     [Range(1950, 2100, ErrorMessage = "El campo {0} debe estar entre {1} y {2}.")]
     public short Anio { get; set; }
 
-    /// <summary>Kilometraje actual: no puede ser menor que el registrado.</summary>
-    /// <example>87200</example>
-    [Range(0, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
-    public int KilometrajeActual { get; set; }
-
-    /// <summary>Kilometraje del último preventivo: 0 o más y no mayor que el actual.</summary>
-    /// <example>80000</example>
-    // Que no supere al kilometraje actual lo valida Validate
-    [Range(0, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
-    public int KilometrajeUltimoPreventivo { get; set; }
+    // Sin kilometrajes: el actual cambia solo con "Registrar lectura de uso" (POST api/Activo/{id}/lecturas) y el del
+    // último preventivo, al completar una orden preventiva (enunciado Avance 2, 5.2 y 5.8)
 
     /// <summary>Intervalo de preventivo propio en km: opcional; si viene, reemplaza el de la categoría.</summary>
     /// <example>null</example>
     [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int? IntervaloKmPropio { get; set; }
 
-    // Reglas que comparan campos del mismo DTO (como en el material).
-    // ASP.NET Core solo llama a Validate si todos los atributos de las propiedades pasaron.
+    // ASP.NET Core solo llama a Validate si todos los atributos de las propiedades pasaron
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (KilometrajeUltimoPreventivo > KilometrajeActual)
-            yield return new ValidationResult(
-                "El kilometraje del último preventivo no puede ser mayor que el kilometraje actual.",
-                [nameof(KilometrajeUltimoPreventivo)]);
-
         if (FechaAdquisicion?.Date > DateTime.Today)
             yield return new ValidationResult("La fecha de adquisición no puede ser futura.", [nameof(FechaAdquisicion)]);
     }

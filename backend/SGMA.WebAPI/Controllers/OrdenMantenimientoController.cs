@@ -417,7 +417,7 @@ public class OrdenMantenimientoController : ControllerBase
     /// <remarks>
     /// Solo el Coordinador/Técnico. No debe tener repuestos pendientes y al menos un técnico debe tener horas registradas.
     /// Congela la tarifa de cada técnico y los costos de repuestos, mano de obra y total, y registra la fecha de cierre.
-    /// Si el tipo es Preventivo, el kilometraje del último preventivo del vehículo pasa a ser el del diagnóstico.
+    /// Si el tipo es Preventivo, el kilometraje actual del vehículo (su última lectura) pasa a ser el del último preventivo.
     /// El vehículo vuelve a Operativo, salvo que tenga otra orden En Ejecución o En Espera de Repuesto.
     /// La observación es opcional y el cuerpo puede ir vacío.
     /// </remarks>

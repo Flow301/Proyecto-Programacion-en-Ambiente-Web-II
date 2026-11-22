@@ -8,7 +8,7 @@ using SGMA.WebAPI.Security;
 namespace SGMA.WebAPI.Controllers;
 
 /// <summary>
-/// Mantenimiento preventivo por kilometraje: evaluación bajo demanda de la flota, alertas y generación de la orden.
+/// Mantenimiento preventivo por uso (kilometraje): evaluación bajo demanda de la flota, alertas y generación de la orden.
 /// El Administrador ejecuta la evaluación completa y genera las órdenes; el Coordinador/Técnico consulta las alertas.
 /// El Solicitante/Consulta no tiene acceso.
 /// </summary>
@@ -32,13 +32,14 @@ public class PreventivoController : ControllerBase
     /// Evalúa el mantenimiento preventivo de toda la flota.
     /// </summary>
     /// <remarks>
-    /// Solo el Administrador. Se calcula en cada consulta con el kilometraje actual: intervalo (el propio del vehículo
-    /// o el de su categoría) menos los km recorridos desde el último preventivo. Vencido si no le quedan km,
-    /// Próximo a vencer si le quedan el margen de aviso o menos, Al día en otro caso.
+    /// Solo el Administrador. Se calcula en cada consulta con la última lectura de uso: uso acumulado = lectura actual −
+    /// lectura base, y porcentaje = uso ÷ umbral × 100 (umbral: el intervalo propio del vehículo o el de su categoría).
+    /// Vencido desde el 100 %, Próximo desde el porcentaje de aviso de la categoría, Al día por debajo, y Sin lecturas
+    /// si el vehículo no tiene ninguna lectura registrada.
     /// Excluye los vehículos Fuera de Servicio y Dados de Baja. Con una orden preventiva abierta, la situación es "Orden en curso";
     /// En Mantenimiento, "En taller". En los dos casos no se sugiere la orden.
     /// </remarks>
-    /// <response code="200">Vehículos evaluados, del más urgente al que más km le faltan.</response>
+    /// <response code="200">Vehículos evaluados, del mayor al menor porcentaje; los Sin lecturas al final.</response>
     [HttpGet]
     [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<IEnumerable<PreventivoEvaluacionDto>>>(StatusCodes.Status200OK)]
@@ -54,7 +55,7 @@ public class PreventivoController : ControllerBase
     /// <remarks>
     /// Administrador y Coordinador/Técnico. La misma evaluación, filtrada a lo que requiere atención.
     /// </remarks>
-    /// <response code="200">Vehículos vencidos o próximos a vencer, primero los más urgentes; vacía si toda la flota está al día.</response>
+    /// <response code="200">Vehículos Vencidos o Próximos, del mayor al menor porcentaje; vacía si toda la flota está al día.</response>
     [HttpGet("alertas")]
     [ProducesResponseType<Result<IEnumerable<PreventivoEvaluacionDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAlertasAsync()
@@ -68,9 +69,10 @@ public class PreventivoController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Solo el Administrador: el sistema sugiere y él confirma. Se vuelve a evaluar el vehículo al momento de generar:
-    /// debe estar Vencido o Próximo a vencer, sin otra orden preventiva abierta y sin estar En Mantenimiento.
+    /// debe estar Vencido o Próximo, sin otra orden preventiva abierta y sin estar En Mantenimiento.
     /// La orden nace Solicitada, con el tipo indicado (de naturaleza Preventivo) y el Administrador como solicitante,
-    /// y sigue el ciclo de vida normal. Si no se envía motivo, se arma con los km de la evaluación.
+    /// prioridad Alta si está Vencido (Media si está Próximo), y sigue el ciclo de vida normal. Si no se envía motivo, se
+    /// arma con la lectura y el porcentaje de la evaluación.
     /// </remarks>
     /// <param name="idActivo" example="2">Id del vehículo.</param>
     /// <param name="orden">Tipo de mantenimiento preventivo y motivo opcional.</param>

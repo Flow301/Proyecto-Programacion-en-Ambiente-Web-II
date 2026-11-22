@@ -65,6 +65,34 @@ public class ActivoRepository : IActivoRepository
             .ToListAsync();
     }
 
+    // De la más reciente a la más antigua (enunciado Avance 2, 5.8: "consultar lecturas de un activo")
+    public async Task<IEnumerable<LecturaUso>> GetLecturasAsync(int idActivo, int pageNumber, int pageSize)
+    {
+        return await _context.LecturaUso
+            .AsNoTracking()
+            .Include(l => l.Usuario)
+            .Include(l => l.Orden)
+            .Where(l => l.IdActivo == idActivo)
+            .OrderByDescending(l => l.Fecha)
+            .ThenByDescending(l => l.IdLectura)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountLecturasAsync(int idActivo)
+    {
+        return await _context.LecturaUso.CountAsync(l => l.IdActivo == idActivo);
+    }
+
+    // null si el vehículo todavía no tiene lecturas
+    public async Task<DateTime?> GetFechaUltimaLecturaAsync(int idActivo)
+    {
+        return await _context.LecturaUso
+            .Where(l => l.IdActivo == idActivo)
+            .MaxAsync(l => (DateTime?)l.Fecha);
+    }
+
     public async Task<EstadoActivo?> GetEstadoAsync(int idEstadoActivo)
     {
         return await _context.EstadoActivo

@@ -75,7 +75,7 @@ public class CategoriaActivoController : ControllerBase
     /// </summary>
     /// <remarks>
     /// El nombre y el prefijo no se repiten. El prefijo son tres letras y se guarda en mayúscula;
-    /// con él se generan los códigos de los vehículos (PKP-0001). El margen de aviso debe ser menor que el intervalo.
+    /// con él se generan los códigos de los vehículos (PKP-0001). El porcentaje de aviso va de 1 a 99: desde ese porcentaje del intervalo el vehículo queda Próximo.
     /// </remarks>
     /// <param name="categoria">Datos de la categoría.</param>
     /// <response code="201">Categoría creada; el encabezado Location apunta a GET api/CategoriaActivo/{id}.</response>

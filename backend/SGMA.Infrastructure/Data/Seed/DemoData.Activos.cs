@@ -27,6 +27,14 @@ public static partial class DemoData
         new() { Codigo = "ADM-0001", Nombre = "Vehículo de la gerencia", Descripcion = "SUV asignada a la gerencia general; vendida al renovar la flota administrativa.", IdCategoria = SeedIds.CategoriaVehiculoAdministrativo, FechaAdquisicion = new DateTime(2012, 3, 1), ValorReferencia = 6_500_000m, Placa = "BKL-482", Marca = "Toyota", Modelo = "RAV4", Anio = 2012, KilometrajeActual = 241_000, KilometrajeUltimoPreventivo = 236_000 }
     ];
 
+    // ---------- Lecturas de uso ----------
+    // Cada vehículo tiene una lectura con su kilometraje actual, registrada por el Administrador. VAN-0001 no tiene
+    // ninguna, para que la demostración muestre el estado preventivo "Sin lecturas" (enunciado Avance 2, 5.8).
+    public const string CodigoSinLecturas = "VAN-0001";
+
+    // Días antes de la siembra de la lectura; la del vehículo dado de baja es anterior a su baja (30 días)
+    public static int DiasUltimaLectura(string codigo) => codigo == "ADM-0001" ? 31 : 3;
+
     // ---------- Historial de estados de los vehículos ----------
     // Código del vehículo, login de quien hizo el cambio, estado nuevo, días antes de la siembra y observación.
     // El estado anterior y el estado actual del vehículo los deduce DevelopmentSeeder del orden de las filas.

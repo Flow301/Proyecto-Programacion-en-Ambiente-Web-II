@@ -20,11 +20,11 @@ public record class DashboardDto
     /// <example>2</example>
     public int PreventivosVencidos { get; set; }
 
-    /// <summary>Vehículos con el preventivo próximo a vencer.</summary>
+    /// <summary>Vehículos con el preventivo Próximo.</summary>
     /// <example>3</example>
     public int PreventivosProximos { get; set; }
 
-    /// <summary>Vehículos vencidos o próximos a vencer, primero los más urgentes (la misma evaluación de api/Preventivo).</summary>
+    /// <summary>Los 10 vehículos Vencidos o Próximos de mayor porcentaje (la misma evaluación de api/Preventivo).</summary>
     public IEnumerable<PreventivoEvaluacionDto> AlertasPreventivo { get; set; } = [];
 
     /// <summary>Repuestos activos con stock por debajo del mínimo, primero los que más faltan.</summary>

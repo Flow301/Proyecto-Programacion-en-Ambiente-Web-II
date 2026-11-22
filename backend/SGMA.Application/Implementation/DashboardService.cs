@@ -11,6 +11,9 @@ namespace SGMA.Application.Implementation;
 // preventivas son la misma evaluación de api/Preventivo y los repuestos, la misma consulta de api/Repuesto/bajo-minimo.
 public class DashboardService : IDashboardService
 {
+    // El resto se ve con "Ver todos" en la pantalla de mantenimiento preventivo
+    private const int MaxAlertasPreventivo = 10;
+
     private readonly IDashboardRepository _repository;
     private readonly IPreventivoRepository _preventivoRepository;
     private readonly IRepuestoRepository _repuestoRepository;
@@ -41,8 +44,9 @@ public class DashboardService : IDashboardService
             OrdenesAbiertas = ordenesPorEstado.Where(e => !e.EsFinal).Sum(e => e.Cantidad),
             OrdenesPorEstado = ordenesPorEstado,
             PreventivosVencidos = alertas.Count(a => a.Estado == EstadoPreventivo.Vencido),
-            PreventivosProximos = alertas.Count(a => a.Estado == EstadoPreventivo.ProximoAVencer),
-            AlertasPreventivo = alertas,
+            PreventivosProximos = alertas.Count(a => a.Estado == EstadoPreventivo.Proximo),
+            // Los conteos usan todas las alertas; la lista muestra las 10 más urgentes (enunciado Avance 2, 5.9, A1)
+            AlertasPreventivo = alertas.Take(MaxAlertasPreventivo).ToList(),
             RepuestosBajoMinimo = _mapper.Map<IEnumerable<RepuestoDto>>(repuestos)
         };
 

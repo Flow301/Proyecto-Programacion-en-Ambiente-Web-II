@@ -101,7 +101,7 @@ public static class MapsterConfig
                 dest => dest.Estado,                // se cambia con DELETE (inactivar)
                 dest => dest.RepuestoProveedores);
 
-        // OrdenMantenimiento: del DTO solo salen IdActivo, IdTipoMantenimiento y Motivo
+        // OrdenMantenimiento: del DTO solo salen IdActivo, IdTipoMantenimiento, IdPrioridad y Motivo
         TypeAdapterConfig<OrdenMantenimientoCreateDto, OrdenMantenimiento>
             .NewConfig()
             .Ignore(dest => dest.IdOrden,           // lo asigna la base

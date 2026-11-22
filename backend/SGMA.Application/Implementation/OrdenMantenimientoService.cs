@@ -89,6 +89,11 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         if (tipo is null)
             return CuerpoInvalido($"El tipo de mantenimiento {orden.IdTipoMantenimiento} no existe.");
 
+        // Prioridad por defecto Media (enunciado Avance 2, 4.4); el diagnóstico puede cambiarla
+        var idPrioridad = orden.IdPrioridad ?? SeedIds.PrioridadMedia;
+        if (!await _repository.PrioridadExistsAsync(idPrioridad))
+            return CuerpoInvalido($"La prioridad {idPrioridad} no existe.");
+
         var solicitante = await ValidarSolicitanteAsync(idUsuario);
 
         if (activo.IdEstadoActivo == SeedIds.EstadoActivoDadoDeBaja)
@@ -109,6 +114,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         var entity = _mapper.Map<OrdenMantenimiento>(orden);
         entity.Motivo = entity.Motivo.Trim();
         entity.IdUsuarioSolicitante = idUsuario;
+        entity.IdPrioridad = idPrioridad;
         entity.IdEstadoOrden = SeedIds.EstadoOrdenSolicitada;
         entity.FechaSolicitud = DateTime.Now;      // el año del código sale de esta fecha
 
@@ -255,7 +261,15 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         orden.Diagnostico = diagnostico.Diagnostico!.Trim();
         orden.IdPrioridad = diagnostico.IdPrioridad;
         orden.KilometrajeDiagnostico = kilometraje;
-        activo.KilometrajeActual = kilometraje;    // el diagnóstico actualiza el kilometraje del vehículo
+        // El diagnóstico es una lectura de uso más: queda en el historial de lecturas con la orden que la tomó
+        activo.KilometrajeActual = kilometraje;
+        activo.Lecturas.Add(new LecturaUso
+        {
+            Kilometraje = kilometraje,
+            Fecha = DateTime.Today,
+            IdUsuario = idUsuario,
+            IdOrden = orden.IdOrden
+        });
 
         AplicarTransicion(orden, SeedIds.EstadoOrdenDiagnosticada, idUsuario, diagnostico.Observacion);
         await _repository.SaveChangesAsync();
@@ -653,10 +667,11 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
         CongelarCostos(orden);
 
-        // Preventivo: el contador vuelve a empezar desde el kilometraje del diagnóstico (docs/decisiones-tecnicas.md)
+        // Preventivo: la lectura actual pasa a ser la nueva lectura base y el vehículo vuelve a Al día
+        // (enunciado Avance 2, 5.8, paso 6; docs/decisiones-tecnicas.md)
         var tipo = (await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento))!;
-        if (tipo.IdNaturaleza == SeedIds.NaturalezaPreventivo && orden.KilometrajeDiagnostico is int kilometraje)
-            orden.Activo.KilometrajeUltimoPreventivo = kilometraje;
+        if (tipo.IdNaturaleza == SeedIds.NaturalezaPreventivo)
+            orden.Activo.KilometrajeUltimoPreventivo = orden.Activo.KilometrajeActual;
 
         await DevolverVehiculoAsync(orden, idUsuario, $"Orden {orden.Codigo} completada.");
         AplicarTransicion(orden, SeedIds.EstadoOrdenCompletada, idUsuario, observacion);

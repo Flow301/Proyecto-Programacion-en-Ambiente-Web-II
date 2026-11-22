@@ -31,7 +31,8 @@ public class DashboardController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Órdenes por estado (todos los estados, también con 0) con el total y las abiertas; vehículos con el preventivo
-    /// vencido o próximo a vencer, con su situación (Orden en curso o En taller); y repuestos activos con stock bajo
+    /// Vencido o Próximo (los conteos son de todos; la lista, los 10 de mayor porcentaje), con su situación (Orden en curso o
+    /// En taller); y repuestos activos con stock bajo
     /// el mínimo. Todo se calcula en el backend en cada consulta; el frontend solo lo muestra.
     /// </remarks>
     /// <response code="200">Datos del dashboard.</response>

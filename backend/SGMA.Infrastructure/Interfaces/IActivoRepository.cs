@@ -10,6 +10,9 @@ public interface IActivoRepository
     Task<Activo?> GetByIdAsync(int id);
     Task<int> GetUltimoConsecutivoAsync(string prefijo);
     Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo);
+    Task<IEnumerable<LecturaUso>> GetLecturasAsync(int idActivo, int pageNumber, int pageSize);
+    Task<int> CountLecturasAsync(int idActivo);
+    Task<DateTime?> GetFechaUltimaLecturaAsync(int idActivo);
     Task<EstadoActivo?> GetEstadoAsync(int idEstadoActivo);
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsAsync(int id);

@@ -7,4 +7,5 @@ public interface IPreventivoRepository
 {
     Task<IEnumerable<PreventivoEvaluacionDto>> GetEvaluacionAsync(bool soloAlertas);
     Task<PreventivoEvaluacionDto?> GetEvaluacionAsync(int idActivo);
+    Task<IEnumerable<PreventivoEvaluacionDto>> GetEvaluacionAsync(IReadOnlyCollection<int> idsActivo);
 }

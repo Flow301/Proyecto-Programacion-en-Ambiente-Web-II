@@ -120,6 +120,15 @@ public static class DevelopmentSeeder
             // El estado actual es el del último cambio; la fecha de registro, la del primero
             activo.IdEstadoActivo = estadoAnterior!.Value;
             activo.FechaRegistro = activo.HistorialEstados.First().FechaCambio;
+
+            if (activo.Codigo != DemoData.CodigoSinLecturas)
+                activo.Lecturas.Add(new LecturaUso
+                {
+                    Kilometraje = activo.KilometrajeActual,
+                    Fecha = hoy.AddDays(-DemoData.DiasUltimaLectura(activo.Codigo)),
+                    IdUsuario = usuarioIds[MasterSeeder.LoginAdmin],
+                    FechaRegistro = hoy.AddDays(-DemoData.DiasUltimaLectura(activo.Codigo)).AddHours(9)
+                });
         }
 
         context.Set<Activo>().AddRange(activos);

@@ -49,4 +49,9 @@ public record class ActivoListDto
     /// <summary>Estado actual del vehículo.</summary>
     /// <example>Operativo</example>
     public string? EstadoActivoNombre { get; set; }
+
+    /// <summary>Estado preventivo: Vencido, Próximo, Al día o Sin lecturas; null si está Fuera de Servicio o Dado de Baja.</summary>
+    /// <example>Al día</example>
+    // Lo llena el servicio con la misma consulta de api/Preventivo
+    public string? EstadoPreventivo { get; set; }
 }

@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<TecnicoEspecialidad> TecnicoEspecialidad { get; set; }
     public DbSet<Usuario> Usuario { get; set; }
     public DbSet<HistorialEstadoActivo> HistorialEstadoActivo { get; set; }
+    public DbSet<LecturaUso> LecturaUso { get; set; }
     public DbSet<Proveedor> Proveedor { get; set; }
     public DbSet<Repuesto> Repuesto { get; set; }
     public DbSet<RepuestoProveedor> RepuestoProveedor { get; set; }
@@ -127,8 +128,8 @@ public class AppDbContext : DbContext
             entity.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_CategoriaActivo_IntervaloKm", "[IntervaloKm] > 0");
-                t.HasCheckConstraint("CK_CategoriaActivo_MargenAvisoKm",
-                    "[MargenAvisoKm] >= 0 AND [MargenAvisoKm] < [IntervaloKm]");
+                t.HasCheckConstraint("CK_CategoriaActivo_PorcentajeAviso",
+                    "[PorcentajeAviso] BETWEEN 1 AND 99");
             });
 
             entity.HasIndex(e => e.Nombre, "UQ_CategoriaActivo_Nombre")
@@ -158,6 +159,10 @@ public class AppDbContext : DbContext
             // Control de concurrencia: el UPDATE lleva "AND IdEstadoActivo = <el estado leído>" en el WHERE.
             // Si otra petición cambió el estado mientras tanto, no se actualiza ninguna fila y no se guarda nada.
             entity.Property(e => e.IdEstadoActivo)
+                .IsConcurrencyToken();
+
+            // Lo mismo con el kilometraje: dos lecturas simultáneas no pueden dejar guardada la menor
+            entity.Property(e => e.KilometrajeActual)
                 .IsConcurrencyToken();
 
             entity.ToTable(t =>
@@ -372,6 +377,42 @@ public class AppDbContext : DbContext
                 .HasForeignKey(d => d.IdOrden)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_HistorialEstadoActivo_OrdenMantenimiento");
+        });
+
+        // LecturaUso
+        modelBuilder.Entity<LecturaUso>(entity =>
+        {
+            entity.HasKey(e => e.IdLectura)
+                .HasName("PK_LecturaUso");
+
+            entity.ToTable(t => t.HasCheckConstraint("CK_LecturaUso_Kilometraje", "[Kilometraje] >= 0"));
+
+            // Las consultas siempre son "las lecturas de un vehículo, de la más reciente a la más antigua"
+            entity.HasIndex(e => new { e.IdActivo, e.Fecha }, "IX_LecturaUso_Activo_Fecha");
+
+            entity.Property(e => e.Fecha)
+                .HasColumnType("date");
+
+            entity.Property(e => e.FechaRegistro)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.HasOne(d => d.Activo)
+                .WithMany(p => p.Lecturas)
+                .HasForeignKey(d => d.IdActivo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_LecturaUso_Activo");
+
+            entity.HasOne(d => d.Usuario)
+                .WithMany()
+                .HasForeignKey(d => d.IdUsuario)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_LecturaUso_Usuario");
+
+            entity.HasOne(d => d.Orden)
+                .WithMany()
+                .HasForeignKey(d => d.IdOrden)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_LecturaUso_OrdenMantenimiento");
         });
 
         // Proveedor

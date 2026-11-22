@@ -23,4 +23,5 @@ public class Activo
     public virtual CategoriaActivo Categoria { get; set; } = null!;
     public virtual EstadoActivo EstadoActivo { get; set; } = null!;
     public virtual ICollection<HistorialEstadoActivo> HistorialEstados { get; set; } = new List<HistorialEstadoActivo>();
+    public virtual ICollection<LecturaUso> Lecturas { get; set; } = new List<LecturaUso>();
 }
