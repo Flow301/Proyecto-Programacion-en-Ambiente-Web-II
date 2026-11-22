@@ -543,11 +543,11 @@ Los stocks listados son los finales, ya descontado lo que consumen las órdenes 
 - Las pastillas de freno permiten demostrar que un proveedor inactivo no entra en la recomendación.
 - La llanta 245/70R16 tiene un solo proveedor.
 
-### Órdenes de mantenimiento (12)
+### Órdenes de mantenimiento (14)
 
 Formato de cada orden: código — vehículo — tipo — solicitante — estado, con sus datos principales.
 
-1. `OM-2026-00001` — `PKP-0003` — Servicio preventivo por kilometraje — `admin` — **Solicitada**. Se generó desde la evaluación preventiva porque el vehículo superó el intervalo.
+1. `OM-2026-00001` — `PKP-0003` — Servicio preventivo por kilometraje — `admin` — **Solicitada**. Prioridad Alta. Se generó desde la evaluación preventiva porque el vehículo superó el intervalo.
 2. `OM-2026-00002` — `BUS-0001` — Reparación de aire acondicionado — `cjimenez` — **Solicitada**. Los pasajeros reportan que el aire no enfría.
 3. `OM-2026-00003` — `CML-0002` — Reparación de frenos — `jchaves` — **Diagnosticada**. Prioridad Alta, 142 650 km; ruido metálico al frenar por desgaste de las zapatas traseras.
 4. `OM-2026-00004` — `TRC-0001` — Cambio y alineamiento de llantas — `jchaves` — **Aprobada**. Prioridad Media, 538 600 km, programada para 14 días después de la fecha en que corre el seeder, para que nunca aparezca vencida en una demostración; desgaste irregular en el eje delantero.
@@ -574,6 +574,16 @@ Formato de cada orden: código — vehículo — tipo — solicitante — estado
     - Pendiente: 2 amortiguadores delanteros.
 11. `OM-2026-00011` — `VAN-0001` — Reparación de transmisión y embrague — `rmendez` — **Cancelada** desde Aprobada. La unidad se envía a la agencia por garantía.
 12. `OM-2026-00012` — `CMP-0001` — Atención de emergencia en taller — `jchaves` — **Solicitada**. Fuga de combustible detectada durante la reparación del motor. Muestra la excepción de emergencia: el vehículo ya estaba En Mantenimiento por la orden 6.
+13. `OM-2026-00013` — `BUS-0001` — Servicio preventivo por kilometraje — `admin` — **Completada** hace unos 150 días.
+    - Prioridad Baja, 350 000 km (la lectura base actual del bus).
+    - Técnico: Jorge Mora (3 h). Detalle: 1 filtro de aceite, 1 filtro de aire y 3 galones de aceite. Total ₡99 500.
+14. `OM-2026-00014` — `PKP-0002` — Servicio preventivo por kilometraje — `admin` — **Completada** hace unos 120 días.
+    - Prioridad Baja, 119 500 km (la lectura base actual de la pickup).
+    - Técnico: Jorge Mora (2,5 h). Detalle: 1 filtro de aceite y 2 galones de aceite. Total ₡56 100.
+
+Las órdenes 13 y 14 son las comparables del reporte de Costos por orden: con la 9 son tres preventivos por kilometraje de prioridad Baja. La 9 queda "Por debajo" (−16,5 %), la 13 "Por encima" y la 14 "Por debajo". Se agregaron después de las otras 12, por eso su código es mayor aunque sean más antiguas.
+
+Las órdenes Solicitadas sin prioridad en los datos de demostración nacen con prioridad Media, como cualquier solicitud nueva.
 
 Si en el Avance 1 no alcanza el tiempo, priorizamos sembrar las órdenes 1 a 7 y 12, incluidas las asignaciones de la orden 6. Las órdenes 8 a 11 se agregan al inicio del Avance 2, recreando la base con `dotnet ef database drop` y `dotnet ef database update`.
 

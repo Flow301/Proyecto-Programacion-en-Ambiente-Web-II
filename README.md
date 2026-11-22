@@ -41,6 +41,8 @@ Las transiciones permitidas, quién puede ejecutar cada una y sus efectos autom�
 
 **Avance 2 (semana 13, entrega final) — en desarrollo.** Ciclo de vida completo de la orden, frontend en React, historial visible, reportes y dashboard. El avance de cada punto está en la checklist de los [requerimientos](docs/requerimientos.md#avance-2--semana-13).
 
+**Reportes escogidos para el Avance 2:** Dashboard general (familia A) + Costos por orden (familia B). La justificación está en las [decisiones técnicas](docs/decisiones-tecnicas.md#5-reportes-escogidos).
+
 ## Stack
 
 - **Backend:** ASP.NET Core 10 Web API.

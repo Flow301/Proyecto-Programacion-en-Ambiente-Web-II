@@ -6,7 +6,8 @@ El enunciado deja varias definiciones en manos de cada equipo y pide que las jus
 2. [Selección de proveedor](#2-selección-de-proveedor)
 3. [Codificación de vehículos y órdenes](#3-codificación-de-vehículos-y-órdenes)
 4. [Paleta de colores](#4-paleta-de-colores)
-5. [Otras decisiones que defendemos](#5-otras-decisiones-que-defendemos)
+5. [Reportes escogidos](#5-reportes-escogidos)
+6. [Otras decisiones que defendemos](#6-otras-decisiones-que-defendemos)
 
 ---
 
@@ -267,7 +268,36 @@ Usamos el mismo lenguaje visual que en las órdenes: el mismo significado lleva 
 
 ---
 
-## 5. Otras decisiones que defendemos
+## 5. Reportes escogidos
+
+El enunciado del Avance 2 (sección 5.9) pide dos de los cuatro reportes, uno de cada familia. Escogimos **Dashboard general** (familia A, resumen) y **Costos por orden** (familia B, detalle de un registro).
+
+### Por qué esta combinación
+
+- **Dashboard general:** el Administrador entra a él, así que es la pantalla que más se usa. Reutiliza cálculos que ya existen (la evaluación preventiva y el proveedor recomendado), y con él las alertas de preventivo y de stock bajo quedan visibles sin navegar, como pide el enunciado general (sección 12).
+- **Costos por orden:** cierra el proceso principal, que es el centro del sistema. Sus montos salen del mismo detalle de repuestos y de las mismas asignaciones de técnicos que ya validamos, así que el reporte y el detalle de la orden nunca se contradicen. Se abre desde el detalle de la orden con el botón "Reporte de costos".
+- **Descartados:** Carga técnica es el otro reporte de resumen y no se puede combinar con el Dashboard. Historial de un vehículo es de detalle como Costos; lo descartamos porque su línea de tiempo repite buena parte del historial del vehículo, que ya es obligatorio (sección 5.7).
+
+### Consultas LINQ
+
+- **Dashboard** (`DashboardRepository`): un `GroupBy` por estado sobre `OrdenMantenimiento` con dos agregaciones (`Count` y `Min` de la fecha de solicitud), unido después al catálogo `EstadoOrden` para que aparezcan los estados en cero. Las alertas usan la evaluación preventiva (`Activo`, `CategoriaActivo`, `LecturaUso`, `OrdenMantenimiento`) y los repuestos, `Repuesto` con `RepuestoProveedor` y `Proveedor`.
+- **Costos por orden** (`ReporteRepository`): `DetalleRepuesto` con `Repuesto` para las líneas y su `Sum`; `AsignacionTecnico` con `Tecnico` para la mano de obra, con un `GroupBy` por orden y dos `Sum` (horas y costo); y un `GroupBy` por tipo y prioridad sobre las órdenes Completadas con `Count` y `Average` del costo total congelado. Todo se ejecuta en SQL Server; el servicio solo suma los dos subtotales y calcula los porcentajes.
+
+### Tolerancia de la comparación: ±15 %
+
+La comparación usa el costo total **congelado** de las órdenes Completadas del mismo tipo y prioridad, así que un cambio posterior en tarifas o precios no la altera. Una orden queda:
+
+- **Por debajo** si cuesta más de un 15 % menos que el promedio;
+- **Dentro** si está entre −15 % y +15 %;
+- **Por encima** si cuesta más de un 15 % más.
+
+Elegimos ±15 % porque un servicio del mismo tipo varía de forma normal por el tamaño del vehículo (un bus usa más aceite que una pickup) y por las horas reales. Un margen menor marcaría como anómalas órdenes normales; uno mayor dejaría pasar sobrecostos reales. Sin órdenes comparables, el indicador dice "Sin órdenes comparables" y no se calcula la diferencia.
+
+Con los datos sembrados, los tres preventivos por kilometraje de prioridad Baja se comparan entre sí: `OM-2026-00009` (₡65 000) queda Por debajo, `OM-2026-00013` (₡99 500) Por encima y `OM-2026-00014` (₡56 100) Por debajo.
+
+---
+
+## 6. Otras decisiones que defendemos
 
 Están explicadas en detalle en los otros documentos; aquí va el resumen para tenerlas juntas.
 

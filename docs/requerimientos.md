@@ -243,7 +243,14 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Administrador: crear, consultar todas, editar mientras está Solicitada, aprobar o rechazar, y cancelar.
 - Coordinador/Técnico: consultar todas, diagnosticar, iniciar ejecución, registrar repuestos y horas, reanudar, completar y cancelar. No crea órdenes.
   - *Decisión del equipo:* la tabla de la sección 11 no lista cancelar para este rol, pero la sección 6 le asigna los "cambios de estado" de la gestión operativa. Cancelar una orden que el taller no puede ejecutar es parte de esa gestión.
-- Solicitante/Consulta: crear y consultar solo las suyas. Ve el estado y el historial, pero no repuestos, horas ni costos.
+- Solicitante/Consulta: crear y consultar solo las suyas. Ve el estado y el historial, pero no repuestos, horas ni costos. Una orden ajena responde 403 (enunciado del Avance 2, 5.3); el filtro de "solo las suyas" va en la consulta del backend.
+
+**Listado y detalle (enunciado del Avance 2, 3.4 y 5.3).**
+
+- El listado se filtra por estado (uno o varios: `?idEstadoOrden=1&idEstadoOrden=3`, así abre la bandeja del Coordinador con Solicitada, Aprobada, En Ejecución y En Espera de Repuesto) y por vehículo (`?idActivo=`). Cada fila trae los días en el estado actual.
+- El detalle es la pantalla central del proceso. Además de los datos y costos, trae: categoría y estado del vehículo, especialidad requerida, días en el estado actual, total de horas, cantidad de técnicos, la tabla de técnicos con horas y costo, los repuestos consumidos y pendientes, y las **acciones disponibles**.
+- *Decisión del equipo:* las acciones disponibles salen de la misma matriz de transiciones que valida cada cambio, para el rol del usuario del token. Se suman las acciones que no cambian el estado (editar en Solicitada para el Administrador; asignar técnicos, registrar horas y registrar repuestos En Ejecución para el Coordinador). "Reanudar" solo aparece cuando ya hay stock para todos los pendientes. El frontend dibuja solo esos botones y nunca decide qué transición es válida.
+- Al crear la solicitud se elige la prioridad; si no se indica, queda Media.
 
 **Avance.** El modelo completo, crear y consultar van en el Avance 1, con la validación del vehículo, del bloqueo por En Mantenimiento y del código. El resto del ciclo de vida va en el Avance 2.
 
@@ -320,12 +327,13 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Objetivo.** Mantener la trazabilidad completa de los cambios de estado de los vehículos y de las órdenes.
 
-**Campos.** Estado anterior, estado nuevo, fecha y hora del cambio, usuario responsable y observación opcional. Llevamos dos historiales separados: uno de vehículos y otro de órdenes.
+**Campos.** Estado anterior, estado nuevo, fecha y hora del cambio, usuario responsable y observación opcional. Llevamos dos historiales separados: uno de vehículos y otro de órdenes. En el del vehículo, cada cambio automático trae el código de la orden que lo provocó.
 
 **Acciones.**
 
-- Consultar el historial de estados de un vehículo.
-- Consultar el historial de estados de una orden.
+- Consultar el historial de estados de un vehículo (`GET api/Activo/{id}/historial/{pageNumber}/{pageSize}`).
+- Consultar el historial de estados de una orden (`GET api/OrdenMantenimiento/{id}/historial/{pageNumber}/{pageSize}`).
+- Los dos van del cambio más reciente al más antiguo y paginados (enunciado del Avance 2, 5.7).
 
 **Validaciones y reglas de negocio.**
 
@@ -413,7 +421,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 | GET | `api/Auth/perfil` | Cualquier rol | Datos del usuario del token. |
 | PUT | `api/Auth/clave` | Cualquier rol | Cambia la contraseña propia; pide la actual. |
 | GET | `api/Usuario` | Administrador | Lista todos los usuarios, incluidos los inactivos. |
-| GET | `api/Usuario/{pageNumber}/{pageSize}` | Administrador | Lista paginada. |
+| GET | `api/Usuario/{pageNumber}/{pageSize}` | Administrador | Lista paginada, con filtros opcionales `?idRol=` y `?estado=`. Cada usuario trae `tieneActividad`. |
 | GET | `api/Usuario/{id}` | Administrador | Detalle. |
 | GET | `api/Usuario/roles` | Administrador | Los tres roles, para el formulario. |
 | POST | `api/Usuario` | Administrador | Registra un usuario con su contraseña inicial. |
@@ -447,6 +455,8 @@ El cierre de sesión no tiene endpoint: el cliente descarta el token.
 - El usuario responsable de cada acción sale del token, nunca del cuerpo de la petición.
 - El seeder crea al menos un Administrador (`admin`).
 - *Decisión del equipo:* no se puede desactivar ni quitarle el rol al último Administrador activo, para que el sistema nunca quede sin acceso administrativo.
+- El Administrador no puede desactivarse a sí mismo ni quitarse su propio rol de Administrador, aunque haya otros (409, enunciado del Avance 2, 5.1).
+- Campo calculado `tieneActividad`: el usuario solicitó órdenes, hizo cambios de estado o registró lecturas. Indica que solo se puede desactivar.
 - El último acceso se actualiza en cada inicio de sesión. El cierre de sesión se hace del lado del cliente, descartando el token.
 
 **Permisos.**
@@ -500,19 +510,22 @@ El detalle de cada transición, su rol y sus efectos está en la [matriz de esta
 
 ## Reportes y dashboard (sección 10)
 
+**Combinación escogida para el Avance 2 (enunciado del Avance 2, 5.9): Dashboard general (familia A) + Costos por orden (familia B).** Solo se evalúan esos dos; los otros dos quedan descritos abajo como referencia del enunciado general, pero no se implementan. La justificación está en [decisiones técnicas](decisiones-tecnicas.md#5-reportes-escogidos).
+
 Todos los totales, conteos y promedios se calculan en el backend con consultas LINQ que agregan varias tablas. El frontend solo los muestra.
 
 - **Dashboard** (Administrador): es la vista principal al ingresar. Muestra:
   - la cantidad de órdenes por estado;
   - los vehículos con preventivo vencido o próximo a vencer;
   - los repuestos con stock bajo el mínimo.
-  - Endpoint: `GET api/Dashboard`. Trae todos los estados (también los que tienen 0 órdenes), el total de órdenes y las abiertas, los conteos de vencidos y próximos, y las alertas y los repuestos con las mismas consultas de `api/Preventivo/alertas` y `api/Repuesto/bajo-minimo`.
-- **Reporte de costos por orden** (Administrador y Coordinador/Técnico): una orden o un rango por fecha de cierre, filtrable por tipo y prioridad.
-  - Muestra el subtotal de repuestos, el costo de mano de obra y el total.
-  - *Decisión del equipo:* como el enunciado no define "lo esperado", junto a cada orden mostramos el costo promedio de las órdenes completadas del mismo tipo y prioridad.
-- **Reporte de historial de un vehículo** (Administrador): línea de tiempo con sus cambios de estado y las órdenes de cada período, desde su registro hasta la fecha de consulta.
-- **Reporte de carga técnica** (Administrador y Coordinador/Técnico): para un período, la cantidad de órdenes distintas por técnico con asignaciones en ese período.
-  - *Decisión del equipo:* el enunciado solo pide la cantidad de órdenes. No mostramos horas por período porque las horas se guardan acumuladas por asignación, sin la fecha de cada registro.
+  - Endpoint: `GET api/Dashboard`. Trae todos los estados (también los que tienen 0 órdenes) con un `GroupBy` por estado que cuenta las órdenes y busca la solicitud más antigua; el total de órdenes y las abiertas; los conteos de Vencidos y Próximos con las 10 alertas de mayor porcentaje; y los repuestos bajo el mínimo con su faltante y su proveedor recomendado.
+- **Reporte de costos por orden** (Administrador y Coordinador/Técnico): `GET api/Reporte/costos-orden/{idOrden}` (404 si la orden no existe). Se abre con el botón "Reporte de costos" del detalle de la orden.
+  - Encabezado de la orden; repuestos consumidos con el costo unitario al momento del uso y su subtotal; los pendientes aparte, sin sumar.
+  - Mano de obra por técnico (horas, tarifa registrada y costo), con el total de horas y de mano de obra.
+  - Costo total con la etiqueta "Costo final" (Completada) o "Costo acumulado a la fecha" (abierta), y la proporción de repuestos y de mano de obra.
+  - Comparación con las órdenes Completadas del mismo tipo y prioridad (sin contar la consultada): cantidad comparada, costo promedio, diferencia en monto y en porcentaje, e indicador Por debajo / Dentro / Por encima.
+  - *Decisión del equipo:* la tolerancia es ±15 % del promedio (ver [decisiones técnicas](decisiones-tecnicas.md#5-reportes-escogidos)). Sin órdenes comparables, el indicador dice "Sin órdenes comparables".
+- **Reporte de historial de un vehículo** y **reporte de carga técnica**: no se implementan en el Avance 2 (no entran en la combinación escogida).
 
 **Avance.** Avance 2.
 
@@ -672,10 +685,19 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Reportes y dashboard**
 
+- [x] Combinación declarada: Dashboard general + Costos por orden.
 - [ ] Dashboard del Administrador. El endpoint está (`api/Dashboard`); falta la pantalla.
-- [ ] Reporte de costos por orden.
-- [ ] Reporte de historial de un vehículo.
-- [ ] Reporte de carga técnica.
+- [ ] Reporte de costos por orden. El endpoint está (`api/Reporte/costos-orden/{idOrden}`); falta la pantalla.
+
+**API del Avance 2 (enunciado del Avance 2, 3.4 y 5)**
+
+- [x] Detalle de la orden con técnicos, repuestos, días en el estado, total de horas y acciones disponibles.
+- [x] Listado de órdenes filtrado por estado (uno o varios) y por vehículo.
+- [x] Historial de órdenes y vehículos del más reciente al más antiguo, paginado; el del vehículo con el código de la orden.
+- [x] Usuarios: filtros por rol y estado, `tieneActividad` y bloqueo para desactivarse o quitarse el rol a sí mismo.
+- [x] Filtros de vehículos (categoría y estado) y técnicos (especialidad y disponibilidad); cantidad de vehículos por categoría y de especialidades por técnico.
+- [x] Repuestos con faltante e indicador de stock bajo, y filtro "Stock bajo el mínimo" paginado.
+- [x] Prioridad al crear la solicitud (Media por defecto).
 
 **Frontend**
 
