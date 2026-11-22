@@ -17,14 +17,16 @@ public class DashboardService : IDashboardService
     private readonly IDashboardRepository _repository;
     private readonly IPreventivoRepository _preventivoRepository;
     private readonly IRepuestoRepository _repuestoRepository;
+    private readonly IRepuestoService _repuestoService;
     private readonly IMapper _mapper;
 
     public DashboardService(IDashboardRepository repository, IPreventivoRepository preventivoRepository,
-        IRepuestoRepository repuestoRepository, IMapper mapper)
+        IRepuestoRepository repuestoRepository, IRepuestoService repuestoService, IMapper mapper)
     {
         _repository = repository;
         _preventivoRepository = preventivoRepository;
         _repuestoRepository = repuestoRepository;
+        _repuestoService = repuestoService;
         _mapper = mapper;
     }
 
@@ -36,7 +38,14 @@ public class DashboardService : IDashboardService
             .Select(ClasificadorPreventivo.Clasificar)
             .ToList();
 
-        var repuestos = await _repuestoRepository.GetBajoMinimoAsync();
+        // Cada repuesto bajo el mínimo con su proveedor recomendado: el mismo cálculo de api/Repuesto/{id}/proveedor-recomendado
+        var repuestos = _mapper.Map<List<RepuestoAlertaDto>>(await _repuestoRepository.GetBajoMinimoAsync());
+        foreach (var repuesto in repuestos)
+        {
+            var recomendado = (await _repuestoService.GetProveedorRecomendadoAsync(repuesto.IdRepuesto)).Data?.Recomendado;
+            repuesto.IdProveedorRecomendado = recomendado?.IdProveedor;
+            repuesto.ProveedorRecomendadoNombre = recomendado?.ProveedorNombre;
+        }
 
         var data = new DashboardDto
         {
@@ -47,7 +56,7 @@ public class DashboardService : IDashboardService
             PreventivosProximos = alertas.Count(a => a.Estado == EstadoPreventivo.Proximo),
             // Los conteos usan todas las alertas; la lista muestra las 10 más urgentes (enunciado Avance 2, 5.9, A1)
             AlertasPreventivo = alertas.Take(MaxAlertasPreventivo).ToList(),
-            RepuestosBajoMinimo = _mapper.Map<IEnumerable<RepuestoDto>>(repuestos)
+            RepuestosBajoMinimo = repuestos
         };
 
         return Result<DashboardDto>.Success(data);

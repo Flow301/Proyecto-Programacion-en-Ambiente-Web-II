@@ -27,6 +27,6 @@ public record class DashboardDto
     /// <summary>Los 10 vehículos Vencidos o Próximos de mayor porcentaje (la misma evaluación de api/Preventivo).</summary>
     public IEnumerable<PreventivoEvaluacionDto> AlertasPreventivo { get; set; } = [];
 
-    /// <summary>Repuestos activos con stock por debajo del mínimo, primero los que más faltan.</summary>
-    public IEnumerable<RepuestoDto> RepuestosBajoMinimo { get; set; } = [];
+    /// <summary>Repuestos activos con stock por debajo del mínimo, primero los que más faltan, con su faltante y su proveedor recomendado.</summary>
+    public IEnumerable<RepuestoAlertaDto> RepuestosBajoMinimo { get; set; } = [];
 }

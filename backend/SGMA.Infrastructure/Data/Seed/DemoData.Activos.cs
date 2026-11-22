@@ -50,6 +50,11 @@ public static partial class DemoData
     [
         .. Activos().Select(a => new HistorialActivoDemo(a.Codigo, MasterSeeder.LoginAdmin, SeedIds.EstadoActivoOperativo, DiasCargaInicial, "Registro inicial de la flota")),
 
+        // Órdenes 13 y 14 (preventivos anteriores, Completados)
+        new("BUS-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 150, "Inicio de la orden OM-2026-00013", 13),
+        new("BUS-0001", "lvargas", SeedIds.EstadoActivoOperativo, 149, "Orden OM-2026-00013 completada", 13),
+        new("PKP-0002", "asolis", SeedIds.EstadoActivoEnMantenimiento, 120, "Inicio de la orden OM-2026-00014", 14),
+        new("PKP-0002", "asolis", SeedIds.EstadoActivoOperativo, 120, "Orden OM-2026-00014 completada", 14),
         // Orden 9 (preventivo, Completada)
         new("PKP-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 60, "Inicio de la orden OM-2026-00009", 9),
         new("PKP-0001", "lvargas", SeedIds.EstadoActivoOperativo, 59, "Orden OM-2026-00009 completada", 9),

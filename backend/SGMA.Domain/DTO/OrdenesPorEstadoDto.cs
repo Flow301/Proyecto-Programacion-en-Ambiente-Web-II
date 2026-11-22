@@ -20,4 +20,9 @@ public record class OrdenesPorEstadoDto
     /// <summary>Órdenes que están en ese estado.</summary>
     /// <example>2</example>
     public int Cantidad { get; set; }
+
+    /// <summary>Fecha de solicitud de la orden más antigua en ese estado: muestra cuánto lleva esperando lo más atrasado.
+    /// null si no hay órdenes en el estado.</summary>
+    /// <example>2026-11-10T09:00:00</example>
+    public DateTime? SolicitudMasAntigua { get; set; }
 }

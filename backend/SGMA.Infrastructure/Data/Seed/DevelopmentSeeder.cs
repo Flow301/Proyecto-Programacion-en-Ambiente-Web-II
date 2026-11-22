@@ -226,7 +226,7 @@ public static class DevelopmentSeeder
                 Codigo = $"OM-{anio}-{consecutivos[anio]:D5}",
                 IdActivo = activoIds[demo.CodigoActivo],
                 IdTipoMantenimiento = demo.IdTipoMantenimiento,
-                IdPrioridad = demo.IdPrioridad,
+                IdPrioridad = demo.IdPrioridad ?? SeedIds.PrioridadMedia,   // toda solicitud nace con prioridad; Media por defecto
                 IdEstadoOrden = ultimo.IdEstadoNuevo,          // el estado actual es el del último paso
                 IdUsuarioSolicitante = usuarioIds[demo.LoginSolicitante],
                 Motivo = demo.Motivo,
