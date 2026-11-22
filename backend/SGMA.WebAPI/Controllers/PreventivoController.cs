@@ -35,7 +35,7 @@ public class PreventivoController : ControllerBase
     /// Solo el Administrador. Se calcula en cada consulta con el kilometraje actual: intervalo (el propio del vehículo
     /// o el de su categoría) menos los km recorridos desde el último preventivo. Vencido si no le quedan km,
     /// Próximo a vencer si le quedan el margen de aviso o menos, Al día en otro caso.
-    /// Excluye los vehículos dados de baja. Con una orden preventiva abierta, la situación es "Orden en curso";
+    /// Excluye los vehículos Fuera de Servicio y Dados de Baja. Con una orden preventiva abierta, la situación es "Orden en curso";
     /// En Mantenimiento, "En taller". En los dos casos no se sugiere la orden.
     /// </remarks>
     /// <response code="200">Vehículos evaluados, del más urgente al que más km le faltan.</response>
@@ -77,7 +77,7 @@ public class PreventivoController : ControllerBase
     /// <response code="201">Orden generada; data = detalle de la orden. El encabezado Location apunta a la orden.</response>
     /// <response code="400">Datos inválidos o el tipo de mantenimiento no existe.</response>
     /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
-    /// <response code="409">El vehículo está dado de baja, al día, En Mantenimiento o ya tiene una orden preventiva abierta, o el tipo no es Preventivo.</response>
+    /// <response code="409">El vehículo está Fuera de Servicio, dado de baja, al día, En Mantenimiento o ya tiene una orden preventiva abierta, o el tipo no es Preventivo.</response>
     [HttpPost("{idActivo:int}/orden")]
     [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status201Created)]

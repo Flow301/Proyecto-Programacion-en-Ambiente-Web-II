@@ -21,7 +21,7 @@ public class PreventivoRepository : IPreventivoRepository
         return await Consulta(null, soloAlertas).ToListAsync();
     }
 
-    // Un vehículo, para generar su orden; null si no existe o está dado de baja
+    // Un vehículo, para generar su orden; null si no existe, está Fuera de Servicio o Dado de Baja
     public async Task<PreventivoEvaluacionDto?> GetEvaluacionAsync(int idActivo)
     {
         return await Consulta(idActivo, false).FirstOrDefaultAsync();
@@ -35,7 +35,9 @@ public class PreventivoRepository : IPreventivoRepository
     {
         return
             from a in _context.Activo.AsNoTracking()
-            where a.IdEstadoActivo != SeedIds.EstadoActivoDadoDeBaja         // los dados de baja no se evalúan
+            // Solo Operativos y En Mantenimiento: Fuera de Servicio y Dado de Baja no se evalúan (enunciado Avance 2, 5.8)
+            where a.IdEstadoActivo != SeedIds.EstadoActivoDadoDeBaja
+                && a.IdEstadoActivo != SeedIds.EstadoActivoFueraDeServicio
                 && (idActivo == null || a.IdActivo == idActivo)
             let intervalo = a.IntervaloKmPropio ?? a.Categoria.IntervaloKm
             let restante = intervalo - (a.KilometrajeActual - a.KilometrajeUltimoPreventivo)

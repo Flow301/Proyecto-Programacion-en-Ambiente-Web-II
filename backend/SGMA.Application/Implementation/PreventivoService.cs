@@ -28,7 +28,7 @@ public class PreventivoService : IPreventivoService
         _logger = logger;
     }
 
-    // Todos los vehículos que no están dados de baja, del más urgente al que más km le faltan
+    // Los vehículos Operativos y En Mantenimiento, del más urgente al que más km le faltan
     public async Task<Result<IEnumerable<PreventivoEvaluacionDto>>> GetEvaluacionAsync()
     {
         var evaluacion = await _repository.GetEvaluacionAsync(soloAlertas: false);
@@ -59,6 +59,9 @@ public class PreventivoService : IPreventivoService
 
         if (activo.IdEstadoActivo == SeedIds.EstadoActivoDadoDeBaja)
             throw new ReglaNegocioException($"El vehículo {activo.Codigo} está dado de baja y queda fuera de la evaluación preventiva.");
+
+        if (activo.IdEstadoActivo == SeedIds.EstadoActivoFueraDeServicio)
+            throw new ReglaNegocioException($"El vehículo {activo.Codigo} está Fuera de Servicio y queda fuera de la evaluación preventiva.");
 
         // Un id del cuerpo que no existe es 400, como al crear una orden
         var tipo = await _ordenRepository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento);

@@ -661,7 +661,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 **Mantenimiento preventivo**
 
 - [x] Evaluación bajo demanda con estados Vencido, Próximo a vencer y Al día.
-- [x] Exclusión de vehículos dados de baja y detección de órdenes preventivas en curso.
+- [x] Exclusión de vehículos Fuera de Servicio y dados de baja, y detección de órdenes preventivas en curso.
 - [x] Generación de la orden preventiva confirmada por el Administrador.
 
 **Reportes y dashboard**
