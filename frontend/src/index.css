@@ -1,4 +1,39 @@
-/* Paleta de docs/decisiones-tecnicas.md. La plantilla completa se arma en la semana 9. */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./styles/shadcn.css";
+
+/* Los componentes de shadcn traen clases dark:. Atadas a una clase .dark que nunca se pone, no siguen
+   el modo oscuro del sistema operativo (el modo oscuro está excluido del Avance 2, sección 2.2). */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+/* Paleta de docs/decisiones-tecnicas.md, sección 4. Se define una sola vez aquí y los tokens de shadcn
+   la reutilizan; los componentes usan los tokens (bg-primary, text-muted-foreground...). */
 :root {
   --azul-vial: #1f4e79;
   --amarillo-preventivo: #f2b705;
@@ -10,59 +45,32 @@
   --gris: #6b7280;        /* bordes, íconos y estados cerrados; como texto sobre el fondo no llega a AA */
   --gris-texto: #4b5563;  /* texto secundario */
 
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  color: var(--gris-asfalto);
-  background: var(--gris-claro);
+  --background: var(--gris-claro);
+  --foreground: var(--gris-asfalto);
+  --card: #ffffff;
+  --card-foreground: var(--gris-asfalto);
+  --popover: #ffffff;
+  --popover-foreground: var(--gris-asfalto);
+  --primary: var(--azul-vial);
+  --primary-foreground: #ffffff;
+  --secondary: var(--amarillo-preventivo);
+  --secondary-foreground: var(--gris-asfalto);
+  --muted: #e9ecf0;
+  --muted-foreground: var(--gris-texto);
+  --accent: #e3ebf3;
+  --accent-foreground: var(--azul-vial);
+  --destructive: var(--rojo);
+  --border: #d5d9df;
+  --input: var(--gris);   /* borde de los campos: 3:1 como pide WCAG para controles */
+  --ring: var(--azul-vial);
+  --radius: 0.45rem;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; }
-
-button {
-  font: inherit;
-  padding: 0.6rem 1rem;
-  border: 0;
-  border-radius: 6px;
-  background: var(--azul-vial);
-  color: #fff;
-  cursor: pointer;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
 }
-button:disabled { opacity: 0.6; cursor: wait; }
-
-input {
-  font: inherit;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--gris);
-  border-radius: 6px;
-}
-
-.error, .aviso { padding: 0.6rem 0.8rem; border-radius: 6px; margin: 0; }
-.error { background: #fdecea; color: var(--rojo); }
-.aviso { background: #fff6d6; color: var(--gris-asfalto); border-left: 4px solid var(--amarillo-preventivo); }
-
-.login { min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
-.tarjeta {
-  width: 100%;
-  max-width: 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 2rem;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 12px rgb(0 0 0 / 0.08);
-}
-.tarjeta h1 { margin: 0; color: var(--azul-vial); }
-.subtitulo { margin: 0 0 0.5rem; color: var(--gris-texto); font-size: 0.9rem; }
-.tarjeta button { margin-top: 0.6rem; }
-
-.inicio header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1.5rem;
-  background: var(--azul-vial);
-  color: #fff;
-}
-.inicio header button { background: var(--amarillo-preventivo); color: var(--gris-asfalto); }
-.inicio > p { padding: 0 1.5rem; }
