@@ -50,7 +50,7 @@ Las transiciones permitidas, quién puede ejecutar cada una y sus efectos autom�
 - **Documentación de la API:** OpenAPI y Scalar.
 - **Contraseñas:** `PasswordHasher` de ASP.NET Core Identity (hash PBKDF2 con *salt*).
 - **Autenticación:** JWT con roles (`Microsoft.AspNetCore.Authentication.JwtBearer`).
-- **Frontend:** React 19 con JavaScript, sin TypeScript, creado con Vite, y React Router para las rutas.
+- **Frontend:** React 19 con JavaScript, sin TypeScript, creado con Vite, React Router para las rutas, Tailwind CSS con componentes de shadcn/ui, íconos de lucide y formularios con React Hook Form y Zod (las mismas herramientas del proyecto base del curso, con nuestra paleta).
 - **Control de versiones:** Git y GitHub.
 
 Las versiones exactas y las reglas sobre dependencias están en [convenciones](docs/convenciones.md).
@@ -73,7 +73,7 @@ Seguimos la organización de capas y los patrones vistos en clase (Clean Archite
 │   ├── SGMA.Application/         Interfaces/, Implementation/ y Mapper/
 │   ├── SGMA.Shared/              Excepciones de negocio y constantes compartidas
 │   └── SGMA.WebAPI/              Controllers/, Handlers/, Security/, Program.cs, appsettings.json y wwwroot/imagenes/
-└── frontend/                     React con Vite: src/api (único módulo de llamadas), context/ (sesión), components/ y pages/
+└── frontend/                     React con Vite: src/api (único módulo de llamadas), context/ (sesión), components/ (ui/ de shadcn), schemas/ (Zod) y pages/
 ```
 
 Qué hace cada proyecto y a cuáles referencia:

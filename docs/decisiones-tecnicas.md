@@ -246,8 +246,8 @@ Usamos el mismo lenguaje visual que en las órdenes: el mismo significado lleva 
 ### Reglas de uso
 
 - El estado nunca se comunica solo con color: siempre va con ícono y texto, para que lo lea cualquier persona, también quien no distingue colores.
-- Los colores se definen una sola vez como variables CSS y se usan en toda la interfaz: barra de navegación, botones, etiquetas de estado y alertas.
-- La librería de íconos se define junto con la estructura del frontend en el Avance 2.
+- Los colores se definen una sola vez como variables CSS en `frontend/src/index.css` y se usan en toda la interfaz: barra de navegación, botones, etiquetas de estado y alertas. Los tokens de shadcn los reutilizan: `primary` es el azul vial, `secondary` el amarillo preventivo, `foreground` el gris asfalto, `muted-foreground` el gris texto, `destructive` el rojo y el fondo el gris claro.
+- Los íconos son de `lucide-react`, la misma librería del proyecto base del curso.
 
 ---
 

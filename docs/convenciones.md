@@ -50,6 +50,17 @@ React con JavaScript, sin TypeScript, creado con Vite, porque Create React App e
 - `vite` 8.3.6 y `@vitejs/plugin-react` 6.2.1.
 - `oxlint` 1.92.0, el linter que trae la plantilla de Vite.
 
+Para la interfaz usamos las mismas herramientas que el proyecto base del curso (`isw621-frontend`), verificadas en npm el 22 de noviembre de 2026; ninguna está deprecada. El estilo visual es el nuestro: la paleta de las [decisiones técnicas](decisiones-tecnicas.md) se carga en los tokens de shadcn en `frontend/src/index.css`.
+
+- `tailwindcss` y `@tailwindcss/vite` 4.3.5, y `tw-animate-css` 1.4.0: estilos con clases utilitarias.
+- Componentes de shadcn/ui copiados en `src/components/ui`, con `radix-ui` 1.8.1, `class-variance-authority` 0.7.1 y `cn` 0.5.2. `components.json` permite agregar más con `npx shadcn add`.
+- `lucide-react` 1.77.0: íconos.
+- `sonner` 2.0.8: mensajes de éxito y error (toasts).
+- `react-hook-form` 7.92.0, `@hookform/resolvers` 7.0.8 y `zod` 4.6.7: formularios y validación en el cliente (esquemas en `src/schemas`).
+- Alias `@/` para `src/` (`vite.config.js` y `jsconfig.json`).
+
+No agregamos `next-themes` ni la clase `.dark`: el modo oscuro está excluido del Avance 2 (sección 2.2 del enunciado), así que el toaster usa siempre el tema claro.
+
 `npm audit` sale sin vulnerabilidades.
 
 ### Reglas sobre dependencias
