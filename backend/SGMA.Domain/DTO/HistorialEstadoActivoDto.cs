@@ -10,6 +10,14 @@ public record class HistorialEstadoActivoDto
     /// <example>1</example>
     public int IdHistorial { get; set; }
 
+    /// <summary>Id del estado anterior, para el badge; null en el registro inicial.</summary>
+    /// <example>1</example>
+    public int? IdEstadoAnterior { get; set; }
+
+    /// <summary>Id del estado nuevo, para el badge.</summary>
+    /// <example>3</example>
+    public int IdEstadoNuevo { get; set; }
+
     /// <summary>Estado anterior; null en el registro inicial.</summary>
     /// <example>Operativo</example>
     public string? EstadoAnteriorNombre { get; set; }
@@ -33,4 +41,12 @@ public record class HistorialEstadoActivoDto
     /// <summary>Motivo del cambio.</summary>
     /// <example>Falla eléctrica; queda fuera de servicio hasta revisión.</example>
     public string? Observacion { get; set; }
+
+    /// <summary>Id de la orden que provocó el cambio automático; null si fue un cambio manual del Administrador.</summary>
+    /// <example>null</example>
+    public int? IdOrden { get; set; }
+
+    /// <summary>Código de esa orden, para mostrarlo en el historial con su enlace.</summary>
+    /// <example>null</example>
+    public string? OrdenCodigo { get; set; }
 }

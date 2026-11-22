@@ -64,6 +64,31 @@ public static class MatrizTransicionesOrden
         [SeedIds.EstadoOrdenCancelada] = "Cancelada"
     };
 
+    /// <summary>
+    /// Acciones de transición que el rol puede ejecutar desde el estado actual (campo calculado "acciones disponibles",
+    /// enunciado Avance 2, 3.4). Sale de la misma matriz que valida, así que el frontend nunca la duplica.
+    /// En Espera de Repuesto no aparece: es automática al registrar repuestos sin stock.
+    /// </summary>
+    public static List<string> Acciones(int idEstadoActual, string rol)
+    {
+        if (!Transiciones.TryGetValue(idEstadoActual, out var destinos))
+            return [];
+
+        return destinos
+            .Where(d => d.Value.Contains(rol) && d.Key != SeedIds.EstadoOrdenEnEsperaDeRepuesto)
+            .Select(d => d.Key switch
+            {
+                SeedIds.EstadoOrdenDiagnosticada => AccionOrden.Diagnosticar,
+                SeedIds.EstadoOrdenAprobada => AccionOrden.Aprobar,
+                SeedIds.EstadoOrdenRechazada => AccionOrden.Rechazar,
+                // A En Ejecución se llega por dos acciones, según el origen
+                SeedIds.EstadoOrdenEnEjecucion => idEstadoActual == SeedIds.EstadoOrdenAprobada ? AccionOrden.Iniciar : AccionOrden.Reanudar,
+                SeedIds.EstadoOrdenCompletada => AccionOrden.Completar,
+                _ => AccionOrden.Cancelar
+            })
+            .ToList();
+    }
+
     /// <summary>true si la matriz permite pasar de origen a destino con ese rol.</summary>
     public static bool Permite(int idEstadoOrigen, int idEstadoDestino, string rol) =>
         Transiciones.TryGetValue(idEstadoOrigen, out var destinos)

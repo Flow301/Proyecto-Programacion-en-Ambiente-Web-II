@@ -1,3 +1,4 @@
+using System.Globalization;
 using MapsterMapper;
 using Microsoft.Extensions.Logging;
 using SGMA.Application.Interfaces;
@@ -32,50 +33,74 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         _logger = logger;
     }
 
-    // Administrador y Coordinador/Técnico ven todas; el Solicitante/Consulta, solo las que él creó
+    // Administrador y Coordinador/Técnico ven todas; el Solicitante/Consulta, solo las que él creó (el filtro va en la
+    // consulta, no en la interfaz). Filtros opcionales por estado (uno o varios) y por vehículo.
     public async Task<Result<IEnumerable<OrdenMantenimientoListDto>>> GetPaginationAsync(int pageNumber, int pageSize,
-        int idUsuario, bool esSolicitante)
+        int idUsuario, bool esSolicitante, IReadOnlyCollection<int>? idsEstado = null, int? idActivo = null)
     {
         // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
         if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<OrdenMantenimientoListDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
-        int? idSolicitante = esSolicitante ? idUsuario : null;
+        var filtro = new FiltroOrdenes(esSolicitante ? idUsuario : null, idsEstado, idActivo);
 
-        var ordenes = await _repository.GetPaginationAsync(pageNumber, pageSize, idSolicitante);
-        var totalRecords = await _repository.CountAsync(idSolicitante);
+        var ordenes = await _repository.GetPaginationAsync(pageNumber, pageSize, filtro);
+        var totalRecords = await _repository.CountAsync(filtro);
 
-        var data = _mapper.Map<IEnumerable<OrdenMantenimientoListDto>>(ordenes);
+        var data = _mapper.Map<List<OrdenMantenimientoListDto>>(ordenes);
+
+        var ultimosCambios = await _repository.GetFechasUltimoCambioAsync(data.Select(o => o.IdOrden).ToList());
+        foreach (var orden in data)
+            orden.DiasEnEstadoActual = DiasDesde(ultimosCambios.GetValueOrDefault(orden.IdOrden, orden.FechaSolicitud));
 
         return Result<IEnumerable<OrdenMantenimientoListDto>>.Paged(data, pageNumber, pageSize, totalRecords);
     }
 
-    // Una orden ajena responde 404 con el mismo mensaje que una inexistente:
-    // así el Solicitante no puede averiguar qué ids existen
+    // 404 si no existe; 403 si el Solicitante/Consulta consulta una orden ajena (enunciado Avance 2, 5.3)
     public async Task<Result<OrdenMantenimientoDetailDto>> GetByIdAsync(int id, int idUsuario, bool esSolicitante)
     {
         var orden = await _repository.GetByIdAsync(id);
 
-        if (orden is null || (esSolicitante && orden.IdUsuarioSolicitante != idUsuario))
+        if (orden is null)
             return Result<OrdenMantenimientoDetailDto>.Failure(404, "Recurso no encontrado", $"La orden {id} no existe.");
 
-        return Result<OrdenMantenimientoDetailDto>.Success(MapearDetalle(orden, ocultarCostos: esSolicitante));
+        if (esSolicitante && orden.IdUsuarioSolicitante != idUsuario)
+            return OrdenAjena<OrdenMantenimientoDetailDto>(orden.Codigo);
+
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        return Result<OrdenMantenimientoDetailDto>.Success(await MapearDetalleAsync(orden, usuario));
     }
 
-    // Todos los roles lo consultan; el Solicitante/Consulta solo el de sus órdenes, con el mismo 404 que el detalle
-    public async Task<Result<IEnumerable<HistorialEstadoOrdenDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante)
+    private static Result<T> OrdenAjena<T>(string codigo) =>
+        Result<T>.Failure(403, "Acceso denegado", $"La orden {codigo} no es una de sus solicitudes.");
+
+    // Días completos entre una fecha y hoy, nunca negativos
+    private static int DiasDesde(DateTime fecha) => Math.Max(0, (DateTime.Today - fecha.Date).Days);
+
+    // Todos los roles lo consultan; el Solicitante/Consulta solo el de sus órdenes (403 si es ajena, como el detalle).
+    // Del más reciente al más antiguo, paginado.
+    public async Task<Result<IEnumerable<HistorialEstadoOrdenDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante,
+        int pageNumber, int pageSize)
     {
+        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
+            return Result<IEnumerable<HistorialEstadoOrdenDto>>.Failure(400, "Solicitud inválida",
+                $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
+
         var idSolicitante = await _repository.GetIdSolicitanteAsync(id);
 
-        if (idSolicitante is null || (esSolicitante && idSolicitante != idUsuario))
+        if (idSolicitante is null)
             return Result<IEnumerable<HistorialEstadoOrdenDto>>.Failure(404, "Recurso no encontrado", $"La orden {id} no existe.");
 
-        var historial = await _repository.GetHistorialAsync(id);
+        if (esSolicitante && idSolicitante != idUsuario)
+            return OrdenAjena<IEnumerable<HistorialEstadoOrdenDto>>($"{id}");
+
+        var historial = await _repository.GetHistorialAsync(id, pageNumber, pageSize);
+        var totalRecords = await _repository.CountHistorialAsync(id);
 
         var data = _mapper.Map<IEnumerable<HistorialEstadoOrdenDto>>(historial);
 
-        return Result<IEnumerable<HistorialEstadoOrdenDto>>.Success(data);
+        return Result<IEnumerable<HistorialEstadoOrdenDto>>.Paged(data, pageNumber, pageSize, totalRecords);
     }
 
     // Creación → Solicitada (docs/matriz-estados.md): 400 si el cuerpo trae un id que no existe, 409 si falla una condición
@@ -162,7 +187,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         var creada = await _repository.GetByIdAsync(entity.IdOrden);
 
         return Result<OrdenMantenimientoDetailDto>.Success(
-            MapearDetalle(creada!, ocultarCostos: solicitante.IdRol == SeedIds.RolSolicitanteConsulta), 201, "Creado",
+            await MapearDetalleAsync(creada!, solicitante), 201, "Creado",
             $"Orden {entity.Codigo} registrada.");
     }
 
@@ -210,7 +235,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
         _logger.LogInformation("Orden {Codigo} editada. Usuario: {IdUsuario}", entity.Codigo, idUsuario);
 
-        return await DetalleAsync(id, $"Orden {entity.Codigo} actualizada.");
+        return await DetalleAsync(id, $"Orden {entity.Codigo} actualizada.", idUsuario);
     }
 
     // Solicitada → Diagnosticada (docs/matriz-estados.md). Orden de las validaciones, igual en todas las transiciones:
@@ -277,7 +302,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         _logger.LogInformation("Orden {Codigo} diagnosticada con prioridad {IdPrioridad} y {Kilometraje} km. Usuario: {IdUsuario}",
             orden.Codigo, orden.IdPrioridad, kilometraje, idUsuario);
 
-        return await DetalleAsync(id, $"Orden {orden.Codigo} diagnosticada.");
+        return await DetalleAsync(id, $"Orden {orden.Codigo} diagnosticada.", idUsuario);
     }
 
     // Diagnosticada → Aprobada (docs/matriz-estados.md): el Administrador fija la fecha programada
@@ -305,7 +330,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         _logger.LogInformation("Orden {Codigo} aprobada para el {Fecha:yyyy-MM-dd}. Usuario: {IdUsuario}",
             orden.Codigo, fechaProgramada, idUsuario);
 
-        return await DetalleAsync(id, $"Orden {orden.Codigo} aprobada.");
+        return await DetalleAsync(id, $"Orden {orden.Codigo} aprobada.", idUsuario);
     }
 
     // Diagnosticada → Rechazada (docs/matriz-estados.md): estado final; AplicarTransicion registra la fecha de cierre.
@@ -323,7 +348,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
         _logger.LogInformation("Orden {Codigo} rechazada. Usuario: {IdUsuario}", orden.Codigo, idUsuario);
 
-        return await DetalleAsync(id, $"Orden {orden.Codigo} rechazada.");
+        return await DetalleAsync(id, $"Orden {orden.Codigo} rechazada.", idUsuario);
     }
 
     // Aprobada - En Ejecución (docs/matriz-estados.md): asigna los técnicos y lleva el vehículo a En Mantenimiento.
@@ -387,7 +412,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         _logger.LogInformation("Orden {Codigo} en ejecución con los técnicos {IdTecnicos}; vehículo {CodigoActivo} En Mantenimiento. Usuario: {IdUsuario}",
             orden.Codigo, idTecnicos, activo.Codigo, idUsuario);
 
-        return await DetalleAsync(id, $"Orden {orden.Codigo} en ejecución.");
+        return await DetalleAsync(id, $"Orden {orden.Codigo} en ejecución.", idUsuario);
     }
 
     // Técnicos y horas de la orden (docs/requerimientos.md, 7.7). La tarifa es la congelada si la orden se cerró;
@@ -637,7 +662,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         _logger.LogInformation("Orden {Codigo} reanudada: {Cantidad} pendientes pasaron al detalle. Usuario: {IdUsuario}",
             orden.Codigo, pendientes.Count, idUsuario);
 
-        return await DetalleAsync(id, $"Orden {orden.Codigo} reanudada: {pendientes.Count} repuestos pendientes pasaron al detalle.");
+        return await DetalleAsync(id, $"Orden {orden.Codigo} reanudada: {pendientes.Count} repuestos pendientes pasaron al detalle.", idUsuario);
     }
 
     // En Ejecución → Completada (docs/matriz-estados.md): sin pendientes y con al menos un técnico con horas. Congela
@@ -681,7 +706,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             orden.Codigo, orden.CostoTotal, orden.Activo.Codigo,
             orden.Activo.IdEstadoActivo == SeedIds.EstadoActivoOperativo ? "Operativo" : "sigue En Mantenimiento", idUsuario);
 
-        return await DetalleAsync(id, $"Orden {orden.Codigo} completada. Costo total: {orden.CostoTotal:N2}.");
+        return await DetalleAsync(id, string.Create(EsCr, $"Orden {orden.Codigo} completada. Costo total: ₡{orden.CostoTotal:N2}."), idUsuario);
     }
 
     // Cualquier estado no final → Cancelada (docs/matriz-estados.md): estado final con fecha de cierre.
@@ -713,8 +738,8 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             desdeEjecucion ? $" durante la ejecución: costo total {orden.CostoTotal}, {pendientes} pendientes eliminados" : "", idUsuario);
 
         return await DetalleAsync(id, desdeEjecucion
-            ? $"Orden {orden.Codigo} cancelada. Costo de lo ya consumido: {orden.CostoTotal:N2}; pendientes eliminados: {pendientes}."
-            : $"Orden {orden.Codigo} cancelada.");
+            ? string.Create(EsCr, $"Orden {orden.Codigo} cancelada. Costo de lo ya consumido: ₡{orden.CostoTotal:N2}; pendientes eliminados: {pendientes}.")
+            : $"Orden {orden.Codigo} cancelada.", idUsuario);
     }
 
     // Único punto que cambia el estado de la orden y escribe HistorialEstadoOrden (docs/matriz-estados.md, "Historial").
@@ -849,10 +874,58 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         Result<OrdenMantenimientoDetailDto>.Failure(400, "Solicitud inválida", detalle);
 
     // Vuelve a leer la orden con sus relaciones para responder con los nombres y los costos
-    private async Task<Result<OrdenMantenimientoDetailDto>> DetalleAsync(int id, string detalle)
+    // Detalle después de una acción: las acciones disponibles se calculan para el usuario que la ejecutó
+    private async Task<Result<OrdenMantenimientoDetailDto>> DetalleAsync(int id, string detalle, int idUsuario)
     {
         var orden = await _repository.GetByIdAsync(id);
-        return Result<OrdenMantenimientoDetailDto>.Success(MapearDetalle(orden!), 200, "OK", detalle);
+        var usuario = await UsuarioResponsableAsync(idUsuario);
+        return Result<OrdenMantenimientoDetailDto>.Success(await MapearDetalleAsync(orden!, usuario), 200, "OK", detalle);
+    }
+
+    // Los montos de los mensajes van con el formato de Costa Rica, no con la cultura del servidor
+    private static readonly CultureInfo EsCr = CultureInfo.GetCultureInfo("es-CR");
+
+    // Detalle completo de la orden, el centro del proceso (enunciado Avance 2, 3.4 y 5.3): datos, vehículo, costos,
+    // técnicos y horas, repuestos y las acciones disponibles para el usuario. El Solicitante/Consulta no ve costos,
+    // así que tampoco recibe las tablas de técnicos y repuestos (llevan tarifas y costos unitarios).
+    private async Task<OrdenMantenimientoDetailDto> MapearDetalleAsync(OrdenMantenimiento orden, Usuario usuario)
+    {
+        var esSolicitante = usuario.IdRol == SeedIds.RolSolicitanteConsulta;
+        var data = MapearDetalle(orden, ocultarCostos: esSolicitante);
+
+        var ultimoCambio = (await _repository.GetFechasUltimoCambioAsync([orden.IdOrden]))
+            .GetValueOrDefault(orden.IdOrden, orden.FechaSolicitud);
+        data.FechaUltimoCambioEstado = ultimoCambio;
+        data.DiasEnEstadoActual = DiasDesde(ultimoCambio);
+        data.TotalHoras = orden.Asignaciones.Sum(a => a.HorasTrabajadas);
+        data.CantidadTecnicos = orden.Asignaciones.Count;
+
+        if (!esSolicitante)
+        {
+            data.Tecnicos = (await AsignacionesAsync(orden.IdOrden)).ToList();
+            data.Repuestos = await RepuestosAsync(orden.IdOrden, orden.IdEstadoOrden);
+        }
+
+        data.AccionesDisponibles = AccionesDisponibles(orden.IdEstadoOrden, usuario.Rol.Nombre, data.Repuestos);
+        return data;
+    }
+
+    // Las transiciones salen de la matriz; aquí se agregan las acciones que no cambian el estado y la condición de reanudar
+    private static List<string> AccionesDisponibles(int idEstado, string rol, OrdenRepuestosDto? repuestos)
+    {
+        var acciones = MatrizTransicionesOrden.Acciones(idEstado, rol);
+
+        // Reanudar solo aparece cuando ya hay stock para todos los pendientes (enunciado Avance 2, 5.5)
+        if (repuestos is not null && repuestos.Pendientes.Any(p => p.RepuestoStockActual < p.Cantidad))
+            acciones.Remove(AccionOrden.Reanudar);
+
+        if (rol == Roles.Administrador && idEstado == SeedIds.EstadoOrdenSolicitada)
+            acciones.Add(AccionOrden.Editar);
+
+        if (rol == Roles.CoordinadorTecnico && idEstado == SeedIds.EstadoOrdenEnEjecucion)
+            acciones.AddRange([AccionOrden.AsignarTecnicos, AccionOrden.RegistrarHoras, AccionOrden.RegistrarRepuestos]);
+
+        return acciones;
     }
 
     // Usuario responsable con su rol de la base: la matriz lo usa para la segunda validación del rol

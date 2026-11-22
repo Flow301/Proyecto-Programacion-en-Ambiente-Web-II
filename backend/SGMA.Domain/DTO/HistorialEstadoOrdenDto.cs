@@ -10,6 +10,14 @@ public record class HistorialEstadoOrdenDto
     /// <example>1</example>
     public int IdHistorial { get; set; }
 
+    /// <summary>Id del estado anterior, para el badge; null en el registro inicial.</summary>
+    /// <example>1</example>
+    public int? IdEstadoAnterior { get; set; }
+
+    /// <summary>Id del estado nuevo, para el badge.</summary>
+    /// <example>2</example>
+    public int IdEstadoNuevo { get; set; }
+
     /// <summary>Estado anterior; null en el registro inicial (creación de la orden).</summary>
     /// <example>Solicitada</example>
     public string? EstadoAnteriorNombre { get; set; }

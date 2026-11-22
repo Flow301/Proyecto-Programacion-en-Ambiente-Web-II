@@ -5,12 +5,14 @@ namespace SGMA.Infrastructure.Interfaces;
 public interface IOrdenMantenimientoRepository
 {
     // Lectura
-    // idSolicitante: null = todas las órdenes; con valor = solo las de ese solicitante
-    Task<IEnumerable<OrdenMantenimiento>> GetPaginationAsync(int pageNumber, int pageSize, int? idSolicitante = null);
-    Task<int> CountAsync(int? idSolicitante = null);
+    // Listado filtrado por estado, vehículo y, para el Solicitante/Consulta, solo sus órdenes (FiltroOrdenes)
+    Task<IEnumerable<OrdenMantenimiento>> GetPaginationAsync(int pageNumber, int pageSize, FiltroOrdenes filtro);
+    Task<int> CountAsync(FiltroOrdenes filtro);
+    Task<Dictionary<int, DateTime>> GetFechasUltimoCambioAsync(IReadOnlyCollection<int> idsOrden);
     Task<OrdenMantenimiento?> GetByIdAsync(int id);
     Task<int?> GetIdSolicitanteAsync(int id);
-    Task<IEnumerable<HistorialEstadoOrden>> GetHistorialAsync(int idOrden);
+    Task<IEnumerable<HistorialEstadoOrden>> GetHistorialAsync(int idOrden, int pageNumber, int pageSize);
+    Task<int> CountHistorialAsync(int idOrden);
     Task<int> GetUltimoConsecutivoAsync(int anio);
     Task<TipoMantenimiento?> GetTipoMantenimientoAsync(int idTipoMantenimiento);
     Task<bool> PrioridadExistsAsync(int idPrioridad);

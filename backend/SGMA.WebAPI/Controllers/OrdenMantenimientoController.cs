@@ -32,18 +32,24 @@ public class OrdenMantenimientoController : ControllerBase
     /// </summary>
     /// <remarks>
     /// El Solicitante/Consulta ve solo las órdenes que él creó; totalRecords cuenta solo las suyas.
+    /// Filtros opcionales en la query: idEstadoOrden (se puede repetir para varios estados, como la bandeja del
+    /// Coordinador: ?idEstadoOrden=1&amp;idEstadoOrden=3&amp;idEstadoOrden=5&amp;idEstadoOrden=6) e idActivo.
+    /// Cada orden trae los días en su estado actual.
     /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <param name="idEstadoOrden" example="1">Estados a mostrar (opcional, se repite para varios).</param>
+    /// <param name="idActivo" example="2">Vehículo (opcional).</param>
     /// <response code="200">Página de órdenes con pageNumber, pageSize, totalRecords y totalPages.</response>
     /// <response code="400">pageNumber o pageSize fuera de rango.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<OrdenMantenimientoListDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10)
+    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10,
+        [FromQuery] List<int>? idEstadoOrden = null, [FromQuery] int? idActivo = null)
     {
         var result = await _service.GetPaginationAsync(pageNumber, pageSize,
-            User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta));
+            User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta), idEstadoOrden, idActivo);
         return StatusCode(result.Status, result);
     }
 
@@ -51,14 +57,18 @@ public class OrdenMantenimientoController : ControllerBase
     /// Obtiene el detalle de una orden de mantenimiento.
     /// </summary>
     /// <remarks>
-    /// Mientras la orden está abierta, los costos de repuestos, mano de obra y total se calculan en vivo.
-    /// El Solicitante/Consulta solo ve las órdenes que él creó, y sin costos: costoRepuestos, costoManoObra y costoTotal van en null.
+    /// Es la pantalla central del proceso: datos de la orden y del vehículo, costos (en vivo mientras está abierta),
+    /// técnicos con horas, repuestos consumidos y pendientes, días en el estado actual y accionesDisponibles: las
+    /// transiciones y acciones que el usuario del token puede ejecutar ahora, según la matriz de transiciones.
+    /// El Solicitante/Consulta solo ve las órdenes que él creó, sin costos ni las tablas de técnicos y repuestos, y sin acciones.
     /// </remarks>
     /// <param name="id" example="1">Id de la orden.</param>
-    /// <response code="200">Detalle de la orden con su vehículo, tipo, estado y costos.</response>
-    /// <response code="404">La orden no existe, o el usuario es Solicitante/Consulta y la orden no es suya.</response>
+    /// <response code="200">Detalle completo de la orden.</response>
+    /// <response code="403">El usuario es Solicitante/Consulta y la orden no es suya.</response>
+    /// <response code="404">La orden no existe.</response>
     [HttpGet("{id:int}", Name = "GetOrdenMantenimientoById")]
     [ProducesResponseType<Result<OrdenMantenimientoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(int id)
     {
@@ -74,14 +84,21 @@ public class OrdenMantenimientoController : ControllerBase
     /// con el estado anterior vacío, y cada transición con su usuario y observación. Es de solo lectura.
     /// </remarks>
     /// <param name="id" example="3">Id de la orden.</param>
-    /// <response code="200">Cambios de estado de la orden, del más antiguo al más reciente.</response>
-    /// <response code="404">La orden no existe, o el usuario es Solicitante/Consulta y la orden no es suya.</response>
-    [HttpGet("{id:int}/historial")]
+    /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
+    /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <response code="200">Cambios de estado de la orden, del más reciente al más antiguo, con los datos de paginación.</response>
+    /// <response code="400">pageNumber o pageSize fuera de rango.</response>
+    /// <response code="403">El usuario es Solicitante/Consulta y la orden no es suya.</response>
+    /// <response code="404">La orden no existe.</response>
+    [HttpGet("{id:int}/historial/{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<HistorialEstadoOrdenDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetHistorialAsync(int id)
+    public async Task<IActionResult> GetHistorialAsync(int id, int pageNumber = 1, int pageSize = 10)
     {
-        var result = await _service.GetHistorialAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta));
+        var result = await _service.GetHistorialAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta),
+            pageNumber, pageSize);
         return StatusCode(result.Status, result);
     }
 

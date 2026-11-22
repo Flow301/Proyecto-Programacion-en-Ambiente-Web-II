@@ -15,13 +15,12 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
         _context = context;
     }
 
-    // El Solicitante/Consulta ve solo sus órdenes: el filtro va en el WHERE, antes del Skip/Take,
-    // para que la paginación y totalRecords cuenten solo las suyas
-    public async Task<IEnumerable<OrdenMantenimiento>> GetPaginationAsync(int pageNumber, int pageSize, int? idSolicitante = null)
+    // El Solicitante/Consulta ve solo sus órdenes: todos los filtros van en el WHERE, antes del Skip/Take,
+    // para que la paginación y totalRecords cuenten solo lo filtrado
+    public async Task<IEnumerable<OrdenMantenimiento>> GetPaginationAsync(int pageNumber, int pageSize, FiltroOrdenes filtro)
     {
-        return await _context.OrdenMantenimiento
+        return await Filtrar(filtro)
             .AsNoTracking()
-            .Where(o => idSolicitante == null || o.IdUsuarioSolicitante == idSolicitante)
             .Include(o => o.Activo)
             .Include(o => o.TipoMantenimiento)
             .Include(o => o.Prioridad)
@@ -33,10 +32,36 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync(int? idSolicitante = null)
+    public async Task<int> CountAsync(FiltroOrdenes filtro)
     {
-        return await _context.OrdenMantenimiento
-            .CountAsync(o => idSolicitante == null || o.IdUsuarioSolicitante == idSolicitante);
+        return await Filtrar(filtro).CountAsync();
+    }
+
+    // Estado (uno o varios: la bandeja del Coordinador abre con los que requieren su gestión), vehículo y solicitante
+    private IQueryable<OrdenMantenimiento> Filtrar(FiltroOrdenes filtro)
+    {
+        var query = _context.OrdenMantenimiento.AsQueryable();
+
+        if (filtro.IdSolicitante is int idSolicitante)
+            query = query.Where(o => o.IdUsuarioSolicitante == idSolicitante);
+
+        if (filtro.IdsEstado is { Count: > 0 } idsEstado)
+            query = query.Where(o => idsEstado.Contains(o.IdEstadoOrden));
+
+        if (filtro.IdActivo is int idActivo)
+            query = query.Where(o => o.IdActivo == idActivo);
+
+        return query;
+    }
+
+    // Fecha del último cambio de estado de cada orden: de ahí salen los días en el estado actual
+    public async Task<Dictionary<int, DateTime>> GetFechasUltimoCambioAsync(IReadOnlyCollection<int> idsOrden)
+    {
+        return await _context.HistorialEstadoOrden
+            .Where(h => idsOrden.Contains(h.IdOrden))
+            .GroupBy(h => h.IdOrden)
+            .Select(g => new { IdOrden = g.Key, Fecha = g.Max(h => h.FechaCambio) })
+            .ToDictionaryAsync(x => x.IdOrden, x => x.Fecha);
     }
 
     // Trae el detalle y las asignaciones para calcular los costos en vivo mientras la orden está abierta
@@ -44,8 +69,10 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
     {
         return await _context.OrdenMantenimiento
             .AsNoTracking()
-            .Include(o => o.Activo)
+            .Include(o => o.Activo).ThenInclude(a => a.Categoria)
+            .Include(o => o.Activo).ThenInclude(a => a.EstadoActivo)
             .Include(o => o.TipoMantenimiento).ThenInclude(t => t.Naturaleza)
+            .Include(o => o.TipoMantenimiento).ThenInclude(t => t.EspecialidadRequerida)
             .Include(o => o.Prioridad)
             .Include(o => o.EstadoOrden)
             .Include(o => o.UsuarioSolicitante)
@@ -85,8 +112,9 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .FirstOrDefaultAsync();
     }
 
-    // Historial de solo lectura, del más antiguo al más reciente, con los nombres de los estados y del usuario
-    public async Task<IEnumerable<HistorialEstadoOrden>> GetHistorialAsync(int idOrden)
+    // Historial de solo lectura, del más reciente al más antiguo y paginado (enunciado Avance 2, 5.7),
+    // con los nombres de los estados y del usuario
+    public async Task<IEnumerable<HistorialEstadoOrden>> GetHistorialAsync(int idOrden, int pageNumber, int pageSize)
     {
         return await _context.HistorialEstadoOrden
             .AsNoTracking()
@@ -94,9 +122,16 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .Include(h => h.EstadoNuevo)
             .Include(h => h.Usuario)
             .Where(h => h.IdOrden == idOrden)
-            .OrderBy(h => h.FechaCambio)
-            .ThenBy(h => h.IdHistorial)
+            .OrderByDescending(h => h.FechaCambio)
+            .ThenByDescending(h => h.IdHistorial)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+    }
+
+    public async Task<int> CountHistorialAsync(int idOrden)
+    {
+        return await _context.HistorialEstadoOrden.CountAsync(h => h.IdOrden == idOrden);
     }
 
     // Técnicos que se van a asignar, con sus especialidades para validar la que requiere el tipo de la orden.
