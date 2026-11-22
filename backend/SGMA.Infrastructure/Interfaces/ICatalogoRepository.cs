@@ -10,4 +10,5 @@ public interface ICatalogoRepository
     Task<IEnumerable<NivelCertificacion>> GetNivelesCertificacionAsync();
     Task<IEnumerable<EstadoOrden>> GetEstadosOrdenAsync();
     Task<IEnumerable<EstadoActivo>> GetEstadosActivoAsync();
+    Task<IEnumerable<VariableControl>> GetVariablesControlAsync();
 }

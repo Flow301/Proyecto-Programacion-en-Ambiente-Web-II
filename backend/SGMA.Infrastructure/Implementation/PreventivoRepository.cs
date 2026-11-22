@@ -60,6 +60,8 @@ public class PreventivoRepository : IPreventivoRepository
                 Nombre = a.Nombre,
                 Placa = a.Placa,
                 CategoriaNombre = a.Categoria.Nombre,
+                VariableControlNombre = a.Categoria.VariableControl.Nombre,
+                VariableControlUnidad = a.Categoria.VariableControl.Unidad,
                 IdEstadoActivo = a.IdEstadoActivo,
                 EstadoActivoNombre = a.EstadoActivo.Nombre,
                 KilometrajeActual = a.KilometrajeActual,

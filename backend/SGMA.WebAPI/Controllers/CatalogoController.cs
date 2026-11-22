@@ -44,6 +44,22 @@ public class CatalogoController : ControllerBase
     }
 
     /// <summary>
+    /// Lista las variables de control del mantenimiento preventivo.
+    /// </summary>
+    /// <remarks>
+    /// Para la lista "Variable de control" del formulario de categoría, con la unidad que se muestra junto al umbral.
+    /// En flota vehicular solo existe Kilometraje (km).
+    /// </remarks>
+    /// <response code="200">Variables de control ordenadas por Id.</response>
+    [HttpGet("variables-control")]
+    [ProducesResponseType<Result<IEnumerable<VariableControlDto>>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetVariablesControlAsync()
+    {
+        var result = await _service.GetVariablesControlAsync();
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
     /// Lista las prioridades de una orden.
     /// </summary>
     /// <remarks>

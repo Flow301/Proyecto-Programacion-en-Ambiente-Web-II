@@ -71,7 +71,8 @@ public class CategoriaActivoService : ICategoriaActivoService
 
         _logger.LogInformation("Categoría {IdCategoria} creada: {Nombre}", entity.IdCategoria, entity.Nombre);
 
-        var data = _mapper.Map<CategoriaActivoDto>(entity);
+        // Se relee para responder con la variable de control y la cantidad de vehículos
+        var data = _mapper.Map<CategoriaActivoDto>((await _repository.GetByIdAsync(entity.IdCategoria))!);
 
         return Result<CategoriaActivoDto>.Success(data, 201, "Creado", "Categoría registrada.");
     }
@@ -102,7 +103,8 @@ public class CategoriaActivoService : ICategoriaActivoService
 
         _logger.LogInformation("Categoría {IdCategoria} actualizada", id);
 
-        var data = _mapper.Map<CategoriaActivoDto>(entity);
+        // Se relee para responder con la variable de control y la cantidad de vehículos
+        var data = _mapper.Map<CategoriaActivoDto>((await _repository.GetByIdAsync(entity.IdCategoria))!);
 
         return Result<CategoriaActivoDto>.Success(data, 200, "OK", "Categoría actualizada.");
     }
@@ -132,6 +134,11 @@ public class CategoriaActivoService : ICategoriaActivoService
         entity.Nombre = entity.Nombre.Trim();
         entity.Descripcion = entity.Descripcion?.Trim();
         entity.Prefijo = entity.Prefijo.ToUpperInvariant();
+
+        // Una variable que no existe responde 400: lo inválido es el cuerpo
+        if (!await _repository.VariableControlExistsAsync(entity.IdVariableControl))
+            return Result<CategoriaActivoDto>.Failure(400, "Solicitud inválida",
+                $"La variable de control {entity.IdVariableControl} no existe.");
 
         int? excludeId = entity.IdCategoria == 0 ? null : entity.IdCategoria;
 

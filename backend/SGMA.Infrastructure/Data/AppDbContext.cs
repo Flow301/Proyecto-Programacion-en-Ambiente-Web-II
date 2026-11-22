@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Prioridad> Prioridad { get; set; }
     public DbSet<NaturalezaMantenimiento> NaturalezaMantenimiento { get; set; }
     public DbSet<NivelCertificacion> NivelCertificacion { get; set; }
+    public DbSet<VariableControl> VariableControl { get; set; }
     public DbSet<CategoriaActivo> CategoriaActivo { get; set; }
     public DbSet<Activo> Activo { get; set; }
     public DbSet<Especialidad> Especialidad { get; set; }
@@ -119,9 +120,35 @@ public class AppDbContext : DbContext
                 .HasMaxLength(20);
         });
 
+        // VariableControl
+        modelBuilder.Entity<VariableControl>(entity =>
+        {
+            entity.HasKey(e => e.IdVariableControl)
+                .HasName("PK_VariableControl");
+
+            entity.HasIndex(e => e.Nombre, "UQ_VariableControl_Nombre")
+                .IsUnique();
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(40);
+
+            entity.Property(e => e.Unidad)
+                .HasMaxLength(10);
+        });
+
         // CategoriaActivo
         modelBuilder.Entity<CategoriaActivo>(entity =>
         {
+            // Las categorías que ya existían toman el kilometraje, la única variable del contexto
+            entity.Property(e => e.IdVariableControl)
+                .HasDefaultValue(1);
+
+            entity.HasOne(d => d.VariableControl)
+                .WithMany(p => p.Categorias)
+                .HasForeignKey(d => d.IdVariableControl)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_CategoriaActivo_VariableControl");
+
             entity.HasKey(e => e.IdCategoria)
                 .HasName("PK_CategoriaActivo");
 

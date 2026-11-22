@@ -161,6 +161,11 @@ namespace SGMA.Infrastructure.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
+                    b.Property<int>("IdVariableControl")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("IntervaloKm")
                         .HasColumnType("int");
 
@@ -182,6 +187,8 @@ namespace SGMA.Infrastructure.Migrations
                     b.HasKey("IdCategoria")
                         .HasName("PK_CategoriaActivo");
 
+                    b.HasIndex("IdVariableControl");
+
                     b.HasIndex(new[] { "Nombre" }, "UQ_CategoriaActivo_Nombre")
                         .IsUnique();
 
@@ -199,6 +206,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 1,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
                             Nombre = "Pickup",
                             PorcentajeAviso = 90,
@@ -207,6 +215,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 2,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
                             Nombre = "Camión liviano",
                             PorcentajeAviso = 90,
@@ -215,6 +224,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 3,
+                            IdVariableControl = 1,
                             IntervaloKm = 15000,
                             Nombre = "Camión pesado",
                             PorcentajeAviso = 90,
@@ -223,6 +233,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 4,
+                            IdVariableControl = 1,
                             IntervaloKm = 20000,
                             Nombre = "Tractocamión",
                             PorcentajeAviso = 90,
@@ -231,6 +242,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 5,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
                             Nombre = "Bus urbano",
                             PorcentajeAviso = 90,
@@ -239,6 +251,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 6,
+                            IdVariableControl = 1,
                             IntervaloKm = 15000,
                             Nombre = "Bus interurbano",
                             PorcentajeAviso = 90,
@@ -247,6 +260,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 7,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
                             Nombre = "Microbús",
                             PorcentajeAviso = 90,
@@ -255,6 +269,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 8,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
                             Nombre = "Van de carga",
                             PorcentajeAviso = 90,
@@ -263,6 +278,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 9,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
                             Nombre = "Vehículo administrativo",
                             PorcentajeAviso = 90,
@@ -271,6 +287,7 @@ namespace SGMA.Infrastructure.Migrations
                         new
                         {
                             IdCategoria = 10,
+                            IdVariableControl = 1,
                             IntervaloKm = 5000,
                             Nombre = "Motocicleta",
                             PorcentajeAviso = 90,
@@ -1330,6 +1347,41 @@ namespace SGMA.Infrastructure.Migrations
                     b.ToTable("Usuario");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.VariableControl", b =>
+                {
+                    b.Property<int>("IdVariableControl")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdVariableControl"));
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Unidad")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("IdVariableControl")
+                        .HasName("PK_VariableControl");
+
+                    b.HasIndex(new[] { "Nombre" }, "UQ_VariableControl_Nombre")
+                        .IsUnique();
+
+                    b.ToTable("VariableControl");
+
+                    b.HasData(
+                        new
+                        {
+                            IdVariableControl = 1,
+                            Nombre = "Kilometraje",
+                            Unidad = "km"
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Activo", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.CategoriaActivo", "Categoria")
@@ -1370,6 +1422,18 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("Orden");
 
                     b.Navigation("Tecnico");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.CategoriaActivo", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.VariableControl", "VariableControl")
+                        .WithMany("Categorias")
+                        .HasForeignKey("IdVariableControl")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_CategoriaActivo_VariableControl");
+
+                    b.Navigation("VariableControl");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.DetalleRepuesto", b =>
@@ -1714,6 +1778,11 @@ namespace SGMA.Infrastructure.Migrations
             modelBuilder.Entity("SGMA.Domain.Entities.Tecnico", b =>
                 {
                     b.Navigation("TecnicoEspecialidades");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.VariableControl", b =>
+                {
+                    b.Navigation("Categorias");
                 });
 #pragma warning restore 612, 618
         }

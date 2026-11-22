@@ -8,6 +8,8 @@ public class CategoriaActivo
     public string Prefijo { get; set; } = null!;
     public int IntervaloKm { get; set; }
     public int PorcentajeAviso { get; set; }
+    public int IdVariableControl { get; set; }
 
+    public virtual VariableControl VariableControl { get; set; } = null!;
     public virtual ICollection<Activo> Activos { get; set; } = new List<Activo>();
 }

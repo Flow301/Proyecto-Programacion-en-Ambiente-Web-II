@@ -34,6 +34,14 @@ public record class PreventivoEvaluacionDto
     /// <example>Operativo</example>
     public string? EstadoActivoNombre { get; set; }
 
+    /// <summary>Variable de control de la categoría.</summary>
+    /// <example>Kilometraje</example>
+    public string? VariableControlNombre { get; set; }
+
+    /// <summary>Unidad de la variable, para mostrar las lecturas y el umbral.</summary>
+    /// <example>km</example>
+    public string? VariableControlUnidad { get; set; }
+
     /// <summary>Lectura actual: el kilometraje de la última lectura de uso.</summary>
     /// <example>128900</example>
     public int KilometrajeActual { get; set; }

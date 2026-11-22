@@ -42,11 +42,13 @@ public static class MapsterConfig
         TypeAdapterConfig<CategoriaActivoCreateDto, CategoriaActivo>
             .NewConfig()
             .Ignore(dest => dest.IdCategoria,       // lo asigna la base
+                dest => dest.VariableControl,       // basta con IdVariableControl
                 dest => dest.Activos);
 
         TypeAdapterConfig<CategoriaActivoUpdateDto, CategoriaActivo>
             .NewConfig()
             .Ignore(dest => dest.IdCategoria,       // viene de la ruta, no del body
+                dest => dest.VariableControl,
                 dest => dest.Activos);
 
         // Especialidad

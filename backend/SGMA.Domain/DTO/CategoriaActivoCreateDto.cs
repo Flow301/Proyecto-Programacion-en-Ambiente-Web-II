@@ -25,6 +25,11 @@ public record class CategoriaActivoCreateDto
     [Required(ErrorMessage = "El campo {0} es obligatorio."), RegularExpression("^[A-Za-z]{3}$", ErrorMessage = "El prefijo debe tener exactamente tres letras.")]
     public string? Prefijo { get; set; }
 
+    /// <summary>Id de la variable de control (lista de GET api/Catalogo/variables-control).</summary>
+    /// <example>1</example>
+    [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
+    public int IdVariableControl { get; set; }
+
     /// <summary>Kilómetros entre preventivos: 1 o más.</summary>
     /// <example>8000</example>
     [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]

@@ -27,6 +27,15 @@ public class CatalogoService : ICatalogoService
         return Result<IEnumerable<TipoMantenimientoDto>>.Success(data);
     }
 
+    public async Task<Result<IEnumerable<VariableControlDto>>> GetVariablesControlAsync()
+    {
+        var variables = await _repository.GetVariablesControlAsync();
+
+        var data = _mapper.Map<IEnumerable<VariableControlDto>>(variables);
+
+        return Result<IEnumerable<VariableControlDto>>.Success(data);
+    }
+
     public async Task<Result<IEnumerable<PrioridadDto>>> GetPrioridadesAsync()
     {
         var prioridades = await _repository.GetPrioridadesAsync();

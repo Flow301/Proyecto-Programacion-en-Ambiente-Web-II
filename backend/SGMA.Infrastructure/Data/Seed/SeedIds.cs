@@ -24,6 +24,8 @@ public static class SeedIds
     public const int EstadoOrdenCompletada = 7;
     public const int EstadoOrdenCancelada = 8;
 
+    public const int VariableControlKilometraje = 1;
+
     public const int PrioridadBaja = 1;
     public const int PrioridadMedia = 2;
     public const int PrioridadAlta = 3;

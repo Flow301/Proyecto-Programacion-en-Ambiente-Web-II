@@ -25,6 +25,14 @@ public class CatalogoRepository : ICatalogoRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<VariableControl>> GetVariablesControlAsync()
+    {
+        return await _context.VariableControl
+            .AsNoTracking()
+            .OrderBy(v => v.IdVariableControl)
+            .ToListAsync();
+    }
+
     // De la más baja a la más urgente
     public async Task<IEnumerable<Prioridad>> GetPrioridadesAsync()
     {
