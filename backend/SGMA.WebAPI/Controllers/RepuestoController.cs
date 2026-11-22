@@ -43,16 +43,22 @@ public class RepuestoController : ControllerBase
     /// <summary>
     /// Lista los repuestos activos por páginas.
     /// </summary>
+    /// <remarks>
+    /// Con bajoMinimo=true lista solo los que tienen stock por debajo del mínimo, también paginados.
+    /// Cada repuesto trae stockBajo y faltante, calculados.
+    /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <param name="bajoMinimo" example="false">Solo los que están bajo el mínimo (opcional).</param>
     /// <response code="200">Página de repuestos con pageNumber, pageSize, totalRecords y totalPages.</response>
     /// <response code="400">pageNumber o pageSize fuera de rango.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<RepuestoDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10)
+    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10,
+        [FromQuery] bool bajoMinimo = false)
     {
-        var result = await _service.GetPaginationAsync(pageNumber, pageSize);
+        var result = await _service.GetPaginationAsync(pageNumber, pageSize, bajoMinimo);
         return StatusCode(result.Status, result);
     }
 

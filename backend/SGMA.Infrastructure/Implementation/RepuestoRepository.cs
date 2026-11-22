@@ -24,20 +24,21 @@ public class RepuestoRepository : IRepuestoRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Repuesto>> GetPaginationAsync(int pageNumber, int pageSize)
+    // bajoMinimo = true: solo los que tienen stock por debajo del mínimo (filtro "Stock bajo el mínimo", con paginación)
+    public async Task<IEnumerable<Repuesto>> GetPaginationAsync(int pageNumber, int pageSize, bool bajoMinimo = false)
     {
         return await _context.Repuesto
             .AsNoTracking()
-            .Where(p => p.Estado)
+            .Where(p => p.Estado && (!bajoMinimo || p.StockActual < p.StockMinimo))
             .OrderBy(p => p.IdRepuesto)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync()
+    public async Task<int> CountAsync(bool bajoMinimo = false)
     {
-        return await _context.Repuesto.CountAsync(p => p.Estado);
+        return await _context.Repuesto.CountAsync(p => p.Estado && (!bajoMinimo || p.StockActual < p.StockMinimo));
     }
 
     public async Task<Repuesto?> GetByIdAsync(int id)

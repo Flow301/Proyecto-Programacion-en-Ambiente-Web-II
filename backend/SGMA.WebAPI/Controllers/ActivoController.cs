@@ -32,16 +32,23 @@ public class ActivoController : ControllerBase
     /// <summary>
     /// Lista los vehículos por páginas.
     /// </summary>
+    /// <remarks>
+    /// Filtros opcionales en la query: idCategoria e idEstadoActivo. Cada vehículo trae su estado preventivo
+    /// (Vencido, Próximo, Al día o Sin lecturas; null si está Fuera de Servicio o Dado de Baja).
+    /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <param name="idCategoria" example="1">Categoría (opcional).</param>
+    /// <param name="idEstadoActivo" example="1">Estado del vehículo (opcional).</param>
     /// <response code="200">Página de vehículos con pageNumber, pageSize, totalRecords y totalPages.</response>
     /// <response code="400">pageNumber o pageSize fuera de rango.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<ActivoListDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10)
+    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10,
+        [FromQuery] int? idCategoria = null, [FromQuery] int? idEstadoActivo = null)
     {
-        var result = await _service.GetPaginationAsync(pageNumber, pageSize);
+        var result = await _service.GetPaginationAsync(pageNumber, pageSize, idCategoria, idEstadoActivo);
         return StatusCode(result.Status, result);
     }
 
@@ -67,14 +74,20 @@ public class ActivoController : ControllerBase
     /// El Solicitante/Consulta solo ve el historial de los vehículos con alguna orden suya.
     /// </remarks>
     /// <param name="id" example="1">Id del vehículo.</param>
-    /// <response code="200">Cambios de estado del vehículo, con fecha, usuario y observación.</response>
+    /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
+    /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <response code="200">Cambios de estado del vehículo, del más reciente al más antiguo, con fecha, usuario, observación
+    /// y el código de la orden que provocó cada cambio automático.</response>
+    /// <response code="400">pageNumber o pageSize fuera de rango.</response>
     /// <response code="404">El vehículo no existe, o el usuario es Solicitante/Consulta y no tiene órdenes de ese vehículo.</response>
-    [HttpGet("{id:int}/historial")]
+    [HttpGet("{id:int}/historial/{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<HistorialEstadoActivoDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetHistorialAsync(int id)
+    public async Task<IActionResult> GetHistorialAsync(int id, int pageNumber = 1, int pageSize = 10)
     {
-        var result = await _service.GetHistorialAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta));
+        var result = await _service.GetHistorialAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta),
+            pageNumber, pageSize);
         return StatusCode(result.Status, result);
     }
 

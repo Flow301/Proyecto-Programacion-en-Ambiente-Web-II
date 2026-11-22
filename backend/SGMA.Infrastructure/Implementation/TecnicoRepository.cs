@@ -19,26 +19,33 @@ public class TecnicoRepository : ITecnicoRepository
     {
         return await _context.Tecnico
             .AsNoTracking()
+            .Include(t => t.TecnicoEspecialidades)      // para CantidadEspecialidades
             .Where(t => t.Estado)
             .OrderBy(t => t.IdTecnico)
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Tecnico>> GetPaginationAsync(int pageNumber, int pageSize)
+    // Filtros opcionales por especialidad y por disponibilidad (enunciado Avance 2, 2.3), antes del Skip/Take
+    public async Task<IEnumerable<Tecnico>> GetPaginationAsync(int pageNumber, int pageSize, int? idEspecialidad = null, bool? disponible = null)
     {
-        return await _context.Tecnico
+        return await Filtrar(idEspecialidad, disponible)
             .AsNoTracking()
-            .Where(t => t.Estado)
+            .Include(t => t.TecnicoEspecialidades)      // para CantidadEspecialidades
             .OrderBy(t => t.IdTecnico)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync()
+    public async Task<int> CountAsync(int? idEspecialidad = null, bool? disponible = null)
     {
-        return await _context.Tecnico.CountAsync(t => t.Estado);
+        return await Filtrar(idEspecialidad, disponible).CountAsync();
     }
+
+    private IQueryable<Tecnico> Filtrar(int? idEspecialidad, bool? disponible) =>
+        _context.Tecnico.Where(t => t.Estado
+            && (disponible == null || t.Disponible == disponible)
+            && (idEspecialidad == null || t.TecnicoEspecialidades.Any(te => te.IdEspecialidad == idEspecialidad)));
 
     // El detalle incluye sus especialidades con el nombre de la especialidad y del nivel
     public async Task<Tecnico?> GetByIdAsync(int id)

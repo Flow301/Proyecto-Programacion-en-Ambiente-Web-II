@@ -14,9 +14,10 @@ public class ActivoRepository : IActivoRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize)
+    // Filtros opcionales por categoría y por estado (enunciado Avance 2, 2.3), antes del Skip/Take
+    public async Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null)
     {
-        return await _context.Activo
+        return await Filtrar(idCategoria, idEstadoActivo)
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.EstadoActivo)
@@ -26,10 +27,14 @@ public class ActivoRepository : IActivoRepository
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync()
+    public async Task<int> CountAsync(int? idCategoria = null, int? idEstadoActivo = null)
     {
-        return await _context.Activo.CountAsync();
+        return await Filtrar(idCategoria, idEstadoActivo).CountAsync();
     }
+
+    private IQueryable<Activo> Filtrar(int? idCategoria, int? idEstadoActivo) =>
+        _context.Activo.Where(a => (idCategoria == null || a.IdCategoria == idCategoria)
+            && (idEstadoActivo == null || a.IdEstadoActivo == idEstadoActivo));
 
     public async Task<Activo?> GetByIdAsync(int id)
     {
@@ -51,18 +56,26 @@ public class ActivoRepository : IActivoRepository
         return ultimo is null ? 0 : int.Parse(ultimo[(prefijo.Length + 1)..]);
     }
 
-    // Del más antiguo al más reciente: es la línea de tiempo del vehículo
-    public async Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo)
+    // Del más reciente al más antiguo, paginado (enunciado Avance 2, 5.7). Trae la orden que provocó cada cambio automático.
+    public async Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo, int pageNumber, int pageSize)
     {
         return await _context.HistorialEstadoActivo
             .AsNoTracking()
             .Include(h => h.EstadoAnterior)
             .Include(h => h.EstadoNuevo)
             .Include(h => h.Usuario)
+            .Include(h => h.Orden)
             .Where(h => h.IdActivo == idActivo)
-            .OrderBy(h => h.FechaCambio)
-            .ThenBy(h => h.IdHistorial)
+            .OrderByDescending(h => h.FechaCambio)
+            .ThenByDescending(h => h.IdHistorial)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+    }
+
+    public async Task<int> CountHistorialAsync(int idActivo)
+    {
+        return await _context.HistorialEstadoActivo.CountAsync(h => h.IdActivo == idActivo);
     }
 
     // De la más reciente a la más antigua (enunciado Avance 2, 5.8: "consultar lecturas de un activo")

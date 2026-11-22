@@ -32,4 +32,9 @@ public record class TecnicoListDto
     /// <summary>Tarifa por hora en colones.</summary>
     /// <example>5200</example>
     public decimal TarifaHora { get; set; }
+
+    /// <summary>Cantidad de especialidades del técnico.</summary>
+    /// <example>2</example>
+    // MapsterConfig la cuenta de TecnicoEspecialidades
+    public int CantidadEspecialidades { get; set; }
 }

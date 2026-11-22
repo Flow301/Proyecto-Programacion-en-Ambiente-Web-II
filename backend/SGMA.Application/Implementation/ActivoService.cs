@@ -45,15 +45,16 @@ public class ActivoService : IActivoService
         _logger = logger;
     }
 
-    public async Task<Result<IEnumerable<ActivoListDto>>> GetPaginationAsync(int pageNumber, int pageSize)
+    public async Task<Result<IEnumerable<ActivoListDto>>> GetPaginationAsync(int pageNumber, int pageSize,
+        int? idCategoria = null, int? idEstadoActivo = null)
     {
         // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
         if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<ActivoListDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
-        var activos = await _repository.GetPaginationAsync(pageNumber, pageSize);
-        var totalRecords = await _repository.CountAsync();
+        var activos = await _repository.GetPaginationAsync(pageNumber, pageSize, idCategoria, idEstadoActivo);
+        var totalRecords = await _repository.CountAsync(idCategoria, idEstadoActivo);
 
         var data = _mapper.Map<List<ActivoListDto>>(activos);
 
@@ -153,9 +154,14 @@ public class ActivoService : IActivoService
         return Result<ActivoDetailDto>.Success(data);
     }
 
-    // El Solicitante/Consulta solo ve el historial de los vehículos con alguna orden suya
-    public async Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante)
+    // El Solicitante/Consulta solo ve el historial de los vehículos con alguna orden suya. Del más reciente al más antiguo.
+    public async Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante,
+        int pageNumber, int pageSize)
     {
+        if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
+            return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(400, "Solicitud inválida",
+                $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
+
         if (!await _repository.ExistsAsync(id))
             return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(404, "Recurso no encontrado",
                 $"El vehículo {id} no existe.");
@@ -164,11 +170,12 @@ public class ActivoService : IActivoService
             return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(404, "Recurso no encontrado",
                 $"El vehículo {id} no tiene órdenes de mantenimiento suyas.");
 
-        var historial = await _repository.GetHistorialAsync(id);
+        var historial = await _repository.GetHistorialAsync(id, pageNumber, pageSize);
+        var totalRecords = await _repository.CountHistorialAsync(id);
 
         var data = _mapper.Map<IEnumerable<HistorialEstadoActivoDto>>(historial);
 
-        return Result<IEnumerable<HistorialEstadoActivoDto>>.Success(data);
+        return Result<IEnumerable<HistorialEstadoActivoDto>>.Paged(data, pageNumber, pageSize, totalRecords);
     }
 
     public async Task<Result<ActivoDetailDto>> AddAsync(ActivoCreateDto activo, int idUsuario)

@@ -28,4 +28,9 @@ public record class CategoriaActivoDto
     /// <summary>Porcentaje del intervalo desde el que el vehículo queda Próximo al preventivo.</summary>
     /// <example>90</example>
     public int PorcentajeAviso { get; set; }
+
+    /// <summary>Cantidad de vehículos de la categoría, incluidos los dados de baja.</summary>
+    /// <example>3</example>
+    // MapsterConfig la cuenta de Activos
+    public int CantidadActivos { get; set; }
 }

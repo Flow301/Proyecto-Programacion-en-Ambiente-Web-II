@@ -32,22 +32,23 @@ public class UsuarioService : IUsuarioService
     {
         var usuarios = await _repository.GetAllAsync();
 
-        var data = _mapper.Map<IEnumerable<UsuarioDto>>(usuarios);
+        var data = await ConActividadAsync(_mapper.Map<List<UsuarioDto>>(usuarios));
 
         return Result<IEnumerable<UsuarioDto>>.Success(data);
     }
 
-    public async Task<Result<IEnumerable<UsuarioDto>>> GetPaginationAsync(int pageNumber, int pageSize)
+    // Filtros opcionales por rol y por estado (activo/inactivo)
+    public async Task<Result<IEnumerable<UsuarioDto>>> GetPaginationAsync(int pageNumber, int pageSize, int? idRol = null, bool? estado = null)
     {
         // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
         if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<UsuarioDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
-        var usuarios = await _repository.GetPaginationAsync(pageNumber, pageSize);
-        var totalRecords = await _repository.CountAsync();
+        var usuarios = await _repository.GetPaginationAsync(pageNumber, pageSize, idRol, estado);
+        var totalRecords = await _repository.CountAsync(idRol, estado);
 
-        var data = _mapper.Map<IEnumerable<UsuarioDto>>(usuarios);
+        var data = await ConActividadAsync(_mapper.Map<List<UsuarioDto>>(usuarios));
 
         return Result<IEnumerable<UsuarioDto>>.Paged(data, pageNumber, pageSize, totalRecords);
     }
@@ -60,7 +61,7 @@ public class UsuarioService : IUsuarioService
         if (usuario is null)
             return NoExiste<UsuarioDto>(id);
 
-        var data = _mapper.Map<UsuarioDto>(usuario);
+        var data = (await ConActividadAsync([_mapper.Map<UsuarioDto>(usuario)]))[0];
 
         return Result<UsuarioDto>.Success(data);
     }
@@ -121,7 +122,7 @@ public class UsuarioService : IUsuarioService
     }
 
     // El nuevo rol aplica desde el siguiente inicio de sesión: el token vigente conserva el anterior
-    public async Task<Result<UsuarioDto>> CambiarRolAsync(int id, UsuarioRolDto rol)
+    public async Task<Result<UsuarioDto>> CambiarRolAsync(int id, UsuarioRolDto rol, int idResponsable)
     {
         var entity = await _repository.GetForUpdateAsync(id);
 
@@ -130,6 +131,10 @@ public class UsuarioService : IUsuarioService
 
         if (!await _repository.RolExistsAsync(rol.IdRol))
             return RolNoExiste<UsuarioDto>(rol.IdRol);
+
+        // El Administrador no puede quitarse su propio rol (enunciado Avance 2, 5.1), aunque haya otros Administradores
+        if (id == idResponsable && rol.IdRol != SeedIds.RolAdministrador)
+            return ASiMismo<UsuarioDto>(id, "quitarse su propio rol de Administrador");
 
         if (rol.IdRol != SeedIds.RolAdministrador && await EsUltimoAdministradorActivoAsync(entity))
             return UltimoAdministrador<UsuarioDto>(id, "quitarle el rol");
@@ -162,12 +167,16 @@ public class UsuarioService : IUsuarioService
     }
 
     // Eliminación lógica: Estado = false conserva sus órdenes y su historial
-    public async Task<Result<int>> DeleteAsync(int id)
+    public async Task<Result<int>> DeleteAsync(int id, int idResponsable)
     {
         var entity = await _repository.GetForUpdateAsync(id);
 
         if (entity is null || !entity.Estado)
             return Result<int>.Failure(404, "Recurso no encontrado", $"El usuario {id} no existe o ya está inactivo.");
+
+        // Nadie puede desactivarse a sí mismo (enunciado Avance 2, 5.1: 409)
+        if (id == idResponsable)
+            return ASiMismo<int>(id, "desactivarse a sí mismo");
 
         if (await EsUltimoAdministradorActivoAsync(entity))
             return UltimoAdministrador<int>(id, "desactivar");
@@ -207,9 +216,25 @@ public class UsuarioService : IUsuarioService
     private async Task<Result<UsuarioDto>> DetalleAsync(int id, int status, string title, string detalle)
     {
         var usuario = await _repository.GetByIdAsync(id);
-        var data = _mapper.Map<UsuarioDto>(usuario!);
+        var data = (await ConActividadAsync([_mapper.Map<UsuarioDto>(usuario!)]))[0];
 
         return Result<UsuarioDto>.Success(data, status, title, detalle);
+    }
+
+    // Marca TieneActividad con una sola consulta para toda la lista
+    private async Task<List<UsuarioDto>> ConActividadAsync(List<UsuarioDto> usuarios)
+    {
+        var conActividad = await _repository.GetConActividadAsync(usuarios.Select(u => u.IdUsuario).ToList());
+        foreach (var usuario in usuarios)
+            usuario.TieneActividad = conActividad.Contains(usuario.IdUsuario);
+        return usuarios;
+    }
+
+    private Result<T> ASiMismo<T>(int id, string accion)
+    {
+        _logger.LogWarning("El usuario {IdUsuario} intentó {Accion}", id, accion);
+        return Result<T>.Failure(409, "Conflicto",
+            $"Un Administrador no puede {accion}: el sistema podría quedar sin acceso administrativo.");
     }
 
     // Login y correo únicos en toda la tabla; excludeId deja fuera al propio usuario en el PUT

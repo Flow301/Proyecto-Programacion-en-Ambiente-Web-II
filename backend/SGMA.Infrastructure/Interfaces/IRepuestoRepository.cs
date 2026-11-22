@@ -6,8 +6,8 @@ public interface IRepuestoRepository
 {
     // Lectura (solo repuestos activos)
     Task<IEnumerable<Repuesto>> GetAllAsync();
-    Task<IEnumerable<Repuesto>> GetPaginationAsync(int pageNumber, int pageSize);
-    Task<int> CountAsync();
+    Task<IEnumerable<Repuesto>> GetPaginationAsync(int pageNumber, int pageSize, bool bajoMinimo = false);
+    Task<int> CountAsync(bool bajoMinimo = false);
     Task<Repuesto?> GetByIdAsync(int id);
     Task<IEnumerable<Repuesto>> GetBajoMinimoAsync();
     Task<IEnumerable<RepuestoProveedor>> GetProveedoresAsync(int idRepuesto);

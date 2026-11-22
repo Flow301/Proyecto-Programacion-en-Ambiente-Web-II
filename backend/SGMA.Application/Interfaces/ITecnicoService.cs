@@ -6,7 +6,7 @@ namespace SGMA.Application.Interfaces;
 public interface ITecnicoService
 {
     Task<Result<IEnumerable<TecnicoListDto>>> GetAllAsync();
-    Task<Result<IEnumerable<TecnicoListDto>>> GetPaginationAsync(int pageNumber, int pageSize);
+    Task<Result<IEnumerable<TecnicoListDto>>> GetPaginationAsync(int pageNumber, int pageSize, int? idEspecialidad = null, bool? disponible = null);
     Task<Result<TecnicoDetailDto>> GetByIdAsync(int id);
     Task<Result<IEnumerable<TecnicoDisponibleDto>>> GetDisponiblesPorEspecialidadAsync(int idEspecialidad);
     Task<Result<TecnicoDetailDto>> AddAsync(TecnicoCreateDto tecnico);

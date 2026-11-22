@@ -35,6 +35,10 @@ public static class MapsterConfig
                 dest => dest.HistorialEstados);
 
         // CategoriaActivo
+        TypeAdapterConfig<CategoriaActivo, CategoriaActivoDto>
+            .NewConfig()
+            .Map(dest => dest.CantidadActivos, src => src.Activos.Count);
+
         TypeAdapterConfig<CategoriaActivoCreateDto, CategoriaActivo>
             .NewConfig()
             .Ignore(dest => dest.IdCategoria,       // lo asigna la base
@@ -58,6 +62,10 @@ public static class MapsterConfig
 
 
         // Tecnico
+        TypeAdapterConfig<Tecnico, TecnicoListDto>
+            .NewConfig()
+            .Map(dest => dest.CantidadEspecialidades, src => src.TecnicoEspecialidades.Count);
+
         TypeAdapterConfig<TecnicoCreateDto, Tecnico>
             .NewConfig()
             .Ignore(dest => dest.IdTecnico,         // lo asigna la base
