@@ -21,31 +21,36 @@ Una regla basada solo en fechas falla con vehículos de uso muy distinto. Un bus
 ### Datos que usa la regla
 
 - **En la categoría:**
-  - `IntervaloKm`: cada cuántos km corresponde el preventivo.
-  - `MargenAvisoKm`: cuántos km antes del intervalo se avisa.
+  - `IntervaloKm`: el umbral, cada cuántos km corresponde el preventivo.
+  - `PorcentajeAviso`: desde qué porcentaje del umbral el vehículo queda Próximo (de 1 a 99).
 - **En el vehículo:**
-  - `KilometrajeActual`.
-  - `KilometrajeUltimoPreventivo`.
+  - `KilometrajeActual`: la lectura actual, el valor de la última lectura de uso.
+  - `KilometrajeUltimoPreventivo`: la lectura base, el kilometraje con que se completó el último preventivo (o el de registro si nunca tuvo uno).
   - `IntervaloKmPropio`, opcional. Si existe, reemplaza al de la categoría, por ejemplo cuando el manual de una unidad indica un intervalo distinto.
+- **Lecturas de uso (`LecturaUso`):** cada lectura guarda el kilometraje, la fecha y el usuario. Las registra el Administrador con la acción "Registrar lectura de uso" (`POST api/Activo/{id}/lecturas`), y el diagnóstico de una orden también deja una, con el código de esa orden. Nunca se editan ni se borran.
 
 ### Fórmula
 
 ```
-intervalo = IntervaloKmPropio del vehículo, o IntervaloKm de su categoría si no tiene
-recorrido = KilometrajeActual − KilometrajeUltimoPreventivo
-restante  = intervalo − recorrido
+umbral      = IntervaloKmPropio del vehículo, o IntervaloKm de su categoría si no tiene
+uso         = lectura actual − lectura base        (uso acumulado desde el último preventivo)
+porcentaje  = uso ÷ umbral × 100
 
-Vencido            si restante ≤ 0
-Próximo a vencer   si 0 < restante ≤ MargenAvisoKm
-Al día             si restante > MargenAvisoKm
+Sin lecturas  si el vehículo no tiene ninguna lectura de uso registrada
+Vencido       si porcentaje ≥ 100
+Próximo       si PorcentajeAviso ≤ porcentaje < 100
+Al día        si porcentaje < PorcentajeAviso
 ```
 
-Ejemplos con los datos sembrados:
+Los bordes se comparan con enteros (`uso × 100 ≥ PorcentajeAviso × umbral`), así que el resultado no depende del redondeo del porcentaje que se muestra, que lleva un decimal.
 
-- **`PKP-0002`, pickup con intervalo de 10 000 km y aviso a 1 000 km.** Recorrido: 128 900 − 119 500 = 9 400 km. Restante: 600 km. Queda **Próximo a vencer**.
-- **`PKP-0003`, pickup.** Recorrido: 54 200 − 40 000 = 14 200 km. Restante: −4 200 km. Queda **Vencido**.
-- **`CMP-0001`, camión pesado con intervalo de 15 000 km y aviso a 1 500 km.** Recorrido: 12 800 km. Restante: 2 200 km. Queda **Al día**.
-- **`TRC-0001`, tractocamión con intervalo de 20 000 km y aviso a 2 000 km.** Recorrido: 18 600 km. Restante: 1 400 km. Queda **Próximo a vencer**.
+Ejemplos con los datos sembrados (aviso al 90 % en todas las categorías):
+
+- **`PKP-0002`, pickup con umbral de 10 000 km.** Uso: 128 900 − 119 500 = 9 400 km. Porcentaje: 94 %. Queda **Próximo**.
+- **`PKP-0003`, pickup.** Uso: 54 200 − 40 000 = 14 200 km. Porcentaje: 142 %. Queda **Vencido**.
+- **`CMP-0001`, camión pesado con umbral de 15 000 km.** Uso: 12 800 km. Porcentaje: 85,3 %. Queda **Al día**.
+- **`TRC-0001`, tractocamión con umbral de 20 000 km.** Uso: 18 600 km. Porcentaje: 93 %. Queda **Próximo**.
+- **`VAN-0001`, van de carga.** No tiene lecturas registradas. Queda **Sin lecturas** hasta que el Administrador registre la primera.
 
 ### Intervalos por categoría
 
@@ -58,39 +63,50 @@ Los valores iniciales son conservadores:
 
 Como son parámetros de cada categoría, el Administrador los ajusta sin tocar código. Si una unidad tiene un intervalo distinto en su manual, se usa el intervalo propio del vehículo.
 
-### Criterio de "próximo a vencer"
+### Criterio de "Próximo": aviso al 90 %
 
-El margen se define en kilómetros, no en porcentaje, porque así razona un jefe de flota: "a esta unidad le faltan 1 000 km para su servicio". Proponemos un margen cercano al 10 % del intervalo: 1 000 km en los intervalos de 10 000. Un bus urbano recorre esa distancia en pocos días, así que el aviso deja tiempo para programar el trabajo sin sacar la unidad de ruta de improviso.
+El enunciado del Avance 2 define el aviso como un porcentaje del umbral, y lo deja a cada equipo. Elegimos el 90 % porque deja el 10 % final del intervalo para programar el trabajo: 1 000 km en los intervalos de 10 000. Un bus urbano recorre esa distancia en pocos días, así que el aviso llega con tiempo suficiente sin sacar la unidad de ruta de improviso, y no tan temprano como para que la lista de alertas se llene de vehículos que todavía no lo necesitan.
+
+Al ser un porcentaje, el aviso escala solo con el intervalo: en un tractocamión de 20 000 km avisa a los 2 000 km restantes. Cada categoría puede tener el suyo.
+
+Antes usábamos un margen fijo en km (1 000 km). Lo cambiamos por el porcentaje que pide el enunciado; la migración convierte los márgenes existentes (margen 1 000 de 10 000 = aviso al 90 %), así que los resultados de la evaluación no cambian.
 
 ### Cómo se evalúa
 
 - "Bajo demanda" significa que el estado se calcula en cada consulta, con una consulta LINQ que proyecta a un DTO. No hay procesos programados ni columnas guardadas que puedan quedar desactualizadas.
-- El dashboard usa la misma consulta.
-- La sugerencia se convierte en orden solo cuando el Administrador la confirma. La orden nace Solicitada, con un tipo de naturaleza Preventivo.
-- Al completarse una orden preventiva, `KilometrajeUltimoPreventivo` toma el kilometraje registrado en su diagnóstico, y el contador vuelve a empezar.
+- Se evalúan los vehículos Operativos y En Mantenimiento, del mayor al menor porcentaje; los Sin lecturas van al final.
+- El dashboard, el listado de vehículos (columna de estado preventivo) y el detalle del vehículo (bloque "Uso y mantenimiento preventivo") usan la misma consulta.
+- La sugerencia se convierte en orden solo cuando el Administrador la confirma. La orden nace Solicitada, con un tipo de naturaleza Preventivo, prioridad Alta si el vehículo está Vencido (Media si está Próximo) y el motivo precargado, por ejemplo: "Preventivo por uso (Próximo): 142 650 km, 96,5 % del umbral de 10 000 km".
+- Al completarse una orden preventiva, la lectura actual pasa a ser la nueva lectura base y el vehículo vuelve a Al día (0 %).
 
 ### Alternativas descartadas
 
 - **Solo por fecha:** el enunciado exige al menos una variable de uso real, y por las razones de arriba no representa el desgaste.
 - **Kilometraje combinado con tiempo** ("cada 10 000 km o 6 meses, lo que ocurra primero"): es realista, pero agrega una segunda regla que no se pide. Queda como posible mejora.
-- **Margen en porcentaje:** escala solo con el intervalo, pero es menos claro para quien usa el sistema.
+- **Margen fijo en km:** fue nuestra primera versión. Es fácil de leer, pero no escala con el intervalo y el enunciado del Avance 2 pide un porcentaje.
+- **Editar el kilometraje desde el formulario del vehículo:** se descartó porque no deja rastro de quién lo cambió ni cuándo. El kilometraje solo cambia con una lectura de uso.
 
 ### Casos borde
 
-- **Vehículo nuevo sin preventivos previos:** al registrarlo, el kilometraje del último preventivo es igual al actual, salvo que se indique otro.
-- **Restante exactamente 0:** el vehículo queda Vencido. Si el restante es exactamente igual al margen, queda Próximo a vencer.
-- **Vehículo Dado de Baja o Fuera de Servicio:** se excluye de la evaluación y generar su orden preventiva se rechaza con 409 (enunciado del Avance 2, sección 5.8). Cuando un vehículo Fuera de Servicio vuelve a Operativo, entra de nuevo en la evaluación.
-- **Vehículo con una orden preventiva abierta:** aparece como "orden en curso" y no se sugiere otra, para no duplicar órdenes.
-- **Vehículo En Mantenimiento:** aparece como "en taller" y no se sugiere la orden, porque crearla se rechazaría por el bloqueo de vehículos en mantenimiento. Se sugiere cuando vuelva a Operativo.
+- **Vehículo nuevo:** al registrarlo, su kilometraje es la lectura inicial y, salvo que se indique otro, también la lectura base. Queda Sin lecturas hasta que se registre la primera lectura de uso.
+- **Porcentaje exactamente 100:** el vehículo queda Vencido. Si es exactamente el porcentaje de aviso, queda Próximo.
+- **Lectura menor que la anterior:** se rechaza con 400, porque el kilometraje es acumulativo. Una lectura igual a la anterior sí se acepta.
+- **Fecha de la lectura futura o anterior a la última lectura:** se rechaza con 400.
+- **Dos lecturas al mismo tiempo:** `KilometrajeActual` es un token de concurrencia, así que la segunda se rechaza con 409 y nunca queda guardada la menor.
+- **Vehículo Dado de Baja o Fuera de Servicio:** se excluye de la evaluación y generar su orden preventiva se rechaza con 409 (enunciado del Avance 2, sección 5.8). Cuando un vehículo Fuera de Servicio vuelve a Operativo, entra de nuevo en la evaluación. Un vehículo dado de baja no admite lecturas.
+- **Vehículo con una orden preventiva abierta:** aparece como "Orden en curso", con el enlace a esa orden, y no se sugiere otra, para no duplicar órdenes.
+- **Vehículo En Mantenimiento:** aparece como "En taller" y no se sugiere la orden, porque crearla se rechazaría por el bloqueo de vehículos en mantenimiento. Se sugiere cuando vuelva a Operativo.
 - **Kilometraje del último preventivo mayor que el actual:** no puede ocurrir. Lo impiden la validación del servicio y la restricción `CHECK` de la tabla.
-- **La sugerencia cambió antes de confirmarla:** al generar la orden el vehículo se vuelve a evaluar, así que si mientras tanto se abrió otra orden preventiva, entró a mantenimiento o se corrigió su kilometraje, se rechaza con el motivo.
+- **La sugerencia cambió antes de confirmarla:** al generar la orden el vehículo se vuelve a evaluar, así que si mientras tanto se abrió otra orden preventiva, entró a mantenimiento o se registró otra lectura, se rechaza con el motivo.
 - **Dos Administradores generan la orden del mismo vehículo al mismo tiempo:** podrían quedar dos órdenes preventivas abiertas, porque las dos evaluaciones ven el vehículo sin orden. Es un límite conocido: con un solo Administrador generando no ocurre, y la orden sobrante se cancela.
 
 ### Dónde está en el código
 
-- `PreventivoRepository`: la consulta LINQ que proyecta al DTO; calcula el intervalo, los km recorridos y los restantes en la base, y busca la orden preventiva abierta.
-- `ClasificadorPreventivo`: la fórmula de arriba, escrita una sola vez. La usan la evaluación, la generación de la orden y el dashboard.
+- `PreventivoRepository`: la consulta LINQ que proyecta al DTO; calcula el umbral, el uso, el porcentaje y la última lectura en la base, y busca la orden preventiva abierta.
+- `ClasificadorPreventivo`: la fórmula de arriba, escrita una sola vez. La usan la evaluación, la generación de la orden, el dashboard y los vehículos.
+- `ActivoService.RegistrarLecturaAsync`: valida y guarda la lectura junto con el kilometraje del vehículo en una sola transacción.
 - `PreventivoService.GenerarOrdenAsync`: vuelve a evaluar el vehículo y crea la orden con el mismo `AddAsync` de una solicitud normal.
+- `OrdenMantenimientoService.CompletarAsync`: al completar una orden preventiva, la lectura actual pasa a ser la base.
 
 ---
 
@@ -240,7 +256,7 @@ Usamos el mismo lenguaje visual que en las órdenes: el mismo significado lleva 
 
 ### Alertas del dashboard
 
-- **Preventivo:** Vencido en rojo, Próximo a vencer en amarillo, Al día en verde, y Orden en curso y En taller en el azul de Diagnosticada (`#2563EB`), no en el azul vial: el azul vial es el de la barra y los botones, y una alerta de ese color se confundiría con la interfaz. El `#2563EB` es de la misma familia saturada que los demás colores de estado y da 5,17 con texto blanco.
+- **Preventivo:** Vencido en rojo, Próximo en amarillo, Al día en verde, Sin lecturas en gris, y Orden en curso y En taller en el azul de Diagnosticada (`#2563EB`), no en el azul vial: el azul vial es el de la barra y los botones, y una alerta de ese color se confundiría con la interfaz. El `#2563EB` es de la misma familia saturada que los demás colores de estado y da 5,17 con texto blanco.
 - **Stock bajo el mínimo:** rojo.
 
 ### Reglas de uso

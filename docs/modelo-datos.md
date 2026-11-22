@@ -102,7 +102,7 @@ Los valores están en la sección de seeders.
 - `Descripcion` (nvarchar(250)): opcional.
 - `Prefijo` (char(3)): obligatorio y único; se usa en el código de los vehículos.
 - `IntervaloKm` (int): obligatorio; cada cuántos km corresponde el mantenimiento preventivo.
-- `MargenAvisoKm` (int): obligatorio; cuántos km antes del intervalo el vehículo pasa a "próximo a vencer".
+- `PorcentajeAviso` (int): obligatorio, de 1 a 99; desde qué porcentaje del intervalo el vehículo pasa a "Próximo".
 
 Se siembra con `HasData`, como la categoría del material.
 
@@ -121,8 +121,8 @@ Se siembra con `HasData`, como la categoría del material.
 - `Marca` (nvarchar(40)): obligatorio.
 - `Modelo` (nvarchar(40)): obligatorio.
 - `Anio` (smallint): obligatorio; año de fabricación.
-- `KilometrajeActual` (int): obligatorio.
-- `KilometrajeUltimoPreventivo` (int): obligatorio.
+- `KilometrajeActual` (int): obligatorio; la lectura actual. Solo cambia con una lectura de uso (la acción del Administrador o el diagnóstico de una orden), nunca con el PUT del vehículo. Es token de concurrencia, como `IdEstadoActivo`.
+- `KilometrajeUltimoPreventivo` (int): obligatorio; la lectura base. La fija el registro del vehículo y después solo la cambia completar una orden preventiva.
 - `IntervaloKmPropio` (int): opcional; si existe, reemplaza al de la categoría.
 - `FechaRegistro` (datetime2): obligatorio, con valor por defecto `sysdatetime()`.
 
@@ -281,6 +281,20 @@ La clave primaria es compuesta, (`IdOrden`, `IdRepuesto`). Guarda lo que no se p
 
 Ninguna de las dos tablas tiene endpoints de escritura: solo las llenan los servicios al cambiar un estado, y los seeders.
 
+### LecturaUso
+
+Historial de lecturas del kilometraje (enunciado del Avance 2, sección 5.8). Nunca se edita ni se borra.
+
+- `IdLectura` (int): clave primaria.
+- `IdActivo` (int): obligatorio, FK a `Activo`.
+- `Kilometraje` (int): obligatorio, 0 o más; no menor que la lectura anterior del vehículo.
+- `Fecha` (date): obligatorio; la fecha de la lectura, no futura ni anterior a la última.
+- `IdUsuario` (int): obligatorio, FK a `Usuario`; quien la registró.
+- `IdOrden` (int): opcional, FK a `OrdenMantenimiento`; la orden cuyo diagnóstico tomó la lectura.
+- `FechaRegistro` (datetime2): obligatorio, con valor por defecto `sysdatetime()`.
+
+Índice `IX_LecturaUso_Activo_Fecha` sobre (`IdActivo`, `Fecha`), porque toda consulta es "las lecturas de un vehículo, de la más reciente a la más antigua". Un vehículo sin ninguna fila aquí queda "Sin lecturas" en la evaluación preventiva.
+
 ---
 
 ## Relaciones
@@ -290,7 +304,7 @@ Ninguna de las dos tablas tiene endpoints de escritura: solo las llenan los serv
 - Un `Rol` tiene muchos `Usuario`.
 - Una `CategoriaActivo` tiene muchos `Activo`.
 - Un `EstadoActivo` está en muchos `Activo`.
-- Un `Activo` tiene muchas `OrdenMantenimiento` y muchos `HistorialEstadoActivo`.
+- Un `Activo` tiene muchas `OrdenMantenimiento`, muchos `HistorialEstadoActivo` y muchas `LecturaUso`.
 - Una `NaturalezaMantenimiento` agrupa muchos `TipoMantenimiento`.
 - Una `Especialidad` es requerida por muchos `TipoMantenimiento`.
 - Un `TipoMantenimiento` está en muchas `OrdenMantenimiento`.
@@ -327,7 +341,7 @@ Todos los índices únicos se configuran con `.IsUnique()`. El material de clase
 
 Son la última defensa en la base; las mismas reglas se validan antes en los servicios.
 
-- **CategoriaActivo:** `IntervaloKm > 0`, y `MargenAvisoKm >= 0 AND MargenAvisoKm < IntervaloKm`.
+- **CategoriaActivo:** `IntervaloKm > 0`, y `PorcentajeAviso BETWEEN 1 AND 99`.
 - **Activo:**
   - `KilometrajeActual >= 0`;
   - `KilometrajeUltimoPreventivo BETWEEN 0 AND KilometrajeActual`;
@@ -339,6 +353,7 @@ Son la última defensa en la base; las mismas reglas se validan antes en los ser
 - **AsignacionTecnico:** `HorasTrabajadas >= 0`.
 - **DetalleRepuesto:** `Cantidad > 0` y `CostoUnitario > 0`.
 - **RepuestoPendiente:** `Cantidad > 0`.
+- **LecturaUso:** `Kilometraje >= 0`.
 
 ---
 
@@ -359,18 +374,18 @@ Todos los nombres de personas y empresas son ficticios. Las marcas y modelos de 
 
 ### Categorías (HasData, 10)
 
-Cada categoría indica su prefijo, su intervalo y su margen de aviso. La justificación de estos valores está en [decisiones técnicas](decisiones-tecnicas.md).
+Cada categoría indica su prefijo, su intervalo y su porcentaje de aviso, que es del 90 % en todas. La justificación de estos valores está en [decisiones técnicas](decisiones-tecnicas.md).
 
-1. Pickup — `PKP` — cada 10 000 km — aviso a 1 000 km.
-2. Camión liviano — `CML` — 10 000 km — 1 000 km.
-3. Camión pesado — `CMP` — 15 000 km — 1 500 km.
-4. Tractocamión — `TRC` — 20 000 km — 2 000 km.
-5. Bus urbano — `BUS` — 10 000 km — 1 000 km.
-6. Bus interurbano — `BUI` — 15 000 km — 1 500 km.
-7. Microbús — `MCB` — 10 000 km — 1 000 km.
-8. Van de carga — `VAN` — 10 000 km — 1 000 km.
-9. Vehículo administrativo — `ADM` — 10 000 km — 1 000 km.
-10. Motocicleta — `MOT` — 5 000 km — 500 km.
+1. Pickup — `PKP` — cada 10 000 km — aviso al 90 %.
+2. Camión liviano — `CML` — 10 000 km — 90 %.
+3. Camión pesado — `CMP` — 15 000 km — 90 %.
+4. Tractocamión — `TRC` — 20 000 km — 90 %.
+5. Bus urbano — `BUS` — 10 000 km — 90 %.
+6. Bus interurbano — `BUI` — 15 000 km — 90 %.
+7. Microbús — `MCB` — 10 000 km — 90 %.
+8. Van de carga — `VAN` — 10 000 km — 90 %.
+9. Vehículo administrativo — `ADM` — 10 000 km — 90 %.
+10. Motocicleta — `MOT` — 5 000 km — 90 %.
 
 Microbús y Motocicleta quedan sin vehículos a propósito, para poder demostrar que una categoría sin vehículos sí se puede eliminar.
 
@@ -439,12 +454,15 @@ Cada vehículo lleva también su descripción, su fecha de adquisición y su val
 
 **Pendiente:** conseguir las 12 fotos, propias o con licencia libre.
 
+Cada vehículo tiene una lectura de uso con su kilometraje actual, registrada por `admin` tres días antes de la siembra (la de `ADM-0001`, antes de su baja). `VAN-0001` no tiene ninguna, a propósito.
+
 Con estos datos, la evaluación preventiva muestra todos los casos:
 
-- **Vencidos:** `PKP-0003` (ya tiene una orden preventiva abierta, así que aparece como "orden en curso") y `BUS-0002`.
-- **Próximos a vencer:** `PKP-0002` (faltan 600 km), `CML-0002` (350 km) y `TRC-0001` (1 400 km).
-- **Al día:** el resto.
-- **Excluido:** `ADM-0001`, por estar dado de baja.
+- **Vencido:** `PKP-0003` (142 %; ya tiene una orden preventiva abierta, así que aparece como "Orden en curso").
+- **Próximos:** `CML-0002` (96,5 %), `PKP-0002` (94 %) y `TRC-0001` (93 %).
+- **Al día:** el resto; `CMP-0001` y `CML-0001` aparecen "En taller" porque están En Mantenimiento.
+- **Sin lecturas:** `VAN-0001`.
+- **Excluidos:** `BUS-0002`, por estar Fuera de Servicio, y `ADM-0001`, por estar dado de baja.
 
 ### Técnicos (10)
 

@@ -54,7 +54,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - *Decisión del equipo:* el Administrador no puede cambiar el estado a mano mientras el vehículo tenga una orden En Ejecución o En Espera de Repuesto. Si pudiera, el sistema pisaría su cambio al cerrarse la orden.
 - *Decisión del equipo:* no se puede dar de baja un vehículo con órdenes abiertas; primero se completan o se cancelan.
 - Un vehículo En Mantenimiento no admite una nueva orden abierta, salvo que sea de un tipo de naturaleza Emergencia. Se valida al crear la orden (ver 7.5).
-- El kilometraje nunca disminuye, y el kilometraje del último preventivo no puede ser mayor que el actual.
+- El kilometraje nunca disminuye, y el kilometraje del último preventivo no puede ser mayor que el actual. Después del registro, el kilometraje solo cambia con una lectura de uso (ver 7.9); el PUT del vehículo no lo modifica.
 - La imagen debe ser JPG, PNG o WebP y pesar como máximo 2 MB.
 - Todo cambio de estado, incluido el registro inicial, genera una entrada en el historial (ver 7.8).
 
@@ -191,7 +191,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Motivo de la solicitud.
 - Usuario solicitante.
 - Fecha de solicitud.
-- Prioridad: Baja, Media, Alta o Crítica.
+- Prioridad: Baja, Media, Alta o Crítica. Se elige al crear la solicitud (Media si no se indica, como pide el enunciado del Avance 2 en 4.4) y el diagnóstico la puede cambiar.
 - Diagnóstico y kilometraje registrado en el diagnóstico.
 - Fecha programada y fecha de cierre.
 - Costo de repuestos, costo de mano de obra y costo total.
@@ -222,8 +222,8 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Toda orden nace en estado Solicitada.
 - Cada cambio de estado se valida contra la [matriz de transiciones](matriz-estados.md). Una transición no permitida se rechaza con una excepción de negocio propia, no con un error genérico.
 - Cada cambio de estado genera automáticamente su registro en el historial, con observación opcional.
-- En el diagnóstico, el Coordinador define la prioridad y registra el kilometraje del vehículo.
-  - Ese kilometraje no puede ser menor que el actual del vehículo, y al registrarlo actualiza el del vehículo.
+- En el diagnóstico, el Coordinador confirma o cambia la prioridad y registra el kilometraje del vehículo.
+  - Ese kilometraje no puede ser menor que el actual del vehículo, y al registrarlo actualiza el del vehículo y queda como una lectura de uso con el código de la orden.
   - *Decisión del equipo:* en el diagnóstico el Coordinador también puede corregir el tipo de mantenimiento.
 - Al aprobar, el Administrador fija la fecha programada. Es obligatoria y no puede estar en el pasado.
 - Iniciar la ejecución exige asignar al menos un técnico (ver 7.7).
@@ -234,7 +234,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
   - Mientras la orden está abierta, los costos se calculan en vivo.
   - Al completar, o al cancelar una orden que tuvo ejecución, se congela la tarifa en cada asignación y se guardan los tres costos.
 - La fecha de cierre se registra en cualquier estado final: Completada, Cancelada o Rechazada.
-- Al completar una orden de naturaleza Preventivo, el kilometraje del último preventivo del vehículo pasa a ser el registrado en esa orden.
+- Al completar una orden de naturaleza Preventivo, el kilometraje del último preventivo del vehículo (la lectura base) pasa a ser su kilometraje actual (la última lectura).
 - Una orden nunca se elimina físicamente; para eso existe Cancelar, disponible desde cualquier estado no final.
 - El usuario responsable (solicitante, quien cambia el estado) se toma siempre del token, nunca del cuerpo de la petición.
 
@@ -352,26 +352,31 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Campos.**
 
-- En la categoría: intervalo y margen de aviso, en km.
-- En el vehículo: kilometraje actual, kilometraje del último preventivo e intervalo propio opcional.
+- En la categoría: umbral (intervalo en km) y porcentaje de aviso.
+- En el vehículo: lectura actual (kilometraje actual), lectura base (kilometraje del último preventivo) e intervalo propio opcional.
+- Lecturas de uso: kilometraje, fecha, usuario y, si la tomó un diagnóstico, la orden.
+- Calculados en el backend: uso acumulado, porcentaje del umbral consumido y estado preventivo.
 
 **Acciones.**
 
 - Configurar la regla por categoría o por vehículo.
+- Registrar una lectura de uso de un vehículo y consultar sus lecturas (`POST` y `GET api/Activo/{id}/lecturas`).
 - Evaluar bajo demanda qué vehículos cumplen o están próximos a cumplir su umbral.
 - Generar una orden preventiva a partir de una sugerencia.
 
 **Validaciones y reglas de negocio.**
 
-- Cada vehículo queda Vencido, Próximo a vencer o Al día según la fórmula de [decisiones técnicas](decisiones-tecnicas.md). Si el vehículo tiene intervalo propio, ese reemplaza al de la categoría.
-- *Decisión del equipo:* la variable es solo el kilometraje, sin combinarla con tiempo.
+- Cada vehículo queda Vencido, Próximo, Al día o Sin lecturas según la fórmula de [decisiones técnicas](decisiones-tecnicas.md). Si el vehículo tiene intervalo propio, ese reemplaza al de la categoría.
+- *Decisión del equipo:* la variable es solo el kilometraje, sin combinarla con tiempo, y el aviso es al 90 % del umbral.
 - *Decisión del equipo:* "bajo demanda" significa que se calcula en cada consulta, sin procesos programados.
-- Se excluyen los vehículos Dado de Baja.
-- Si el vehículo ya tiene una orden preventiva abierta, aparece como "orden en curso" y no se sugiere otra.
-- *Decisión del equipo:* si el vehículo está En Mantenimiento, aparece como "en taller" y no se sugiere la orden: crearla se rechazaría, porque una orden preventiva no es de emergencia (ver 7.5). Se sugiere cuando el vehículo vuelva a Operativo.
-- *Decisión del equipo:* el sistema sugiere y el Administrador confirma. La orden generada nace Solicitada, con un tipo de naturaleza Preventivo y con el Administrador como solicitante.
-- Al completarse una orden preventiva, el contador del vehículo se reinicia (ver 7.5).
-- Al generar la orden, el vehículo se vuelve a evaluar: si ya no se sugiere (otra orden, otro kilometraje), se rechaza con 409 indicando por qué. El tipo debe ser de naturaleza Preventivo y, si el Administrador no escribe un motivo, se arma con los km de la evaluación.
+- El kilometraje solo cambia con una lectura de uso (la acción del Administrador o el diagnóstico de una orden). Una lectura menor que la anterior, o con fecha futura o anterior a la última, se rechaza con 400.
+- Se evalúan los vehículos Operativos y En Mantenimiento, del mayor al menor porcentaje. Se excluyen los Fuera de Servicio y Dado de Baja, y generar su orden preventiva se rechaza con 409.
+- Un vehículo sin lecturas registradas se muestra como "Sin lecturas" y no se evalúa como Al día.
+- Si el vehículo ya tiene una orden preventiva abierta, aparece como "Orden en curso", con el enlace a esa orden, y no se sugiere otra.
+- *Decisión del equipo:* si el vehículo está En Mantenimiento, aparece como "En taller" y no se sugiere la orden: crearla se rechazaría, porque una orden preventiva no es de emergencia (ver 7.5). Se sugiere cuando el vehículo vuelva a Operativo.
+- *Decisión del equipo:* el sistema sugiere y el Administrador confirma. La orden generada nace Solicitada, con un tipo de naturaleza Preventivo, el Administrador como solicitante, prioridad Alta si el vehículo está Vencido (Media si está Próximo) y el motivo con la lectura y el porcentaje.
+- Al completarse una orden preventiva, la lectura actual pasa a ser la nueva lectura base y el vehículo vuelve a Al día (ver 7.5).
+- Al generar la orden, el vehículo se vuelve a evaluar: si ya no se sugiere (otra orden, otro kilometraje), se rechaza con 409 indicando por qué. El tipo debe ser de naturaleza Preventivo y, si el Administrador no escribe un motivo, se arma con la lectura y el porcentaje de la evaluación.
 
 **Permisos.**
 
@@ -639,6 +644,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 - [x] Edición solo en estado Solicitada.
 - [x] Cambios automáticos del vehículo a En Mantenimiento y de vuelta a Operativo, con sus casos borde.
 - [x] Kilometraje en el diagnóstico y reinicio del contador al completar una preventiva.
+- [x] Lecturas de uso con su historial (registrar y consultar).
 - [x] Costos en vivo y congelados al cierre.
 
 **Detalle de repuestos**
@@ -660,7 +666,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Mantenimiento preventivo**
 
-- [x] Evaluación bajo demanda con estados Vencido, Próximo a vencer y Al día.
+- [x] Evaluación bajo demanda por porcentaje del umbral, con estados Vencido, Próximo, Al día y Sin lecturas.
 - [x] Exclusión de vehículos Fuera de Servicio y dados de baja, y detección de órdenes preventivas en curso.
 - [x] Generación de la orden preventiva confirmada por el Administrador.
 

@@ -57,7 +57,7 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
   - si se corrige el tipo y el vehículo está En Mantenimiento, el nuevo tipo debe ser de naturaleza Emergencia.
 - **Efectos:**
   - se guardan el diagnóstico, la prioridad y el kilometraje;
-  - el kilometraje actual del vehículo se actualiza con el registrado;
+  - el kilometraje actual del vehículo se actualiza con el registrado, y queda como una lectura de uso con el código de la orden;
   - si el Coordinador corrigió el tipo de mantenimiento, se guarda el nuevo;
   - se registra en el historial de la orden.
 - **Avance:** 2.
@@ -129,7 +129,7 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
   - se copia la tarifa vigente de cada técnico a su asignación;
   - se calculan y guardan el costo de repuestos, el de mano de obra y el total;
   - se registra la fecha de cierre;
-  - si el tipo es de naturaleza Preventivo, el kilometraje del último preventivo del vehículo pasa a ser el registrado en el diagnóstico;
+  - si el tipo es de naturaleza Preventivo, el kilometraje del último preventivo del vehículo pasa a ser su kilometraje actual (la última lectura de uso);
   - el vehículo vuelve a Operativo, salvo que tenga otra orden En Ejecución o En Espera de Repuesto;
   - se registra en el historial de la orden y, si el vehículo cambió, también en el suyo.
 - **Avance:** 2.
