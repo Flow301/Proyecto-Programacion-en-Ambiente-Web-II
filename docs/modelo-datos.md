@@ -81,6 +81,14 @@ Valores: 1 Preventivo, 2 Correctivo, 3 Emergencia.
 
 Valores: 1 Básico, 2 Intermedio, 3 Avanzado, 4 Experto.
 
+### VariableControl
+
+- `IdVariableControl` (int): clave primaria.
+- `Nombre` (nvarchar(40)): obligatorio y único.
+- `Unidad` (nvarchar(10)): obligatorio; se muestra junto al umbral y las lecturas.
+
+Valores: 1 Kilometraje (km). Es la variable de control del mantenimiento preventivo de cada categoría.
+
 ### TipoMantenimiento
 
 - `IdTipoMantenimiento` (int): clave primaria.
@@ -101,6 +109,7 @@ Los valores están en la sección de seeders.
 - `Nombre` (nvarchar(60)): obligatorio y único.
 - `Descripcion` (nvarchar(250)): opcional.
 - `Prefijo` (char(3)): obligatorio y único; se usa en el código de los vehículos.
+- `IdVariableControl` (int): obligatorio, FK a `VariableControl`; por defecto 1 (Kilometraje).
 - `IntervaloKm` (int): obligatorio; cada cuántos km corresponde el mantenimiento preventivo.
 - `PorcentajeAviso` (int): obligatorio, de 1 a 99; desde qué porcentaje del intervalo el vehículo pasa a "Próximo".
 
@@ -302,6 +311,7 @@ Historial de lecturas del kilometraje (enunciado del Avance 2, sección 5.8). Nu
 **Relaciones 1:N**
 
 - Un `Rol` tiene muchos `Usuario`.
+- Una `VariableControl` está en muchas `CategoriaActivo`.
 - Una `CategoriaActivo` tiene muchos `Activo`.
 - Un `EstadoActivo` está en muchos `Activo`.
 - Un `Activo` tiene muchas `OrdenMantenimiento`, muchos `HistorialEstadoActivo` y muchas `LecturaUso`.

@@ -77,15 +77,16 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Nombre.
 - Descripción.
 - Prefijo para el código de los vehículos, de tres letras.
-- Intervalo de mantenimiento preventivo, en km.
-- Margen de aviso, en km: cuánto antes de cumplir el intervalo el vehículo se considera "próximo a vencer".
+- Regla de mantenimiento preventivo: variable de control (de la lista `GET api/Catalogo/variables-control`), intervalo en la unidad de esa variable (km) y porcentaje de aviso: desde qué porcentaje del intervalo el vehículo se considera "Próximo".
+- Calculado: cantidad de vehículos de la categoría.
 
 **Acciones.** Registrar, consultar, actualizar y eliminar una categoría.
 
 **Validaciones y reglas de negocio.**
 
 - El nombre y el prefijo son únicos.
-- El intervalo es mayor que cero; el margen es mayor o igual que cero y menor que el intervalo.
+- El intervalo es mayor que cero y el porcentaje de aviso va de 1 a 99.
+- La variable de control debe existir (400 si no). *Decisión del equipo:* en flota vehicular la única variable de uso real es el kilometraje, así que el catálogo tiene solo "Kilometraje (km)"; se elige de una lista para que el formulario no tenga datos fijos y para que agregar otra variable no cambie la estructura.
 - No se puede eliminar una categoría con vehículos asociados, aunque estén dados de baja. Si no tiene vehículos, se elimina físicamente.
 - *Decisión del equipo:* el prefijo no se puede cambiar si la categoría ya tiene vehículos, porque sus códigos ya se generaron con ese prefijo.
 
@@ -360,7 +361,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Campos.**
 
-- En la categoría: umbral (intervalo en km) y porcentaje de aviso.
+- En la categoría: variable de control (Kilometraje, en km), umbral (intervalo) y porcentaje de aviso.
 - En el vehículo: lectura actual (kilometraje actual), lectura base (kilometraje del último preventivo) e intervalo propio opcional.
 - Lecturas de uso: kilometraje, fecha, usuario y, si la tomó un diagnóstico, la orden.
 - Calculados en el backend: uso acumulado, porcentaje del umbral consumido y estado preventivo.
@@ -482,6 +483,7 @@ El cierre de sesión no tiene endpoint: el cliente descarta el token.
 | GET | `api/Catalogo/niveles-certificacion` | Administrador y Coordinador/Técnico | Asociar una especialidad a un técnico. El Solicitante no tiene acceso al módulo de técnicos. |
 | GET | `api/Catalogo/estados-orden` | Cualquier rol | Filtros y etiquetas de estado; marca los estados finales. |
 | GET | `api/Catalogo/estados-activo` | Cualquier rol | Filtros, etiquetas y el cambio manual de estado del vehículo. |
+| GET | `api/Catalogo/variables-control` | Cualquier rol | La lista "Variable de control" del formulario de categoría, con su unidad. |
 
 Los roles salen de `api/Usuario/roles` (solo Administrador), junto con el resto de la gestión de usuarios.
 

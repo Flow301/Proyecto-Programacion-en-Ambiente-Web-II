@@ -33,7 +33,24 @@ Además:
 
 Una orden nace **Solicitada**. El taller la **diagnostica** y el Administrador la **aprueba** o la **rechaza**. Al pasar a **En Ejecución**, el vehículo cambia solo a *En Mantenimiento*; cuando la orden se **completa**, vuelve a *Operativo*. Si durante la ejecución falta stock de un repuesto, la orden pasa sola a **En Espera de Repuesto** hasta que haya disponibilidad. Antes del cierre, la orden puede **cancelarse**.
 
-Las transiciones permitidas, quién puede ejecutar cada una y sus efectos automáticos están en la [matriz de estados](docs/matriz-estados.md).
+### Matriz de transiciones final
+
+Es la que aplica la API (`MatrizTransicionesOrden`). Cualquier transición que no esté aquí, o pedida por otro rol, se rechaza con una excepción de negocio propia (409) o con 403. El detalle de cada condición y efecto está en la [matriz de estados](docs/matriz-estados.md).
+
+| Estado actual | Transición | Rol autorizado | Condición / efecto automático |
+|---|---|---|---|
+| — | Solicitada | Administrador, Solicitante/Consulta | Vehículo existente y no Dado de Baja; si está En Mantenimiento, solo tipo Emergencia. Prioridad Media si no se indica. |
+| Solicitada | Diagnosticada | Coordinador/Técnico | Diagnóstico, prioridad y kilometraje (no menor que el actual; queda como lectura de uso). |
+| Diagnosticada | Aprobada | Administrador | Fecha programada obligatoria, no anterior a hoy. |
+| Diagnosticada | Rechazada | Administrador | Estado final, con fecha de cierre; observación opcional. |
+| Aprobada | En Ejecución (iniciar) | Coordinador/Técnico | Al menos un técnico con la especialidad requerida, activo y disponible. El vehículo pasa a En Mantenimiento. |
+| En Ejecución | En Espera de Repuesto | Automática | Al registrar un repuesto sin stock suficiente: la línea queda pendiente y no se descuenta nada. |
+| En Espera de Repuesto | En Ejecución (reanudar) | Coordinador/Técnico | Solo si ya hay stock para todos los pendientes; se descuentan en ese momento. |
+| En Ejecución | Completada | Coordinador/Técnico | Sin repuestos pendientes y con al menos un técnico con horas. Fija los costos y la fecha de cierre; el vehículo vuelve a Operativo si no tiene otra orden en curso. Si es preventiva, la lectura actual pasa a ser la base. |
+| Solicitada, Diagnosticada o Aprobada | Cancelada | Administrador, Coordinador/Técnico | Fecha de cierre; observación opcional. El vehículo conserva su estado. |
+| En Ejecución o En Espera de Repuesto | Cancelada | Administrador, Coordinador/Técnico | Se congelan los costos de lo consumido, se eliminan los pendientes y el stock consumido no se devuelve. El vehículo vuelve a Operativo si no tiene otra orden en curso. |
+
+Es más restrictiva que la mínima del enunciado en un punto: crear la orden queda para el Administrador y el Solicitante/Consulta. Agrega cancelar desde En Espera de Repuesto, que el enunciado general permite "en cualquier punto previo al cierre". Cada cambio deja su registro en el historial, con el usuario del token, en la misma transacción.
 
 ## Entregas
 

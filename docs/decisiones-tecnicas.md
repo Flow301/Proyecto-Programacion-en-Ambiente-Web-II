@@ -22,6 +22,7 @@ Una regla basada solo en fechas falla con vehículos de uso muy distinto. Un bus
 ### Datos que usa la regla
 
 - **En la categoría:**
+  - `IdVariableControl`: la variable de control, del catálogo `VariableControl`. Solo existe Kilometraje (km): es la única medida de uso real de una flota. Va como catálogo para que el formulario la elija de una lista que viene de la API, sin datos fijos.
   - `IntervaloKm`: el umbral, cada cuántos km corresponde el preventivo.
   - `PorcentajeAviso`: desde qué porcentaje del umbral el vehículo queda Próximo (de 1 a 99).
 - **En el vehículo:**
