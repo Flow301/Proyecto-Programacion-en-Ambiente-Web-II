@@ -46,5 +46,6 @@ export const menuDelRol = (rol) =>
     .map(({ grupo, items }) => ({ grupo, items: items.filter((i) => i.roles.includes(rol)) }))
     .filter(({ items }) => items.length > 0)
 
-// Pantalla de inicio de cada rol (enunciado Avance 2, 4.2)
-export const inicioDelRol = (rol) => (rol === A ? '/' : '/ordenes')
+// Pantalla de inicio de cada rol (enunciado Avance 2, 4.2): el Administrador al Dashboard, el Coordinador/Técnico
+// a la bandeja del taller (el listado filtrado en los estados que requieren su gestión) y el Solicitante a sus órdenes
+export const inicioDelRol = (rol) => (rol === A ? '/' : rol === C ? '/ordenes?bandeja=taller' : '/ordenes')
