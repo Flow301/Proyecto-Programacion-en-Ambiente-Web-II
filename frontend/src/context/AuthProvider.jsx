@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { borrarSesion, guardarSesion, leerSesion, login, onSesionExpirada } from '../api/api'
+import { borrarSesion, guardarSesion, leerSesion, login, onSesionExpirada, sesionVencida } from '../api/api'
 import { AuthContext } from './AuthContext'
 
 export default function AuthProvider({ children }) {
   const [sesion, setSesion] = useState(leerSesion)
-  const [expirada, setExpirada] = useState(false)
+  const [expirada, setExpirada] = useState(sesionVencida)
 
   // Sin sesión, RutaProtegida manda al login; el aviso de "sesión expirada" viaja en el contexto
   const cerrarSesion = useCallback((porExpiracion = false) => {

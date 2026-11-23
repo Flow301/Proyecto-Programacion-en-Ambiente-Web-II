@@ -21,6 +21,16 @@ export function leerSesion() {
   }
 }
 
+// Hay una sesión guardada pero ya venció (por ejemplo, se cerró el navegador y se volvió después)
+export function sesionVencida() {
+  try {
+    const sesion = JSON.parse(localStorage.getItem(CLAVE_SESION))
+    return Boolean(sesion) && new Date(sesion.expira) <= new Date()
+  } catch {
+    return false
+  }
+}
+
 export function guardarSesion(sesion) {
   localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion))
 }
