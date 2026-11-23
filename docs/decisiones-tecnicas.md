@@ -5,7 +5,7 @@ El enunciado deja varias definiciones en manos de cada equipo y pide que las jus
 1. [Mantenimiento preventivo por kilometraje](#1-mantenimiento-preventivo-por-kilometraje)
 2. [Selección de proveedor](#2-selección-de-proveedor)
 3. [Codificación de vehículos y órdenes](#3-codificación-de-vehículos-y-órdenes)
-4. [Paleta de colores](#4-paleta-de-colores)
+4. [Estilo visual e interfaz](#4-estilo-visual-e-interfaz)
 5. [Reportes escogidos](#5-reportes-escogidos)
 6. [Otras decisiones que defendemos](#6-otras-decisiones-que-defendemos)
 
@@ -195,7 +195,7 @@ Con las zapatas de freno (`ZAP-FRE-001`) pasa lo mismo:
 
 ---
 
-## 4. Paleta de colores
+## 4. Estilo visual e interfaz
 
 ### Idea
 
@@ -203,69 +203,176 @@ Tomamos los colores de la señalización vial, que cualquier persona de una flot
 
 - **Amarillo**, el de las señales preventivas, para lo que requiere atención pronto.
 - **Rojo**, el de las señales de alto y de prohibición, para lo que está detenido o vencido.
-- **Verde** para lo que está bien.
+- **Verde** para lo que terminó bien.
 - **Azul**, el de las señales informativas, como color principal de la interfaz.
-- **Gris asfalto** para el texto y los fondos neutros.
+- **Gris asfalto** para el texto.
+
+La identidad no está en el adorno sino en un gesto que llamamos **ruta con mojones**: el avance se dibuja como los postes de kilómetro de las rutas nacionales. Ese gesto aparece solo en dos piezas, el progreso de la orden y la barra del mantenimiento preventivo. Todo lo demás (menú, tablas, formularios) es una interfaz de trabajo estándar, porque el éxito del sistema es que cada persona termine su tarea rápido y sin errores, no que la pantalla llame la atención.
 
 ### Colores base
 
-- **Azul vial** `#1F4E79`: barra de navegación, botones principales y enlaces.
-- **Amarillo preventivo** `#F2B705`: acentos y avisos de "próximo a vencer"; siempre con texto oscuro.
-- **Gris asfalto** `#2E3338`: texto principal.
-- **Gris claro** `#F4F5F7`: fondo de la aplicación.
-- **Verde** `#2E7D32`: estados correctos y mensajes de éxito.
-- **Rojo** `#C62828`: estados detenidos o vencidos y mensajes de error.
-- **Ámbar oscuro** `#B45309`: estados de espera.
-- **Gris** `#6B7280`: estados cerrados sin éxito, bordes e íconos decorativos.
-- **Gris texto** `#4B5563`: texto secundario (subtítulos, ayudas de los campos, fechas y datos complementarios).
+| Color | Valor | Uso |
+|---|---|---|
+| Azul vial | `#1F4E79` | Barra superior, botón principal, enlaces, menú activo y anillo de foco. Solo donde se puede hacer algo. |
+| Amarillo preventivo | `#F2B705` | Solo "atención pronto": el estado preventivo Próximo y la marca del aviso. Siempre con texto oscuro. |
+| Gris asfalto | `#2E3338` | Texto principal y postes ya recorridos de la ruta. |
+| Gris claro | `#F4F5F7` | Fondo de la aplicación. |
+| Gris texto | `#4B5563` | Texto secundario: fechas, ayudas, subtítulos. |
+| Gris de borde | `#6B7280` | Borde de los campos (4,83:1, WCAG pide 3:1 para controles). Nunca como texto sobre el fondo: da 4,43:1. |
 
-**Regla de contraste:** todo texto debe cumplir el contraste mínimo AA (4,5:1). Por eso el amarillo lleva texto oscuro y los demás colores de estado llevan texto blanco. Lo verificamos con un comprobador de contraste al aplicar la paleta.
+En pantalla, los neutros ocupan cerca del 85 %, el azul vial cerca del 10 %, los colores de estado alrededor del 3 % y el amarillo menos del 2 %. Si todo tuviera color, nada destacaría.
 
-Contraste calculado (fórmula de WCAG 2.1):
+### Colores de estado
+
+El mismo significado lleva el mismo color en órdenes, vehículos y preventivo, y el estado **nunca se comunica solo con color**: siempre va con su ícono y su texto. Todos usan un solo componente, `BadgeEstado`.
+
+| Significado | Color pleno | Estados | Ícono (lucide) |
+|---|---|---|---|
+| Pendiente | gris azulado `#64748B` | Solicitada | `FileText` (documento) |
+| En revisión | azul `#2563EB` | Diagnosticada; Orden en curso y En taller en el preventivo | `Search` (lupa) |
+| Autorizado | índigo `#4338CA` | Aprobada | `BadgeCheck` (visto bueno) |
+| Trabajo en curso | morado ciruela `#86198F` | En Ejecución, En Mantenimiento | `Wrench` (llave) |
+| Requiere atención | ámbar oscuro `#B45309` | En Espera de Repuesto, repuesto pendiente | `Clock` (reloj) |
+| Terminado bien | verde `#2E7D32` | Completada, Operativo, Al día, Activo, Disponible | `Flag` (bandera), `CircleCheckBig` |
+| Detenido | rojo `#C62828` | Rechazada, Fuera de Servicio, Vencido, Stock bajo | `CircleX` (equis), `OctagonX`, `OctagonAlert` |
+| Cerrado | gris `#6B7280` | Cancelada, Dado de Baja, Sin lecturas, Inactivo | `Ban` (círculo tachado), `CircleDashed` |
+| Atención pronto | amarillo preventivo | Próximo | `TriangleAlert` |
+
+**Por qué En Ejecución y En Mantenimiento son morado ciruela y no amarillo.** En la primera versión de la paleta los pusimos en amarillo. Lo cambiamos por dos razones:
+
+- La guía de colores del enunciado del Avance 2 (sección 4.3) pone "En proceso" en morado o azul intenso y "Requiere atención" en ámbar. Con el amarillo, el mismo color decía "hay trabajo en curso" y "atención pronto" (Próximo).
+- Probamos el morado común (`#7E22CE`) y, simulando protanopia, se confunde casi por completo con el índigo de Aprobada (diferencia de color ΔE 2,0), que es el paso anterior en la ruta. El ciruela `#86198F` se distingue de todos los demás estados (ΔE 24 o más en protanopia y deuteranopia).
+
+Así el amarillo queda con un solo significado, el de la señal preventiva.
+
+**Cómo se pinta el badge: tinte y no color pleno.** El badge usa de fondo un tinte muy claro del color del estado, y el texto y el ícono en la variante oscura de ese color (por ejemplo, En Ejecución: fondo `#F7E9F6`, texto `#701A75`). El color pleno se reserva para la ruta de la orden, la barra del preventivo y los conteos del dashboard. Lo decidimos así porque en un listado hay un badge por fila: con color pleno serían diez bloques fuertes compitiendo entre sí, y el tinte deja ver el estado sin dominar la pantalla. Además el contraste mejora, y el amarillo de Próximo, que con texto blanco no cumple, queda resuelto.
+
+Los colores se definen una sola vez como tokens en `frontend/src/index.css` (`--proceso`, `--proceso-tinte`, `--proceso-texto`…) y los componentes usan las clases que generan (`bg-proceso-tinte`, `text-proceso-texto`). Nunca colores sueltos.
+
+### Contraste y daltonismo
+
+Contraste calculado con la fórmula de WCAG 2.x. El mínimo AA es 4,5:1 para texto normal y 3:1 para texto grande, íconos con significado, bordes de controles y foco.
 
 | Combinación | Contraste |
 |---|---|
-| Blanco sobre azul vial, índigo, rojo, Diagnosticada, verde y ámbar oscuro | entre 5,02 y 8,66 |
-| Blanco sobre gris (Cancelada, Dado de Baja) y gris azulado (Solicitada) | 4,83 y 4,76 |
+| Gris asfalto sobre gris claro / sobre blanco | 11,69 / 12,75 |
+| Gris texto sobre gris claro / sobre blanco | 6,93 / 7,56 |
+| Blanco sobre azul vial; azul vial sobre blanco | 8,66 |
+| Azul vial sobre el tinte del menú activo (`#E3EBF3`) | 7,20 |
 | Gris asfalto sobre amarillo preventivo | 7,01 |
-| Gris asfalto sobre el fondo gris claro | 11,69 |
-| Gris texto sobre el fondo gris claro y sobre blanco | 6,93 y 7,56 |
-| Gris `#6B7280` sobre el fondo gris claro | **4,43: no alcanza** |
+| Rojo de error sobre blanco | 5,62 |
+| Borde de campo sobre blanco | 4,83 |
+| Foco azul vial sobre blanco; foco amarillo sobre la barra azul | 8,66; 4,77 |
 
-Por eso el gris `#6B7280` nunca se usa como color de texto sobre el fondo de la aplicación: el texto secundario usa el gris texto. Para bordes e íconos decorativos sí sirve, porque WCAG les pide 3:1.
+| Estado | Texto sobre su tinte | Color pleno sobre blanco |
+|---|---|---|
+| Solicitada | 9,14 | 4,76 |
+| Diagnosticada | 7,56 | 5,17 |
+| Aprobada | 8,43 | 7,90 |
+| En Ejecución / En Mantenimiento | 8,57 | 8,24 |
+| En Espera de Repuesto | 6,75 | 5,02 |
+| Completada / Operativo / Al día | 6,91 | 5,13 |
+| Rechazada / Fuera de Servicio / Vencido | 6,72 | 5,62 |
+| Cancelada / Dado de Baja / Sin lecturas | 9,02 | 4,83 |
+| Próximo | 8,19 | 1,82: por eso el relleno amarillo de la barra lleva contorno `#8A6A00` |
 
-### Estados de la orden
+Además del cálculo, medimos en el navegador el contraste real de cada texto visible del muestrario de componentes (267 textos): todos cumplen AA.
 
-Cada estado tiene un color y un ícono, y siempre se muestra con su texto.
+En la simulación de daltonismo, los pares que siguen pareciéndose son Solicitada y Cancelada (los dos grises, a propósito) y, en deuteranopia, En Espera y Rechazada. En los dos casos el ícono y el texto los distinguen, que es justamente para lo que están.
 
-- **Solicitada:** gris azulado `#64748B`, ícono de documento.
-- **Diagnosticada:** azul `#2563EB`, ícono de lupa.
-- **Aprobada:** índigo `#4338CA`, ícono de visto bueno.
-- **En Ejecución:** amarillo preventivo con texto oscuro, ícono de llave.
-- **En Espera de Repuesto:** ámbar oscuro, ícono de reloj.
-- **Completada:** verde, ícono de bandera.
-- **Rechazada:** rojo, ícono de equis.
-- **Cancelada:** gris, ícono de círculo tachado.
+### Tipografía
 
-### Estados del vehículo
+Usamos una sola familia: **Overpass**, autoalojada con el paquete `@fontsource-variable/overpass` (como el proyecto base del curso hace con Geist), así que no depende de ningún servidor externo.
 
-Usamos el mismo lenguaje visual que en las órdenes: el mismo significado lleva el mismo color.
+- **Por qué Overpass:** viene de *Highway Gothic*, la letra de las señales de tránsito, así que pertenece al mismo mundo que la paleta. Es legible en tamaños pequeños y tiene cifras tabulares.
+- **Cifras tabulares** (`font-variant-numeric: tabular-nums`) en montos, kilómetros, horas, códigos y conteos: todos los dígitos miden lo mismo, así las columnas de números quedan alineadas y se comparan de un vistazo.
+- **Escala de cinco tamaños:** 32 px para el código del registro y las cifras del dashboard, 24 px para el título de la pantalla, 18 px para el título de cada sección, 16 px para el cuerpo y 14 px para tablas y texto secundario. Ningún texto baja de 14 px. Pesos 400, 600 y 700.
+- **Descartadas:** Public Sans (muy legible, pero neutra y sin relación con el contexto) y Atkinson Hyperlegible Next (la más legible para baja visión, pero de forma menos sobria). También descartamos la letra del sistema operativo, que cambia según la computadora.
+- **Un cuidado:** en Overpass la "l" minúscula y la "I" mayúscula se parecen. Lo tenemos presente en logins y códigos.
 
-- **Operativo:** verde, como Completada, porque está bien.
-- **En Mantenimiento:** amarillo preventivo, como En Ejecución, porque hay trabajo en curso.
-- **Fuera de Servicio:** rojo, como una señal de alto, porque está detenido.
-- **Dado de Baja:** gris, como Cancelada, porque está cerrado.
+### Espaciado, radios, elevación e íconos
 
-### Alertas del dashboard
+- **Espaciado** en múltiplos de 4 px (4, 8, 12, 16, 24, 32, 48).
+- **Densidad:** filas de tabla de 44 px; botones y campos de 40 px de alto, porque en el taller se usan de pie y con prisa.
+- **Dos radios:** 4 px en controles, badges y bloques (como una placa de señal) y 8 px en lo que flota sobre el contenido (ventanas y avisos).
+- **Elevación:** el fondo es gris claro y los bloques son blancos con un borde de 1 px, sin sombra. La sombra queda solo para lo que flota. No usamos tarjetas con sombra como contenedor de todo.
+- **Íconos:** solo de lucide, con el mismo grosor de trazo, a 16 px en textos, badges y botones, y a 20 px en el menú. Los íconos decorativos van con `aria-hidden`.
+- **Sin gráficos:** el enunciado no los exige (sección 2.3) y los conteos y las tablas responden la pregunta del dashboard sin agregar una decisión nueva.
 
-- **Preventivo:** Vencido en rojo, Próximo en amarillo, Al día en verde, Sin lecturas en gris, y Orden en curso y En taller en el azul de Diagnosticada (`#2563EB`), no en el azul vial: el azul vial es el de la barra y los botones, y una alerta de ese color se confundiría con la interfaz. El `#2563EB` es de la misma familia saturada que los demás colores de estado y da 5,17 con texto blanco.
-- **Stock bajo el mínimo:** rojo.
+### Componentes compartidos
 
-### Reglas de uso
+Las mismas piezas se usan en todo el sistema (enunciado del Avance 2, sección 3.3). Están en `frontend/src/components/`:
 
-- El estado nunca se comunica solo con color: siempre va con ícono y texto, para que lo lea cualquier persona, también quien no distingue colores.
-- Los colores se definen una sola vez como variables CSS en `frontend/src/index.css` y se usan en toda la interfaz: barra de navegación, botones, etiquetas de estado y alertas. Los tokens de shadcn los reutilizan: `primary` es el azul vial, `secondary` el amarillo preventivo, `foreground` el gris asfalto, `muted-foreground` el gris texto, `destructive` el rojo y el fondo el gris claro.
-- Los íconos son de `lucide-react`, la misma librería del proyecto base del curso.
+| Componente | Para qué |
+|---|---|
+| `layout/AppLayout` y `layout/menu.js` | Estructura base: barra superior fija con el sistema, el usuario, su rol y "Cerrar sesión"; menú lateral colapsable, agrupado por propósito y filtrado por rol. |
+| `RutaProtegida` | Sin sesión manda al login; con un rol sin permiso muestra "Acceso no autorizado", también si la ruta se escribe a mano. |
+| `shared/EncabezadoPagina` | El único `h1` de cada pantalla, el `<title>` de la pestaña, el "Volver" y las acciones siempre a la derecha. Al cambiar de pantalla pone el foco en el título. |
+| `shared/BadgeEstado` | La etiqueta de todo estado: tinte, ícono y texto. |
+| `shared/ProgresoOrden` | La ruta de la orden (ver abajo). |
+| `shared/BarraPreventivo` | El tramo de kilómetros del preventivo, con su leyenda. |
+| `shared/TablaPaginada` | La tabla única: paginación de la API, columna de código fija, texto largo recortado, estados de carga, vacío y error. |
+| `shared/BarraFiltros` y `hooks/useFiltrosUrl` | Filtros siempre visibles y guardados en la URL. |
+| `shared/DialogoConfirmacion` | La confirmación de lo irreversible, con la observación opcional. |
+| `shared/CampoFormulario` | Etiqueta, `*`, unidad, ayuda y error junto al campo, con `aria-invalid` y `aria-describedby`. |
+| `shared/EstadoVacio`, `EstadoError`, `IndicadorCarga`, `PaginaError` | Estados de pantalla: vacío, sin resultados, vacío positivo, sin conexión con "Reintentar", carga con esqueletos, 403 y 404. |
+| `shared/TarjetaIndicador` | Los conteos del dashboard por estado, con enlace al listado filtrado. |
+| `shared/LineaTiempo` y `BloqueSeccion` | El historial de estados y cada sección del detalle. |
+
+**La ruta de la orden.** Los cinco pasos del enunciado (Solicitada, Diagnosticada, Aprobada, En Ejecución, Completada) se dibujan como postes sobre una línea:
+
+- los postes recorridos van en gris asfalto, con su fecha;
+- el poste actual es más grande y va en el color de su estado;
+- **En Espera de Repuesto** cuelga como un desvío del poste En Ejecución, con lo que falta ("Falta AMO-DEL-001 × 2");
+- **Cancelada** y **Rechazada** cortan la ruta con una señal circular donde se detuvo la orden; los pasos que no ocurrieron siguen visibles, apagados y marcados "no ocurrió";
+- cuando la orden se completa, toda la ruta pasa a verde.
+
+Así cumplimos lo que pide el enunciado (sección 4.3): marcar el paso actual y mostrar de forma claramente distinguible En Espera de Repuesto, Rechazada y Cancelada. La ruta no decide nada: dibuja el estado y las fechas del historial que manda la API.
+
+Los formatos son únicos en todo el sistema y están en `frontend/src/utils/format.js`: fechas `dd/mm/aaaa` (y `dd/mm/aaaa hh:mm` en el historial), colones con símbolo y separador de miles, kilómetros, horas con un decimal y porcentajes.
+
+### Decisiones de usabilidad
+
+Cada decisión responde a uno o más principios de la sección 4.1 del enunciado del Avance 2.
+
+1. **Un solo badge con texto, ícono y color para todo estado.** *Principios: consistencia; reconocer antes que recordar.* El mismo significado tiene el mismo color e ícono en órdenes, vehículos y preventivo: quien aprende que la llave ciruela es "trabajo en curso" lo reconoce en cualquier pantalla. Como nunca es solo color, también lo lee quien no distingue colores.
+
+2. **La ruta de la orden en el encabezado del detalle.** *Principios: jerarquía visual; retroalimentación.* Lo primero que se ve de una orden es dónde va en su proceso, antes que los datos. Si la orden queda En Espera de Repuesto por falta de stock, el desvío aparece en la ruta con el repuesto que falta: el usuario se entera del efecto automático en pantalla, no solo en un aviso.
+
+3. **Solo se muestran las acciones que el rol puede ejecutar.** *Principios: prevención de errores; simplicidad.* El menú se filtra por rol y los botones de acción de la orden salen del campo `accionesDisponibles` de la API. El Coordinador no ve "Aprobar" ni el Solicitante ve costos: no se puede equivocar con un botón que no le corresponde.
+
+4. **Confirmación que nombra el registro.** *Principio: prevención de errores.* Antes de cancelar o rechazar una orden, dar de baja un vehículo o desactivar un usuario, la confirmación dice exactamente qué y sobre cuál registro ("¿Cancelar la orden OM-2026-00006 del vehículo CMP-0001?") y permite escribir una observación. El foco vuelve al botón que la abrió.
+
+5. **Menú agrupado por propósito.** *Principios: agrupación; reconocer antes que recordar.* Inicio · Operación (Órdenes, Preventivo) · Inventario (Vehículos, Repuestos) · Catálogos · Administración. Ningún grupo tiene más de cuatro opciones, así se encuentra cada pantalla sin memorizar dónde está. La sección activa se resalta.
+
+6. **Una acción principal por pantalla, siempre en el mismo lugar.** *Principios: jerarquía visual; consistencia.* El botón principal (azul vial) va a la derecha del encabezado y las acciones secundarias van con contorno. Las alertas y los conteos van arriba; el detalle, abajo.
+
+7. **Filtros y página en la URL.** *Principios: reconocer antes que recordar; control del usuario.* Al volver de un detalle o recargar, el listado conserva el filtro y la página. El usuario no tiene que recordar ni rearmar lo que estaba viendo.
+
+8. **Mensajes en el lenguaje del taller.** *Principios: lenguaje del usuario; retroalimentación.* Los textos usan Unidad, Placa, Kilometraje, Orden y Repuesto, nunca "ID", "endpoint" ni "Error 409". El error de un campo dice cómo corregirlo y aparece junto al campo; si la API no responde, se ve "No fue posible conectar con el servidor" con "Reintentar".
+
+### Accesibilidad
+
+Tomamos WCAG 2.2 nivel AA como piso:
+
+- Contraste verificado con números (ver arriba) y texto de al menos 14 px.
+- Todo se usa con teclado, con el enlace "Saltar al contenido" al inicio y un anillo de foco de 3 px que la barra fija no tapa.
+- El foco va al título al cambiar de pantalla, queda atrapado dentro de un diálogo y vuelve al botón que lo abrió.
+- Cada pantalla tiene un solo `h1`, regiones (`header`, `nav`, `main`), tablas con encabezados y título, y un `<title>` propio.
+- La interfaz funciona con zoom al 200 % (probado a 640 px de ancho) y respeta `prefers-reduced-motion`.
+
+### Alternativas descartadas
+
+- **Señalización literal:** badges con forma de señal (rombo, octágono) en mayúsculas. Se reconoce como vial, pero a 14 px las formas no se distinguen y las mayúsculas cansan en pantallas de uso diario.
+- **Panel de administración estándar:** píldoras de color pleno sin ícono, tarjetas de indicadores con sombra y pestañas. Es lo más familiar, pero no tiene nada propio del producto y las píldoras sin ícono incumplen "nunca solo color".
+- **Modo oscuro y vista para teléfono:** excluidos por el enunciado (sección 2.2). La interfaz se diseña para escritorio desde 768 px; en pantallas de menos de 1024 px el menú arranca colapsado para dejar espacio a las tablas.
+
+### Dónde está en el código
+
+- `frontend/src/index.css`: la paleta, los tokens de estado, la tipografía, los radios y el foco.
+- `frontend/src/components/shared/`: los componentes de la tabla anterior.
+- `frontend/src/utils/format.js`: los formatos únicos.
+- `frontend/src/pages/Muestrario.jsx`: una página solo de desarrollo (no entra al build de producción) con todos los componentes en uso y datos reales de la API, para revisarlos.
 
 ---
 
