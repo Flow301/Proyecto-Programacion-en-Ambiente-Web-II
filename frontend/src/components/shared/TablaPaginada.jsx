@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -29,7 +30,15 @@ export default function TablaPaginada({
   titulo, columnas, filas = [], claveFila, cargando = false, error, onReintentar, vacio,
   pagina = 1, tamano = 10, totalRegistros = 0, totalPaginas = 0, onCambiarPagina, nombre = 'registros', className,
 }) {
+  // Si la página quedó vacía (se borró su último registro, o la URL pide una página que ya no existe),
+  // se pasa a la última página con registros en vez de decir que no hay ninguno
+  const paginaSobrante = !cargando && !error && filas.length === 0 && pagina > 1 && Boolean(onCambiarPagina)
+  useEffect(() => {
+    if (paginaSobrante) onCambiarPagina(Math.max(totalPaginas, 1))
+  }, [paginaSobrante, totalPaginas, onCambiarPagina])
+
   if (error) return <EstadoError error={error} onReintentar={onReintentar} className={className} />
+  if (paginaSobrante) return <IndicadorCarga forma="tabla" columnas={columnas.length} texto={`Cargando ${nombre}…`} className={cn('rounded-sm border bg-card', className)} />
 
   if (!cargando && filas.length === 0) {
     return (

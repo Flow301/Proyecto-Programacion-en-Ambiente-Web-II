@@ -31,6 +31,23 @@ export function formatFechaCorta(valor) {
   return `${dosDigitos(f.getDate())}/${dosDigitos(f.getMonth() + 1)}`
 }
 
+// Tiempo transcurrido desde una fecha, en años cumplidos: "3 años", "1 año", "Menos de 1 año"
+// (antigüedad de una certificación, enunciado Avance 2, 5.2)
+export function formatAntiguedad(valor, hoy = new Date()) {
+  const f = !vacio(valor) && aFecha(valor)
+  if (!f) return SIN_DATO
+  let anios = hoy.getFullYear() - f.getFullYear()
+  if (hoy.getMonth() < f.getMonth() || (hoy.getMonth() === f.getMonth() && hoy.getDate() < f.getDate())) anios -= 1
+  if (anios < 1) return 'Menos de 1 año'
+  return anios === 1 ? '1 año' : `${anios} años`
+}
+
+// 2026-11-16, el valor que espera un <input type="date"> y la API
+export function aFechaIso(valor = new Date()) {
+  const f = aFecha(valor)
+  return `${f.getFullYear()}-${dosDigitos(f.getMonth() + 1)}-${dosDigitos(f.getDate())}`
+}
+
 // 16/11/2026 08:00, para el historial
 export function formatFechaHora(valor) {
   const f = !vacio(valor) && aFecha(valor)
