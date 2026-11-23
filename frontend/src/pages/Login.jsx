@@ -1,12 +1,15 @@
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CircleAlert, Clock, Loader2, LogIn } from 'lucide-react'
+import { Check, CircleAlert, Clock, Loader2, LogIn, Wrench } from 'lucide-react'
 import CampoFormulario from '@/components/shared/CampoFormulario'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
+import { cn } from '@/lib/utils'
 import { loginSchema } from '@/schemas/authSchemas'
+
+const PASOS = ['Solicitada', 'Diagnosticada', 'Aprobada', 'En Ejecución', 'Completada']
 
 const campos = [
   { name: 'usuario', etiqueta: 'Usuario', type: 'text', autoComplete: 'username' },
@@ -42,18 +45,31 @@ export default function Login() {
           <p className="text-5xl leading-none font-bold tracking-[0.06em]">SGMA</p>
           <p className="max-w-sm text-xl leading-snug">Sistema de Gestión de Mantenimiento de Activos</p>
         </div>
-        <div className="flex flex-col gap-4">
-          {/* La ruta de una orden: el mismo gesto del indicador de progreso */}
-          <div aria-hidden="true" className="relative grid max-w-md grid-cols-5 items-end">
-            <span className="absolute inset-x-2 bottom-2 h-[3px] bg-primary-foreground/35" />
-            <span className="relative h-[22px] w-4 rounded-t-full rounded-b-[2px] bg-primary-foreground/85" />
-            <span className="relative h-[22px] w-4 rounded-t-full rounded-b-[2px] bg-primary-foreground/85" />
-            <span className="relative h-[22px] w-4 rounded-t-full rounded-b-[2px] bg-primary-foreground/85" />
-            <span className="relative h-8 w-[22px] rounded-t-full rounded-b-[3px] bg-primary-foreground" />
-            <span className="relative h-[22px] w-4 rounded-t-full rounded-b-[2px] border-2 border-primary-foreground/60" />
-          </div>
-          <p className="text-[0.9375rem]">Mantenimiento de la flota, de la solicitud al cierre.</p>
+        {/* La ruta de una orden es la protagonista: el mismo recorrido que el sistema muestra en cada orden */}
+        <div className="flex flex-col gap-6">
+          <p className="max-w-md text-2xl leading-snug font-semibold">Cada orden de la flota, de la solicitud al cierre.</p>
+          <ol className="grid max-w-xl grid-cols-5 gap-x-2">
+            {PASOS.map((paso, i) => (
+              <li key={paso} className="relative flex flex-col items-center gap-2.5 text-center">
+                {i < PASOS.length - 1 && <span aria-hidden="true" className={cn('absolute top-[18px] left-1/2 w-full', i < 3 ? 'h-1 bg-primary-foreground/85' : 'border-t-[3px] border-dashed border-primary-foreground/50')} />}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'relative grid place-items-center rounded-t-full rounded-b-[3px]',
+                    i < 3 && 'h-10 w-7 bg-primary-foreground/85 text-primary',
+                    i === 3 && '-mt-2 h-12 w-9 bg-primary-foreground text-primary ring-4 ring-primary-foreground/25',
+                    i === 4 && 'h-10 w-7 border-2 border-primary-foreground/70',
+                  )}
+                >
+                  {i < 3 && <Check className="size-4" />}
+                  {i === 3 && <Wrench className="size-4" />}
+                </span>
+                <span className="text-sm font-semibold">{paso}</span>
+              </li>
+            ))}
+          </ol>
         </div>
+        <p className="text-[0.9375rem]">Mantenimiento de flota</p>
       </div>
 
       <main className="flex flex-[1_1_28rem] items-center px-16 py-14">
@@ -81,7 +97,7 @@ export default function Login() {
               render={({ field, fieldState }) => (
                 <CampoFormulario id={name} etiqueta={etiqueta} requerido error={fieldState.error?.message}>
                   {(props) => (
-                    <Input {...field} {...props} type={type} autoComplete={autoComplete} autoFocus={name === 'usuario'} className="h-11 text-base" />
+                    <Input {...field} {...props} type={type} autoComplete={autoComplete} spellCheck={false} autoFocus={name === 'usuario'} className="h-11 text-base" />
                   )}
                 </CampoFormulario>
               )}
