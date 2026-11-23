@@ -55,6 +55,7 @@ Para la interfaz usamos las mismas herramientas que el proyecto base del curso (
 - `tailwindcss` y `@tailwindcss/vite` 4.3.5, y `tw-animate-css` 1.4.0: estilos con clases utilitarias.
 - Componentes de shadcn/ui copiados en `src/components/ui`, con `radix-ui` 1.8.1, `class-variance-authority` 0.7.1 y `cn` 0.5.2. `components.json` permite agregar más con `npx shadcn add`.
 - `lucide-react` 1.77.0: íconos.
+- `@fontsource-variable/overpass` 5.3.0: la tipografía Overpass autoalojada (sin depender de un servidor externo), como el proyecto base del curso hace con Geist. Es la única familia del sistema; la elegimos porque viene de Highway Gothic, la letra de la señalización vial, y tiene cifras tabulares. Verificada en npm el 22 de noviembre de 2026 (licencia OFL, actualizada en julio de 2026).
 - `sonner` 2.0.8: mensajes de éxito y error (toasts).
 - `react-hook-form` 7.92.0, `@hookform/resolvers` 7.0.8 y `zod` 4.6.7: formularios y validación en el cliente (esquemas en `src/schemas`).
 - Alias `@/` para `src/` (`vite.config.js` y `jsconfig.json`).
