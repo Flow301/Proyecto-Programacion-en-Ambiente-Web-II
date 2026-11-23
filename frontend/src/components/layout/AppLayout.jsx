@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { Suspense, useEffect, useState } from 'react'
+import { Link, NavLink, Outlet } from 'react-router'
 import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
@@ -62,6 +63,9 @@ export default function AppLayout() {
           <strong className="block font-semibold">{usuario?.nombreCompleto}</strong>
           <span>{usuario?.rolNombre}</span>
         </span>
+        <Link to="/cuenta/clave" className="rounded-sm px-2 py-1.5 text-[0.9375rem] underline underline-offset-4 hover:no-underline">
+          Cambiar contraseña
+        </Link>
         <Button
           variant="ghost"
           size="sm"
@@ -120,7 +124,10 @@ export default function AppLayout() {
         </nav>
 
         <main id="contenido" tabIndex={-1} className="flex min-w-0 flex-1 flex-col gap-5 px-8 pt-6 pb-12">
-          <Outlet />
+          {/* Mientras se descarga una pantalla, el menú y la barra quedan quietos y el contenido muestra su esqueleto */}
+          <Suspense fallback={<IndicadorCarga forma="detalle" texto="Cargando la pantalla…" />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
