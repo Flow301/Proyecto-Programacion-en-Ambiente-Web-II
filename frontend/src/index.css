@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/overpass";
 @import "./styles/shadcn.css";
 
 /* Los componentes de shadcn traen clases dark:. Atadas a una clase .dark que nunca se pone, no siguen
@@ -7,11 +8,28 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  /* Overpass viene de Highway Gothic, la letra de la señalización vial. Una sola familia en todo el sistema. */
+  --font-sans: "Overpass Variable", system-ui, sans-serif;
+
+  /* Dos radios: 4 px en controles, badges y bloques; 8 px en lo que flota (ventanas, menús, avisos) */
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 2);
+
+  /* Escala tipográfica: cinco tamaños */
+  --text-sm: 0.875rem;      /* 14 px: tablas y texto secundario */
+  --text-sm--line-height: 1.43;
+  --text-base: 1rem;        /* 16 px: cuerpo */
+  --text-base--line-height: 1.5;
+  --text-lg: 1.125rem;      /* 18 px: subtítulo de sección */
+  --text-lg--line-height: 1.4;
+  --text-2xl: 1.5rem;       /* 24 px: título de pantalla */
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 2rem;         /* 32 px: código del registro y cifras del dashboard */
+  --text-3xl--line-height: 1.15;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -28,21 +46,51 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-border-suave: var(--border-suave);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-recorrido: var(--gris-asfalto);
+
+  /* Colores de estado por significado: pleno (ruta, barras, dashboard), tinte (fondo del badge)
+     y texto (texto e ícono sobre el tinte). Contraste del texto sobre su tinte: de 6,7:1 a 9,1:1. */
+  --color-pendiente: var(--pendiente);
+  --color-pendiente-tinte: var(--pendiente-tinte);
+  --color-pendiente-texto: var(--pendiente-texto);
+  --color-revision: var(--revision);
+  --color-revision-tinte: var(--revision-tinte);
+  --color-revision-texto: var(--revision-texto);
+  --color-autorizado: var(--autorizado);
+  --color-autorizado-tinte: var(--autorizado-tinte);
+  --color-autorizado-texto: var(--autorizado-texto);
+  --color-proceso: var(--proceso);
+  --color-proceso-tinte: var(--proceso-tinte);
+  --color-proceso-texto: var(--proceso-texto);
+  --color-espera: var(--espera);
+  --color-espera-tinte: var(--espera-tinte);
+  --color-espera-texto: var(--espera-texto);
+  --color-exito: var(--exito);
+  --color-exito-tinte: var(--exito-tinte);
+  --color-exito-texto: var(--exito-texto);
+  --color-alto: var(--alto);
+  --color-alto-tinte: var(--alto-tinte);
+  --color-alto-texto: var(--alto-texto);
+  --color-cerrado: var(--cerrado);
+  --color-cerrado-tinte: var(--cerrado-tinte);
+  --color-cerrado-texto: var(--cerrado-texto);
+  --color-aviso: var(--aviso);
+  --color-aviso-tinte: var(--aviso-tinte);
+  --color-aviso-texto: var(--aviso-texto);
+  --color-aviso-borde: var(--aviso-borde);
 }
 
 /* Paleta de docs/decisiones-tecnicas.md, sección 4. Se define una sola vez aquí y los tokens de shadcn
-   la reutilizan; los componentes usan los tokens (bg-primary, text-muted-foreground...). */
+   la reutilizan; los componentes usan los tokens (bg-primary, text-muted-foreground, bg-proceso-tinte...). */
 :root {
   --azul-vial: #1f4e79;
   --amarillo-preventivo: #f2b705;
   --gris-asfalto: #2e3338;
   --gris-claro: #f4f5f7;
-  --verde: #2e7d32;
-  --rojo: #c62828;
-  --ambar-oscuro: #b45309;
-  --gris: #6b7280;        /* bordes, íconos y estados cerrados; como texto sobre el fondo no llega a AA */
+  --gris: #6b7280;        /* bordes de campos e íconos; como texto sobre el fondo no llega a AA */
   --gris-texto: #4b5563;  /* texto secundario */
 
   --background: var(--gris-claro);
@@ -57,20 +105,85 @@
   --secondary-foreground: var(--gris-asfalto);
   --muted: #e9ecf0;
   --muted-foreground: var(--gris-texto);
-  --accent: #e3ebf3;
+  --accent: #e3ebf3;      /* tinte del azul vial: menú activo, hover de filas y filtros elegidos */
   --accent-foreground: var(--azul-vial);
-  --destructive: var(--rojo);
-  --border: #d5d9df;
-  --input: var(--gris);   /* borde de los campos: 3:1 como pide WCAG para controles */
+  --destructive: #c62828;
+  --border: #d5d9df;      /* borde de bloques y tablas */
+  --border-suave: #eceef1; /* separador entre filas */
+  --input: var(--gris);   /* borde de los campos: 4,83:1, WCAG pide 3:1 para controles */
   --ring: var(--azul-vial);
-  --radius: 0.45rem;
+  --radius: 0.25rem;
+
+  /* Estados. El mismo significado lleva el mismo color en órdenes, vehículos y preventivo. */
+  --pendiente: #64748b;        /* Solicitada */
+  --pendiente-tinte: #eef1f5;
+  --pendiente-texto: #334155;
+  --revision: #2563eb;         /* Diagnosticada; Orden en curso y En taller en el preventivo */
+  --revision-tinte: #e8effd;
+  --revision-texto: #1e40af;
+  --autorizado: #4338ca;       /* Aprobada */
+  --autorizado-tinte: #ecebfa;
+  --autorizado-texto: #3730a3;
+  --proceso: #86198f;          /* En Ejecución, En Mantenimiento: trabajo en curso */
+  --proceso-tinte: #f7e9f6;
+  --proceso-texto: #701a75;
+  --espera: #b45309;           /* En Espera de Repuesto, repuesto pendiente */
+  --espera-tinte: #fbeee2;
+  --espera-texto: #8a3c07;
+  --exito: #2e7d32;            /* Completada, Operativo, Al día, Activo, Disponible */
+  --exito-tinte: #e8f3e9;
+  --exito-texto: #1b5e20;
+  --alto: #c62828;             /* Rechazada, Fuera de Servicio, Vencido, Stock bajo */
+  --alto-tinte: #fbe9e9;
+  --alto-texto: #9f1d1d;
+  --cerrado: #6b7280;          /* Cancelada, Dado de Baja, Sin lecturas, Inactivo */
+  --cerrado-tinte: #eef0f2;
+  --cerrado-texto: #374151;
+  --aviso: var(--amarillo-preventivo); /* Próximo: el amarillo solo significa "atención pronto" */
+  --aviso-tinte: #fdf3cd;
+  --aviso-texto: #5c4500;
+  --aviso-borde: #8a6a00;      /* contorno del relleno amarillo: sobre blanco el amarillo no llega a 3:1 */
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+  }
+  html {
+    scrollbar-color: var(--gris) var(--muted);
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-base text-foreground font-sans antialiased;
+    caret-color: var(--azul-vial);
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--azul-vial);
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+}
+
+/* Foco de teclado: la marca más fuerte de la pantalla (WCAG 2.4.7 y 2.4.11). Va fuera de las capas de
+   Tailwind para ganarle al outline-none de los componentes. Sobre la barra azul el anillo es amarillo. */
+:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+.sobre-azul :focus-visible {
+  outline-color: var(--amarillo-preventivo);
+}
+/* El título recibe el foco al cambiar de pantalla solo para anunciarla; no es un control */
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
