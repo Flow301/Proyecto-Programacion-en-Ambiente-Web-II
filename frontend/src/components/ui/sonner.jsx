@@ -36,8 +36,11 @@ const Toaster = ({
         }
       }
       toastOptions={{
+        // El aviso lleva el tinte de su significado, como los badges: verde éxito, rojo error
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast font-sans text-[0.9375rem]",
+          success: "!bg-exito-tinte !text-exito-texto !border-exito/30",
+          error: "!bg-alto-tinte !text-alto-texto !border-alto/30",
         },
       }}
       {...props}

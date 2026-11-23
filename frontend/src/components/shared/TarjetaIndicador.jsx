@@ -29,28 +29,35 @@ const apariencia = {
  */
 export default function TarjetaIndicador({ estado, cantidad, detalle, to, cerrado = false }) {
   const [color, Icono] = apariencia[estado] ?? ['text-foreground', FileText]
+  // La cifra va primero: todas quedan en la misma línea aunque el nombre del estado ocupe dos
   return (
     <Link
       to={to}
-      className={cn('flex flex-col gap-1 border-r border-border-suave px-4 pt-3.5 pb-4 text-foreground tabular-nums transition-colors last:border-r-0 hover:bg-muted/40', cerrado && 'bg-muted/25')}
+      className={cn(
+        'flex min-w-0 flex-col gap-1 px-4 text-foreground tabular-nums transition-colors hover:bg-muted/40',
+        cerrado ? 'flex-row items-baseline gap-x-2 rounded-sm px-2 py-1.5' : '-mr-px -mb-px border-r border-b border-border-suave pt-3.5 pb-4',
+      )}
     >
-      <span className={cn('flex items-center gap-1.5 text-sm font-semibold', color)}>
-        <Icono className="size-4 shrink-0" aria-hidden="true" />
-        {estado}
+      <span className={cn('font-bold leading-tight', cerrado ? 'text-xl text-muted-foreground' : 'text-3xl')}>{formatNumero(cantidad)}</span>
+      <span className={cn('flex items-start gap-1.5 text-sm font-semibold hyphens-auto', color)}>
+        <Icono className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0">{estado}</span>
       </span>
-      <span className={cn('font-bold leading-tight', cerrado ? 'text-2xl text-muted-foreground' : 'text-3xl')}>{formatNumero(cantidad)}</span>
       {detalle && <span className="text-sm text-muted-foreground">{detalle}</span>}
     </Link>
   )
 }
 
-// Franja que agrupa las celdas; la línea oscura separa las abiertas de las cerradas.
+// Franja que agrupa las celdas: arriba las abiertas, que requieren atención; debajo, en una fila baja
+// rotulada una sola vez, las cerradas. Si no caben, las celdas pasan a otra línea.
 export function FranjaIndicadores({ abiertas, cerradas, className }) {
   return (
-    <div className={cn('grid border-t border-border-suave', className)} style={{ gridTemplateColumns: `repeat(${abiertas.length}, minmax(0, 1.15fr)) 2px repeat(${cerradas.length}, minmax(0, 1fr))` }}>
-      {abiertas}
-      <span aria-hidden="true" className="bg-recorrido" />
-      {cerradas}
+    <div className={cn('overflow-hidden border-t border-border-suave', className)}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">{abiertas}</div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t-2 border-recorrido px-4 py-1.5">
+        <span className="text-sm font-semibold text-muted-foreground">Cerradas</span>
+        {cerradas}
+      </div>
     </div>
   )
 }

@@ -17,7 +17,8 @@ const variantes = {
 export default function EstadoVacio({ titulo, mensaje, tipo = 'vacio', children, className }) {
   const { Icono, color } = variantes[tipo]
   return (
-    <div role="status" className={cn('flex flex-col items-start gap-2 rounded-sm border border-dashed px-6 py-6', className)}>
+    // Sin role="status": es contenido de la página, no un aviso; si no, cada estado vacío se anunciaría al cargar
+    <div className={cn('flex flex-col items-start gap-2 rounded-sm border border-dashed px-6 py-6', className)}>
       <Icono className={cn('size-6', color)} aria-hidden="true" />
       <p className="text-base font-semibold">{titulo}</p>
       {mensaje && <p className="max-w-prose text-sm text-muted-foreground">{mensaje}</p>}

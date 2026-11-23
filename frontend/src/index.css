@@ -150,6 +150,8 @@
     @apply border-border;
   }
   html {
+    color-scheme: light; /* sin modo oscuro (enunciado 2.2): los controles nativos no siguen el tema del sistema */
+    scroll-padding-top: 4.5rem; /* la barra fija nunca tapa el elemento con foco (WCAG 2.4.11) */
     scrollbar-color: var(--gris) var(--muted);
   }
   body {
@@ -163,6 +165,12 @@
   a {
     text-underline-offset: 3px;
   }
+  p {
+    text-wrap: pretty;
+  }
+  h1, h2 {
+    text-wrap: balance;
+  }
 }
 
 /* Foco de teclado: la marca más fuerte de la pantalla (WCAG 2.4.7 y 2.4.11). Va fuera de las capas de
@@ -171,7 +179,8 @@
   outline: 3px solid var(--ring);
   outline-offset: 2px;
 }
-.sobre-azul :focus-visible {
+.sobre-azul :focus-visible,
+.saltar:focus-visible {
   outline-color: var(--amarillo-preventivo);
 }
 /* El título recibe el foco al cambiar de pantalla solo para anunciarla; no es un control */

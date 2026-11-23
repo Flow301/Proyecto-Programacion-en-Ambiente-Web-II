@@ -24,6 +24,13 @@ export function formatFecha(valor) {
   return `${dosDigitos(f.getDate())}/${dosDigitos(f.getMonth() + 1)}/${f.getFullYear()}`
 }
 
+// 16/11, para espacios angostos donde el año se sobreentiende (pasos ya recorridos de la ruta)
+export function formatFechaCorta(valor) {
+  const f = !vacio(valor) && aFecha(valor)
+  if (!f) return SIN_DATO
+  return `${dosDigitos(f.getDate())}/${dosDigitos(f.getMonth() + 1)}`
+}
+
 // 16/11/2026 08:00, para el historial
 export function formatFechaHora(valor) {
   const f = !vacio(valor) && aFecha(valor)

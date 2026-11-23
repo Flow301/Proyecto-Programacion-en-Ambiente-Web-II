@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { cn } from '@/lib/utils'
 import { formatFechaHora } from '@/utils/format'
 import BadgeEstado from './BadgeEstado'
+import Separador from './Separador'
 
 /**
  * Línea de tiempo del historial de estados (enunciado Avance 2, 5.7), del más reciente al más antiguo,
@@ -16,9 +17,9 @@ export default function LineaTiempo({ eventos, className }) {
         const ultimo = i === eventos.length - 1
         return (
           <li key={e.id} className={cn('relative border-l-2 pl-5', ultimo ? 'border-transparent' : 'border-border pb-4')}>
-            <span aria-hidden="true" className={cn('absolute top-1.5 -left-[6px] size-2.5 rounded-full', i === 0 ? 'bg-primary' : 'bg-input')} />
+            <span aria-hidden="true" className={cn('absolute top-1.5 -left-[6px] size-2.5 rounded-full', i === 0 ? 'bg-recorrido' : 'bg-input')} />
             <p className="text-sm text-muted-foreground tabular-nums">
-              <time dateTime={e.fecha}>{formatFechaHora(e.fecha)}</time> · {e.usuario}
+              <time dateTime={e.fecha}>{formatFechaHora(e.fecha)}</time> <Separador /> {e.usuario}
             </p>
             <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {e.anterior ? <BadgeEstado estado={e.anterior} /> : <span className="text-sm text-muted-foreground">Registro inicial</span>}

@@ -13,7 +13,7 @@ export default function BloqueSeccion({ titulo, detalle, acciones, sinRelleno = 
       <div className={cn('flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 pt-4', sinRelleno ? 'pb-2' : 'pb-3')}>
         <div className="flex flex-col gap-0.5">
           <h2 id={id} className="text-lg font-semibold">{titulo}</h2>
-          {detalle && <p className="text-sm text-muted-foreground">{detalle}</p>}
+          {detalle && <div className="text-sm text-muted-foreground">{detalle}</div>}
         </div>
         {acciones && <div className="flex flex-wrap items-center gap-2">{acciones}</div>}
       </div>

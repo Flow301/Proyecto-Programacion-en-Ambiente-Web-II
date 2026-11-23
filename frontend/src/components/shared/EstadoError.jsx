@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 export default function EstadoError({ error, onReintentar, className }) {
   const sinConexion = !error?.status
   const Icono = sinConexion ? Unplug : CircleAlert
+  // Reintentar no arregla un permiso negado ni un registro que no existe
+  const puedeReintentar = onReintentar && error?.status !== 403 && error?.status !== 404
   return (
     <div role="alert" className={cn('flex flex-col items-start gap-2 rounded-sm border bg-card px-6 py-6', className)}>
       <Icono className="size-6 text-alto" aria-hidden="true" />
@@ -19,7 +21,7 @@ export default function EstadoError({ error, onReintentar, className }) {
       <p className="max-w-prose text-sm text-muted-foreground">
         {sinConexion ? 'Revise su conexión e intente de nuevo.' : error.message}
       </p>
-      {onReintentar && (
+      {puedeReintentar && (
         <Button className="mt-1" onClick={onReintentar}>
           <RotateCcw aria-hidden="true" />
           Reintentar

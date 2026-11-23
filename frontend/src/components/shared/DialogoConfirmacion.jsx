@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -18,9 +18,23 @@ import { Textarea } from '@/components/ui/textarea'
  * - procesando: deshabilita y muestra progreso mientras la API responde; no se cierra sola.
  */
 export default function DialogoConfirmacion({ abierto, procesando = false, onCancelar, ...contenido }) {
+  // Se abre sin el Trigger de Radix, así que Radix no sabe a dónde devolver el foco al cerrar:
+  // se guarda el elemento que lo tenía al abrirse (el botón de la acción) y se le devuelve.
+  const origen = useRef(null)
+  useLayoutEffect(() => {
+    if (abierto) origen.current = document.activeElement
+  }, [abierto])
+
   return (
     <AlertDialog open={abierto} onOpenChange={(siguiente) => !siguiente && !procesando && onCancelar()}>
-      <AlertDialogContent className="gap-5 p-6 shadow-lg data-[size=default]:sm:max-w-lg">
+      <AlertDialogContent
+        className="gap-5 p-6 shadow-lg data-[size=default]:sm:max-w-lg"
+        onCloseAutoFocus={(e) => {
+          if (!origen.current?.isConnected) return
+          e.preventDefault()
+          origen.current.focus()
+        }}
+      >
         {/* Vive dentro del contenido: al cerrarse se desmonta y la observación no queda para la próxima vez */}
         <Contenido procesando={procesando} {...contenido} />
       </AlertDialogContent>
@@ -35,7 +49,7 @@ function Contenido({ titulo, mensaje, textoConfirmar = 'Confirmar', textoCancela
   return (
     <>
       <AlertDialogHeader className="place-items-start gap-2 text-left">
-        <AlertDialogTitle className="text-lg font-semibold">{titulo}</AlertDialogTitle>
+        <AlertDialogTitle className="text-lg font-semibold text-balance">{titulo}</AlertDialogTitle>
         {mensaje && <AlertDialogDescription className="text-base text-muted-foreground">{mensaje}</AlertDialogDescription>}
       </AlertDialogHeader>
       {conObservacion && (

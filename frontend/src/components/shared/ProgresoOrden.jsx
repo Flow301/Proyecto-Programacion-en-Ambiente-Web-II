@@ -1,6 +1,7 @@
 import { Ban, BadgeCheck, Check, CircleX, Clock, FileText, Flag, Search, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatFecha } from '@/utils/format'
+import { formatFecha, formatFechaCorta } from '@/utils/format'
+import Separador from './Separador'
 
 // Ruta de la orden: los pasos del enunciado (4.3) como mojones sobre una carretera.
 // - Postes recorridos en gris asfalto; el actual, más grande y en el color de su estado.
@@ -25,6 +26,16 @@ const corte = {
 
 const POSTE = 'relative z-[1] grid place-items-center rounded-t-full rounded-b-[3px]'
 
+// Fecha completa cuando la ruta tiene espacio; día y mes cuando es angosta
+function Fecha({ valor }) {
+  return (
+    <>
+      <span className="@[40rem]:hidden">{formatFechaCorta(valor)}</span>
+      <span className="hidden @[40rem]:inline">{formatFecha(valor)}</span>
+    </>
+  )
+}
+
 /**
  * @param estado       estado actual de la orden, como lo nombra la API
  * @param fechas       { [estado]: fecha } con la fecha en que la orden llegó a cada estado (del historial)
@@ -38,10 +49,12 @@ export default function ProgresoOrden({ estado, fechas = {}, diasEnEstado, deten
   const completada = estado === 'Completada'
   const indiceCorte = cortada ? Math.max(PASOS.indexOf(detenidaEn), 0) : -1
   const indiceActual = enEspera ? PASOS.indexOf('En Ejecución') : cortada ? indiceCorte : PASOS.indexOf(estado)
-  const dias = diasEnEstado == null ? '' : ` · ${diasEnEstado} ${diasEnEstado === 1 ? 'día' : 'días'}`
+  const dias = diasEnEstado == null ? null : <> <Separador /> <span className="whitespace-nowrap">{diasEnEstado} {diasEnEstado === 1 ? 'día' : 'días'}</span></>
 
   return (
-    <ol aria-label="Progreso de la orden" className="grid grid-cols-5 tabular-nums">
+    // La ruta mide su propio ancho (container query): en un bloque angosto las fechas pierden el año
+    <div className="@container">
+    <ol aria-label="Progreso de la orden" className={cn('grid grid-cols-5 gap-x-3 tabular-nums', cortada && 'pt-9')}>
       {PASOS.map((paso, i) => {
         const esActual = i === indiceActual && !enEspera && !cortada
         const recorrido = i < indiceActual || (i === indiceActual && (enEspera || cortada)) || completada
@@ -52,7 +65,9 @@ export default function ProgresoOrden({ estado, fechas = {}, diasEnEstado, deten
 
         // Tramo hacia el siguiente poste
         let tramo = null
-        if (!ultimo && !(cortada && i > indiceCorte)) {
+        if (noOcurrio && !ultimo) {
+          tramo = <span aria-hidden="true" className="absolute top-4 left-1/2 w-full border-t-[3px] border-dotted border-input/35" />
+        } else if (!ultimo) {
           if (cortada && i === indiceCorte) tramo = <span aria-hidden="true" className="absolute top-[15px] left-1/2 h-1 w-1/2 bg-recorrido" />
           else if (i < indiceActual || completada) tramo = <span aria-hidden="true" className={cn('absolute top-[15px] left-1/2 h-1 w-full', completada ? 'bg-exito' : 'bg-recorrido')} />
           else tramo = <span aria-hidden="true" className="absolute top-4 left-1/2 w-full border-t-[3px] border-dashed border-input/50" />
@@ -62,7 +77,7 @@ export default function ProgresoOrden({ estado, fechas = {}, diasEnEstado, deten
           <li
             key={paso}
             aria-current={esActual ? 'step' : undefined}
-            className={cn('relative flex flex-col items-center gap-2 text-center', noOcurrio && 'opacity-50')}
+            className="relative flex flex-col items-center gap-2 text-center"
           >
             {tramo}
             {esActual ? (
@@ -74,23 +89,24 @@ export default function ProgresoOrden({ estado, fechas = {}, diasEnEstado, deten
                 {completada && ultimo ? <Flag className="size-3.5" /> : <Check className="size-3.5" />}
               </span>
             ) : (
-              <span className={cn(POSTE, 'h-[34px] w-6 border-2 border-input bg-card', noOcurrio && 'border-dotted')} aria-hidden="true" />
+              // Lo que no ocurrió se apaga en el poste; el texto conserva su contraste
+              <span className={cn(POSTE, 'h-[34px] w-6 border-2 border-input bg-card', noOcurrio && 'border-dotted opacity-50')} aria-hidden="true" />
             )}
 
-            <span className={cn('text-[0.9375rem] font-semibold', esActual && texto, !esActual && !recorrido && 'text-muted-foreground')}>
+            <span className={cn('text-sm font-semibold text-balance @[40rem]:text-[0.9375rem]', esActual && texto, !esActual && !recorrido && 'text-muted-foreground')}>
               {paso}
               <span className="sr-only">
                 {esActual ? ', estado actual' : noOcurrio ? ', no ocurrió' : recorrido ? ', completado' : ', pendiente'}
               </span>
             </span>
             <span className="-mt-1.5 text-sm text-muted-foreground">
-              {esActual ? `desde ${formatFecha(fecha)}${dias}` : noOcurrio ? 'no ocurrió' : fecha ? formatFecha(fecha) : recorrido ? '' : 'pendiente'}
+              {esActual && !completada ? <>desde <Fecha valor={fecha} />{dias}</> : esActual ? <Fecha valor={fecha} /> : noOcurrio ? 'no ocurrió' : fecha ? <Fecha valor={fecha} /> : recorrido ? '' : 'pendiente'}
             </span>
 
             {enEspera && i === indiceActual && (
               <div aria-current="step" className="flex flex-col items-center">
                 <span aria-hidden="true" className="h-4 border-l-[3px] border-espera" />
-                <div className="flex items-center gap-2.5 rounded-sm bg-espera-tinte px-3 py-2 text-left text-espera-texto">
+                <div className="flex w-max max-w-64 items-center gap-2.5 rounded-sm bg-espera-tinte px-3 py-2 text-left text-espera-texto">
                   <span className={cn(POSTE, 'h-[38px] w-7 shrink-0 bg-espera text-white')} aria-hidden="true">
                     <Clock className="size-4" />
                   </span>
@@ -103,17 +119,21 @@ export default function ProgresoOrden({ estado, fechas = {}, diasEnEstado, deten
             )}
 
             {cortada && i === indiceCorte && (
-              <span aria-current="step" className="absolute -top-1 left-full z-[2] flex -translate-x-1/2 flex-col items-center gap-1.5">
+              // La señal de corte va sobre la línea; su texto, encima, para no chocar con los nombres de los pasos
+              <span aria-current="step" className="absolute -top-[3px] left-full z-[2] -translate-x-1/2">
+                <span className="absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 text-center whitespace-nowrap">
+                  <strong className={cn('text-[0.9375rem]', cortada.texto)}>{estado}</strong>
+                  <span className="text-sm text-muted-foreground"> <Separador /> {formatFecha(fechas[estado])}</span>
+                </span>
                 <span className={cn('grid size-10 place-items-center rounded-full text-white ring-4 ring-card', cortada.fondo)} aria-hidden="true">
                   <cortada.Icono className="size-5" />
                 </span>
-                <strong className={cn('bg-card px-1.5 text-[0.9375rem]', cortada.texto)}>{estado}</strong>
-                <span className="bg-card px-1.5 text-sm text-muted-foreground">{formatFecha(fechas[estado])}</span>
               </span>
             )}
           </li>
         )
       })}
     </ol>
+    </div>
   )
 }

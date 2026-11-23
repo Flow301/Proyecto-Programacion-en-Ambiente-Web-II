@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,12 +7,14 @@ import { cn } from '@/lib/utils'
 import { menuDelRol } from './menu'
 
 const CLAVE_MENU = 'sgma.menuOculto'
+const ANGOSTA = '(max-width: 1023px)'
 
-function leerMenuOculto() {
+function leerPreferencia() {
   try {
-    return localStorage.getItem(CLAVE_MENU) === '1'
+    const guardado = localStorage.getItem(CLAVE_MENU)
+    return guardado === null ? null : guardado === '1'
   } catch {
-    return false
+    return null // sin almacenamiento, se decide por el ancho
   }
 }
 
@@ -20,30 +22,39 @@ function leerMenuOculto() {
 // "Cerrar sesión"; menú lateral colapsable por rol con la sección activa; área de contenido.
 export default function AppLayout() {
   const { usuario, cerrarSesion } = useAuth()
-  const [oculto, setOculto] = useState(leerMenuOculto)
+  // Lo que el usuario eligió; si nunca eligió, el menú se colapsa en pantallas angostas (tablet)
+  // para dejarle espacio a las tablas y a la ruta de la orden, también al cambiar el tamaño de la ventana
+  const [oculto, setOculto] = useState(() => leerPreferencia() ?? window.matchMedia(ANGOSTA).matches)
   const grupos = menuDelRol(usuario?.rolNombre)
 
+  useEffect(() => {
+    const consulta = window.matchMedia(ANGOSTA)
+    const alCambiar = (e) => leerPreferencia() === null && setOculto(e.matches)
+    consulta.addEventListener('change', alCambiar)
+    return () => consulta.removeEventListener('change', alCambiar)
+  }, [])
+
   const alternarMenu = () => {
-    setOculto((actual) => {
-      try {
-        localStorage.setItem(CLAVE_MENU, actual ? '0' : '1')
-      } catch {
-        // sin almacenamiento, el menú solo recuerda su estado mientras la página está abierta
-      }
-      return !actual
-    })
+    const siguiente = !oculto
+    setOculto(siguiente)
+    try {
+      localStorage.setItem(CLAVE_MENU, siguiente ? '1' : '0')
+    } catch {
+      // sin almacenamiento, el menú solo recuerda su estado mientras la página está abierta
+    }
   }
 
   return (
     <div className="flex min-h-svh flex-col">
       <a
         href="#contenido"
-        className="sr-only z-50 rounded-sm bg-card px-4 py-2 font-semibold text-primary focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        className="saltar sr-only z-50 rounded-sm bg-card font-semibold text-primary focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:px-4 focus:py-2"
       >
         Saltar al contenido
       </a>
 
-      <header className="sobre-azul flex h-14 shrink-0 items-center gap-4 bg-primary px-6 text-primary-foreground">
+      {/* La barra queda fija arriba: usuario, rol y "Cerrar sesión" siempre a la vista (enunciado 5.1) */}
+      <header className="sobre-azul sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 bg-primary px-6 text-primary-foreground">
         <span className="text-xl font-bold tracking-[0.06em]">SGMA</span>
         <span className="border-l border-primary-foreground/40 pl-4 text-[0.9375rem]">Mantenimiento de flota</span>
         <span className="flex-1" />
@@ -63,10 +74,22 @@ export default function AppLayout() {
       </header>
 
       <div className="flex flex-1">
+        {/* Mide la ventana menos la barra, así el menú entero y su botón siempre se ven */}
         <nav
           aria-label="Menú principal"
-          className={cn('flex shrink-0 flex-col border-r bg-card px-3 py-3 transition-[width] duration-150', oculto ? 'w-[68px]' : 'w-60')}
+          className={cn('sticky top-14 flex h-[calc(100svh-3.5rem)] shrink-0 flex-col self-start overflow-y-auto border-r bg-card px-3 py-3', oculto ? 'w-[68px]' : 'w-60')}
         >
+          <Button
+            variant="ghost"
+            className="mb-1 justify-start gap-3 px-3 font-normal text-muted-foreground hover:bg-muted aria-expanded:bg-transparent aria-expanded:hover:bg-muted"
+            aria-expanded={!oculto}
+            aria-label={oculto ? 'Mostrar menú' : undefined}
+            title={oculto ? 'Mostrar menú' : undefined}
+            onClick={alternarMenu}
+          >
+            {oculto ? <PanelLeftOpen className="size-5" aria-hidden="true" /> : <PanelLeftClose className="size-5" aria-hidden="true" />}
+            {!oculto && 'Ocultar menú'}
+          </Button>
           {grupos.map(({ grupo, items }, i) => (
             <div key={grupo ?? i} className="flex flex-col gap-0.5">
               {grupo && (
@@ -94,18 +117,6 @@ export default function AppLayout() {
               ))}
             </div>
           ))}
-          <span className="flex-1" />
-          <Button
-            variant="ghost"
-            className="mt-6 justify-start gap-3 px-3 font-normal text-muted-foreground"
-            aria-expanded={!oculto}
-            aria-label={oculto ? 'Mostrar menú' : undefined}
-            title={oculto ? 'Mostrar menú' : undefined}
-            onClick={alternarMenu}
-          >
-            {oculto ? <PanelLeftOpen className="size-5" aria-hidden="true" /> : <PanelLeftClose className="size-5" aria-hidden="true" />}
-            {!oculto && 'Ocultar menú'}
-          </Button>
         </nav>
 
         <main id="contenido" tabIndex={-1} className="flex min-w-0 flex-1 flex-col gap-5 px-8 pt-6 pb-12">
