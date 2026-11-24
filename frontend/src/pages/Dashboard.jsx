@@ -10,11 +10,13 @@ import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import Separador from '@/components/shared/Separador'
 import TarjetaIndicador, { FranjaIndicadores } from '@/components/shared/TarjetaIndicador'
 import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import useCarga from '@/hooks/useCarga'
+import { cn } from '@/lib/utils'
 import { obtenerDashboard } from '@/services/dashboardService'
 import { formatFecha, formatNumero } from '@/utils/format'
 
-// Dashboard general (enunciado Avance 2, 5.9, reporte A1): la pantalla de inicio del Administrador. Muestra de un
+// Dashboard general: la pantalla de inicio del Administrador. Muestra de un
 // vistazo lo que requiere atención: órdenes por estado, alertas de preventivo y repuestos bajo el mínimo.
 // Una sola petición: todos los conteos y las listas los calcula la API (GET api/Dashboard); aquí solo se muestran.
 export default function Dashboard() {
@@ -53,9 +55,7 @@ export default function Dashboard() {
         <div className="grid gap-5 xl:grid-cols-2">
           <BloqueSeccion
             titulo="Mantenimiento preventivo"
-            detalle={datos
-              ? `${formatNumero(datos.preventivosVencidos)} vencidos y ${formatNumero(datos.preventivosProximos)} próximos. Se muestran los 10 más urgentes.`
-              : <LeyendaPreventivo />}
+            detalle={datos && `${formatNumero(datos.preventivosVencidos)} vencidos y ${formatNumero(datos.preventivosProximos)} próximos. Se muestran los 10 más urgentes.`}
             acciones={(
               <Link to="/preventivo" className="inline-flex items-center gap-1.5 text-[0.9375rem] font-semibold text-primary underline-offset-4 hover:underline">
                 Ver todos
@@ -66,6 +66,18 @@ export default function Dashboard() {
             {dashboard.cargando || !datos
               ? <IndicadorCarga forma="bloque" texto="Cargando las alertas de preventivo…" />
               : <AlertasPreventivo alertas={datos.alertasPreventivo} />}
+          </BloqueSeccion>
+
+          <BloqueSeccion
+            titulo="Repuestos bajo el mínimo"
+            detalle={datos && (datos.repuestosBajoMinimo.length
+              ? 'Con su faltante y el proveedor recomendado para reabastecerlos.'
+              : 'Repuestos activos con stock por debajo de su mínimo.')}
+            sinRelleno
+          >
+            {dashboard.cargando || !datos
+              ? <IndicadorCarga forma="tabla" filas={3} columnas={5} texto="Cargando los repuestos bajo el mínimo…" />
+              : <RepuestosBajoMinimo repuestos={datos.repuestosBajoMinimo} />}
           </BloqueSeccion>
         </div>
       )}
@@ -106,21 +118,65 @@ function AlertasPreventivo({ alertas }) {
       <LeyendaPreventivo className="mb-4" />
       <ul className="flex flex-col divide-y divide-border-suave">
         {alertas.map((a) => (
-          <li key={a.idActivo} className="grid items-center gap-x-4 gap-y-1.5 py-3 first:pt-0 last:pb-0 md:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_auto]">
-            <span className="flex min-w-0 flex-col tabular-nums">
-              <span className="truncate">
-                <Link to={`/vehiculos/${a.idActivo}`} className="font-bold text-primary underline-offset-4 hover:underline">{a.codigo}</Link>
-                {' '}<Separador /> {a.nombre}
+          <li key={a.idActivo} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+            <div className="flex items-start justify-between gap-3">
+              <span className="flex min-w-0 flex-col tabular-nums">
+                <span>
+                  <Link to={`/vehiculos/${a.idActivo}`} className="font-bold text-primary underline-offset-4 hover:underline">{a.codigo}</Link>
+                  {' '}<Separador /> {a.nombre}
+                </span>
+                <span className="text-sm text-muted-foreground">{a.categoriaNombre}</span>
               </span>
-              <span className="text-sm text-muted-foreground">{a.categoriaNombre}</span>
-            </span>
+              <BadgeEstado estado={a.estado} />
+            </div>
             <BarraPreventivo porcentaje={a.porcentajeConsumido} porcentajeAviso={a.porcentajeAviso} estado={a.estado}
-              recorrido={a.kmRecorridos} umbral={a.intervaloKm} unidad={a.variableControlUnidad} compacta />
-            <BadgeEstado estado={a.estado} />
+              recorrido={a.kmRecorridos} umbral={a.intervaloKm} unidad={a.variableControlUnidad} />
           </li>
         ))}
       </ul>
     </>
   )
 }
+
+// Repuestos con stock por debajo del mínimo, con el faltante y el proveedor recomendado (los calcula la API con la
+// misma regla de api/Repuesto/{id}/proveedor-recomendado). El código lleva al detalle del repuesto.
+function RepuestosBajoMinimo({ repuestos }) {
+  if (repuestos.length === 0) {
+    return <EstadoVacio tipo="positivo" titulo="No hay repuestos bajo el mínimo" mensaje="Todo el inventario activo está sobre su stock mínimo." className="mx-6 mb-5" />
+  }
+  const enlace = 'font-bold text-primary underline-offset-4 hover:underline'
+  return (
+    <Table className="text-[0.9375rem] tabular-nums">
+      <TableCaption className="sr-only">Repuestos bajo el mínimo</TableCaption>
+      <TableHeader className="[&_tr]:border-border">
+        <TableRow className="hover:bg-transparent">
+          <TableHead scope="col" className="h-10 px-4 text-sm font-semibold text-muted-foreground">Repuesto</TableHead>
+          <TableHead scope="col" className="h-10 px-4 text-right text-sm font-semibold text-muted-foreground">Stock</TableHead>
+          <TableHead scope="col" className="h-10 px-4 text-right text-sm font-semibold text-muted-foreground">Mínimo</TableHead>
+          <TableHead scope="col" className="h-10 px-4 text-right text-sm font-semibold text-muted-foreground">Faltante</TableHead>
+          <TableHead scope="col" className="h-10 px-4 text-sm font-semibold whitespace-normal text-muted-foreground">Proveedor recomendado</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {repuestos.map((r) => (
+          <TableRow key={r.idRepuesto} className="border-border-suave hover:bg-muted/40">
+            <TableCell className="px-4 py-2.5 whitespace-normal">
+              <span className="flex flex-col">
+                <Link to={`/repuestos/${r.idRepuesto}`} className={cn(enlace, 'w-fit whitespace-nowrap')}>{r.codigo}</Link>
+                <span className="text-sm text-muted-foreground">{r.nombre} <Separador /> {r.unidadMedida}</span>
+              </span>
+            </TableCell>
+            <TableCell className="px-4 py-2.5 text-right">{formatNumero(r.stockActual)}</TableCell>
+            <TableCell className="px-4 py-2.5 text-right">{formatNumero(r.stockMinimo)}</TableCell>
+            <TableCell className="px-4 py-2.5 text-right font-bold text-alto-texto">{formatNumero(r.faltante)}</TableCell>
+            <TableCell className="px-4 py-2.5 whitespace-normal">
+              {r.proveedorRecomendadoNombre ?? <span className="text-muted-foreground">Sin proveedor activo</span>}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
 
