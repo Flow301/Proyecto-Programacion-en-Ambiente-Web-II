@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -34,6 +34,8 @@ const cargarCatalogos = () => Promise.all([listarTodosLosActivos(), tiposManteni
 export default function OrdenNueva() {
   const navigate = useNavigate()
   const { state } = useLocation()
+  // "Nueva solicitud" desde el detalle del vehículo llega con ?idActivo= y precarga el vehículo
+  const [params] = useSearchParams()
   const { esSolicitante } = useRol()
   const textoVolver = esSolicitante ? 'Volver a Mis solicitudes' : 'Volver a Órdenes'
   const regreso = state?.desde ?? '/ordenes'
@@ -45,7 +47,7 @@ export default function OrdenNueva() {
 
   const { control, handleSubmit, setError, formState: { isSubmitting } } = useForm({
     resolver: zodResolver(esquema),
-    values: { idActivo: '', idTipoMantenimiento: '', idPrioridad: media ? String(media.idPrioridad) : '', motivo: '' },
+    values: { idActivo: elegibles.some((a) => String(a.idActivo) === params.get('idActivo')) ? params.get('idActivo') : '', idTipoMantenimiento: '', idPrioridad: media ? String(media.idPrioridad) : '', motivo: '' },
     resetOptions: { keepDirtyValues: true },
   })
   const idActivo = useWatch({ control, name: 'idActivo' })

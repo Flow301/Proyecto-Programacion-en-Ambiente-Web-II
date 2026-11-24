@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { Ban, ChevronLeft, ChevronRight, CircleCheckBig, Gauge, OctagonX, Pencil } from 'lucide-react'
+import { Ban, ChevronLeft, ChevronRight, CircleCheckBig, Gauge, OctagonX, Pencil, Plus } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraPreventivo, { LeyendaPreventivo } from '@/components/shared/BarraPreventivo'
 import BloqueSeccion from '@/components/shared/BloqueSeccion'
@@ -56,8 +56,8 @@ const CAMBIOS_POR_ESTADO = {
 
 export default function VehiculoDetalle() {
   const { id } = useParams()
-  const { state } = useLocation()
-  const { esAdmin } = useRol()
+  const { state, pathname } = useLocation()
+  const { esAdmin, esSolicitante } = useRol()
   const cargar = useCallback(() => obtenerActivo(id), [id])
   const carga = useCarga(cargar)
   const estados = useCarga(esAdmin ? estadosActivo : sinEstados)
@@ -77,6 +77,11 @@ export default function VehiculoDetalle() {
   const elegido = cambio && CAMBIOS[cambio]
   const puedeLeer = esAdmin && v.estadoActivoNombre !== 'Dado de Baja' // la API no registra lecturas de un vehículo de baja
   const actualizar = () => { carga.recargar(); setVersion((n) => n + 1) }
+  // "Nueva solicitud" precarga este vehículo; un vehículo dado de baja no recibe órdenes
+  const puedeSolicitar = (esAdmin || esSolicitante) && v.estadoActivoNombre !== 'Dado de Baja'
+  const nuevaSolicitud = puedeSolicitar && (
+    <Button asChild><Link to={`/ordenes/nueva?idActivo=${v.idActivo}`} state={{ desde: pathname }}><Plus aria-hidden="true" />Nueva solicitud</Link></Button>
+  )
 
   const confirmar = async (observacion) => {
     setProcesando(true)
@@ -106,16 +111,17 @@ export default function VehiculoDetalle() {
         imagen={<ImagenVehiculo ruta={v.imagen && state?.imagen ? `${v.imagen}?v=${state.imagen}` : v.imagen} alt={`${v.codigo} · ${v.nombre}`} className="h-28 w-40" />}
         estado={<BadgeEstado estado={v.estadoActivoNombre} />}
         detalle={<>{v.nombre} <Separador /> {v.categoriaNombre}</>}
-        acciones={esAdmin && (
+        acciones={esAdmin ? (
           <>
             {cambios.map((c) => {
               const { texto, Icono, variante } = CAMBIOS[c]
               return <Button key={c} variant={variante} onClick={() => setCambio(c)}><Icono aria-hidden="true" />{texto}</Button>
             })}
             <Button asChild variant="outline"><Link to={`/vehiculos/${v.idActivo}/editar`} state={state}><Pencil aria-hidden="true" />Editar</Link></Button>
-            {puedeLeer && <Button onClick={() => setLectura(true)}><Gauge aria-hidden="true" />Registrar lectura</Button>}
+            {puedeLeer && <Button variant="outline" onClick={() => setLectura(true)}><Gauge aria-hidden="true" />Registrar lectura</Button>}
+            {nuevaSolicitud}
           </>
-        )}
+        ) : nuevaSolicitud}
       />
 
       <div className="grid items-start gap-5 xl:grid-cols-2">
