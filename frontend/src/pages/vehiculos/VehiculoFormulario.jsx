@@ -1,21 +1,24 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { CircleAlert, ImageUp, X } from 'lucide-react'
 import CampoFormulario from '@/components/shared/CampoFormulario'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import EstadoError from '@/components/shared/EstadoError'
 import { AccionesFormulario, BloqueFormulario, Formulario } from '@/components/shared/Formulario'
+import ImagenVehiculo from '@/components/shared/ImagenVehiculo'
 import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import ListaOpciones from '@/components/shared/ListaOpciones'
 import PaginaError from '@/components/shared/PaginaError'
 import Separador from '@/components/shared/Separador'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import useCarga from '@/hooks/useCarga'
 import { eleccion, numero, texto, textoOpcional } from '@/schemas/comunes'
-import { actualizarActivo, crearActivo, obtenerActivo } from '@/services/activoService'
+import { actualizarActivo, crearActivo, obtenerActivo, subirImagenActivo } from '@/services/activoService'
 import { listarCategorias } from '@/services/categoriaService'
 import { avisarError, avisarExito } from '@/utils/avisos'
 import { aplicarErroresApi } from '@/utils/errores'
@@ -57,6 +60,12 @@ const CAMPOS = [...Object.keys(base), 'kilometrajeActual', 'kilometrajeUltimoPre
 
 const sinVehiculo = () => Promise.resolve(null)
 
+// Las mismas reglas de la API para la imagen (PUT api/Activo/{id}/imagen): JPG, PNG o WebP y máximo 2 MB.
+// La API además reconoce el tipo por el contenido del archivo, no solo por su nombre.
+const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_IMAGEN = 2 * 1024 * 1024
+const marcaImagen = () => Date.now()
+
 // Formulario del vehículo: nuevo (/vehiculos/nuevo) o edición (/vehiculos/:id/editar). Solo Administrador.
 // El código lo genera la API con el prefijo de la categoría; el estado no se edita aquí (tiene sus acciones).
 export default function VehiculoFormulario() {
@@ -94,12 +103,24 @@ function Contenido({ vehiculo, categorias, titulo }) {
   })
   const idCategoria = useWatch({ control, name: 'idCategoria' })
   const categoria = categorias.find((c) => String(c.idCategoria) === idCategoria)
+  const [imagen, setImagen] = useState({ archivo: null, url: null, error: null })
 
   const enviar = async (datos) => {
+    if (imagen.error) return
     try {
       const { data } = vehiculo ? await actualizarActivo(vehiculo.idActivo, datos) : await crearActivo(datos)
+      const siguiente = vehiculo ? { ...state } : { desde: regreso }
       avisarExito(`Vehículo ${data.codigo} ${vehiculo ? 'actualizado' : 'registrado'}`)
-      navigate(`/vehiculos/${data.idActivo}`, { state: vehiculo ? state : { desde: regreso } })
+      // La imagen va después, en su propio endpoint: los datos ya quedaron guardados aunque la imagen falle
+      if (imagen.archivo) {
+        try {
+          await subirImagenActivo(data.idActivo, imagen.archivo)
+          siguiente.imagen = marcaImagen() // el archivo nuevo puede tener la misma ruta: se pide de nuevo, no del caché
+        } catch (err) {
+          avisarError({ ...err, message: `Los datos se guardaron, pero la imagen no: ${err.message}` })
+        }
+      }
+      navigate(`/vehiculos/${data.idActivo}`, { state: siguiente })
     } catch (err) {
       // 409: la placa ya es de otro vehículo
       if (err.status === 409 && /placa/i.test(err.message)) setError('placa', { message: err.message }, { shouldFocus: true })
@@ -156,8 +177,63 @@ function Contenido({ vehiculo, categorias, titulo }) {
           })}
         </BloqueFormulario>
 
+        <BloqueFormulario titulo="Imagen" detalle="Una foto de la unidad para reconocerla en el listado. JPG, PNG o WebP, máximo 2 MB." columnas={1}>
+          <SelectorImagen actual={vehiculo?.imagen} alt={vehiculo ? `${vehiculo.codigo} · ${vehiculo.nombre}` : 'Vehículo nuevo'} valor={imagen} onCambiar={setImagen} />
+        </BloqueFormulario>
+
         <AccionesFormulario procesando={isSubmitting} textoEnviar={vehiculo ? 'Guardar cambios' : 'Registrar vehículo'} onCancelar={() => navigate(regreso, { state })} />
       </Formulario>
     </>
+  )
+}
+
+// Selector de archivo con vista previa: se ve la foto elegida antes de guardar. La validación de tipo y tamaño
+// avisa de inmediato; la API vuelve a validar al recibirla.
+function SelectorImagen({ actual, alt, valor, onCambiar }) {
+  const id = useId()
+
+  // La vista previa es una URL local del archivo elegido; se libera al elegir otro, al quitarlo o al salir
+  useEffect(() => () => {
+    if (valor.url) URL.revokeObjectURL(valor.url)
+  }, [valor.url])
+
+  const elegir = (e) => {
+    const archivo = e.target.files?.[0]
+    e.target.value = '' // permite volver a elegir el mismo archivo
+    if (!archivo) return
+    if (!TIPOS_IMAGEN.includes(archivo.type)) onCambiar({ archivo: null, url: null, error: 'El archivo debe ser una imagen JPG, PNG o WebP.' })
+    else if (archivo.size > MAX_IMAGEN) onCambiar({ archivo: null, url: null, error: 'La imagen pesa más de 2 MB. Elija una más liviana.' })
+    else onCambiar({ archivo, url: URL.createObjectURL(archivo), error: null })
+  }
+  const quitar = () => onCambiar({ archivo: null, url: null, error: null })
+
+  return (
+    <div className="flex flex-wrap items-start gap-5">
+      <ImagenVehiculo ruta={valor.url ?? actual} alt={alt} className="h-36 w-52" />
+      <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
+          {/* El control real es el input de archivo, oculto dentro de la etiqueta: con teclado recibe el foco y el
+              anillo de foco se ve en el botón */}
+          <Button asChild variant="outline">
+            <label className="cursor-pointer focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+              <ImageUp aria-hidden="true" />
+              {actual || valor.archivo ? 'Cambiar imagen' : 'Elegir imagen'}
+              <input id={id} type="file" accept={TIPOS_IMAGEN.join(',')} className="sr-only" onChange={elegir}
+                aria-describedby={valor.error ? `${id}-error` : undefined} aria-invalid={valor.error ? true : undefined} />
+            </label>
+          </Button>
+          {valor.archivo && <Button type="button" variant="ghost" onClick={quitar}><X aria-hidden="true" />Quitar selección</Button>}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {valor.archivo ? `${valor.archivo.name}: se sube al guardar.` : actual ? 'Imagen actual.' : 'Sin imagen todavía.'}
+        </p>
+        {valor.error && (
+          <p id={`${id}-error`} className="flex items-start gap-1.5 text-sm font-semibold text-alto-texto">
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {valor.error}
+          </p>
+        )}
+      </div>
+    </div>
   )
 }

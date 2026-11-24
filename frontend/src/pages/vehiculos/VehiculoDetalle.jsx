@@ -103,7 +103,7 @@ export default function VehiculoDetalle() {
         codigo={v.codigo}
         pestana={`Vehículo ${v.codigo}`}
         volver={volver}
-        imagen={<ImagenVehiculo ruta={v.imagen} alt={`${v.codigo} · ${v.nombre}`} className="h-28 w-40" />}
+        imagen={<ImagenVehiculo ruta={v.imagen && state?.imagen ? `${v.imagen}?v=${state.imagen}` : v.imagen} alt={`${v.codigo} · ${v.nombre}`} className="h-28 w-40" />}
         estado={<BadgeEstado estado={v.estadoActivoNombre} />}
         detalle={<>{v.nombre} <Separador /> {v.categoriaNombre}</>}
         acciones={esAdmin && (
