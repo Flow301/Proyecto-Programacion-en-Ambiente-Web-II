@@ -31,7 +31,7 @@ Además:
 
 ## Proceso principal
 
-Una orden nace **Solicitada**. El taller la **diagnostica** y el Administrador la **aprueba** o la **rechaza**. Al pasar a **En Ejecución**,el vehículo cambia solo a *En Mantenimiento* (si estaba *Fuera de Servicio*, conserva ese estado); cuando la orden se **completa**, vuelve a *Operativo*. Si durante la ejecución falta stock de un repuesto, la orden pasa sola a **En Espera de Repuesto** hasta que haya disponibilidad. Antes del cierre, la orden puede **cancelarse**.
+Una orden nace **Solicitada**. El taller la **diagnostica** y el Administrador la **aprueba** o la **rechaza**. Al pasar a **En Ejecución**, el vehículo cambia solo a *En Mantenimiento* (si estaba *Fuera de Servicio*, conserva ese estado); cuando la orden se **completa**, vuelve a *Operativo*. Si durante la ejecución falta stock de un repuesto, la orden pasa sola a **En Espera de Repuesto** hasta que haya disponibilidad. Antes del cierre, la orden puede **cancelarse**.
 
 ### Matriz de transiciones final
 
