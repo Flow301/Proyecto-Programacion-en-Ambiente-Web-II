@@ -90,8 +90,8 @@ public class ReporteRepository : IReporteRepository
             .ToListAsync();
     }
 
-    // AsignacionTecnico + Tecnico. La tarifa es la congelada al cerrar la orden o, mientras está abierta, la actual del
-    // técnico; el costo de cada técnico se redondea a 2 decimales igual que al congelarlo en decimal(18,2).
+    // AsignacionTecnico + Tecnico. La tarifa es la guardada al asignar el técnico (la actual solo para asignaciones
+    // anteriores a esa regla); el costo de cada técnico se redondea a 2 decimales, igual que al congelar los costos.
     // Los totales salen de un GroupBy por orden con dos Sum, ejecutado en SQL Server.
     public async Task<(List<ReporteCostoManoObraDto> Tecnicos, decimal TotalHoras, decimal Costo)> GetManoObraAsync(int idOrden)
     {

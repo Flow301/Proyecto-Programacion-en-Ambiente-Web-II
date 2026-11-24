@@ -22,12 +22,12 @@ public record class AsignacionTecnicoDto
     /// <example>3.5</example>
     public decimal HorasTrabajadas { get; set; }
 
-    /// <summary>Tarifa por hora en colones: la congelada si la orden se cerró, si no la vigente del técnico.</summary>
+    /// <summary>Tarifa por hora en colones, la del técnico al momento de asignarlo.</summary>
     /// <example>4800</example>
     public decimal TarifaHora { get; set; }
 
-    /// <summary>true si la tarifa ya se congeló al cerrar la orden.</summary>
-    /// <example>false</example>
+    /// <summary>true si la tarifa quedó guardada en la asignación (todas las asignadas desde el Avance 2).</summary>
+    /// <example>true</example>
     public bool TarifaCongelada { get; set; }
 
     /// <summary>Costo de mano de obra del técnico en colones: horas por tarifa.</summary>

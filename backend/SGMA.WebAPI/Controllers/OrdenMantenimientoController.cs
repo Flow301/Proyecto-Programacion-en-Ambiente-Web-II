@@ -113,9 +113,9 @@ public class OrdenMantenimientoController : ControllerBase
     /// </remarks>
     /// <param name="orden">Vehículo, tipo y motivo. El solicitante es el usuario del token.</param>
     /// <response code="201">Orden creada; el encabezado Location apunta a GET api/OrdenMantenimiento/{id}.</response>
-    /// <response code="400">Datos inválidos, o el vehículo o el tipo de mantenimiento no existen; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos, o el tipo de mantenimiento o la prioridad no existen; data indica el error de cada campo.</response>
     /// <response code="403">El rol es Coordinador/Técnico.</response>
-    /// <response code="404">El usuario del token fue desactivado.</response>
+    /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
     /// <response code="409">El usuario ya no puede crear órdenes (le cambiaron el rol con el token vigente), el vehículo está dado de baja o está En Mantenimiento y el tipo no es de emergencia.</response>
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.AdministradorOSolicitante)]

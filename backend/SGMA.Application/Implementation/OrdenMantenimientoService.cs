@@ -103,12 +103,12 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return Result<IEnumerable<HistorialEstadoOrdenDto>>.Paged(data, pageNumber, pageSize, totalRecords);
     }
 
-    // Creación → Solicitada (docs/matriz-estados.md): 400 si el cuerpo trae un id que no existe, 409 si falla una condición
+    // Creación → Solicitada (docs/matriz-estados.md): 404 si el vehículo no existe (enunciado Avance 2, 5.3), 400 si
+    // otro id del cuerpo no existe y 409 si falla una condición
     public async Task<Result<OrdenMantenimientoDetailDto>> AddAsync(OrdenMantenimientoCreateDto orden, int idUsuario)
     {
-        var activo = await _activoRepository.GetByIdAsync(orden.IdActivo);
-        if (activo is null)
-            return CuerpoInvalido($"El vehículo {orden.IdActivo} no existe.");
+        var activo = await _activoRepository.GetByIdAsync(orden.IdActivo)
+            ?? throw new RecursoNoEncontradoException($"El vehículo {orden.IdActivo} no existe.");
 
         var tipo = await _repository.GetTipoMantenimientoAsync(orden.IdTipoMantenimiento);
         if (tipo is null)
@@ -351,7 +351,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return await DetalleAsync(id, $"Orden {orden.Codigo} rechazada.", idUsuario);
     }
 
-    // Aprobada - En Ejecución (docs/matriz-estados.md): asigna los técnicos y lleva el vehículo a En Mantenimiento.
+    // Aprobada - En Ejecución (docs/matriz-estados.md): asigna los técnicos y lleva el vehículo Operativo a En Mantenimiento.
     // Decisión del equipo (docs/requerimientos.md, 7.7): iniciar recibe al menos un técnico y asigna e inicia en una sola operación.
     public async Task<Result<OrdenMantenimientoDetailDto>> IniciarAsync(int id, OrdenMantenimientoInicioDto inicio, int idUsuario)
     {
@@ -386,13 +386,16 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             {
                 IdTecnico = tecnico.IdTecnico,
                 FechaAsignacion = ahora,
-                HorasTrabajadas = 0      // las horas se registran durante la ejecución
+                HorasTrabajadas = 0,                 // las horas se registran durante la ejecución
+                TarifaAplicada = tecnico.TarifaHora  // la tarifa se toma al asignar (enunciado Avance 2, 5.4)
             });
         }
 
-        // Operativo o Fuera de Servicio - En Mantenimiento, con la orden que lo provocó en el historial del vehículo.
-        // Si ya estaba En Mantenimiento por otra orden (una emergencia, por ejemplo), no cambia ni se registra nada.
-        if (activo.IdEstadoActivo != SeedIds.EstadoActivoEnMantenimiento)
+        // Operativo - En Mantenimiento, con la orden que lo provocó en el historial del vehículo.
+        // No cambia ni se registra nada si ya estaba En Mantenimiento por otra orden (una emergencia, por ejemplo), ni si
+        // está Fuera de Servicio: el sistema no sobrescribe un estado administrativo (enunciado Avance 2, 5.3). Ese
+        // vehículo sigue Fuera de Servicio durante y después de la orden, hasta que el Administrador lo pase a Operativo.
+        if (activo.IdEstadoActivo == SeedIds.EstadoActivoOperativo)
         {
             activo.HistorialEstados.Add(new HistorialEstadoActivo
             {
@@ -409,14 +412,13 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         AplicarTransicion(orden, SeedIds.EstadoOrdenEnEjecucion, idUsuario, inicio.Observacion);
         await _repository.SaveChangesAsync();
 
-        _logger.LogInformation("Orden {Codigo} en ejecución con los técnicos {IdTecnicos}; vehículo {CodigoActivo} En Mantenimiento. Usuario: {IdUsuario}",
-            orden.Codigo, idTecnicos, activo.Codigo, idUsuario);
+        _logger.LogInformation("Orden {Codigo} en ejecución con los técnicos {IdTecnicos}; vehículo {CodigoActivo} en el estado {IdEstadoActivo}. Usuario: {IdUsuario}",
+            orden.Codigo, idTecnicos, activo.Codigo, activo.IdEstadoActivo, idUsuario);
 
         return await DetalleAsync(id, $"Orden {orden.Codigo} en ejecución.", idUsuario);
     }
 
-    // Técnicos y horas de la orden (docs/requerimientos.md, 7.7). La tarifa es la congelada si la orden se cerró;
-    // si sigue abierta, la vigente del técnico, igual que el costo de mano de obra del detalle.
+    // Técnicos y horas de la orden (docs/requerimientos.md, 7.7), con la tarifa registrada al asignar cada técnico
     public async Task<Result<IEnumerable<AsignacionTecnicoDto>>> GetTecnicosAsync(int id)
     {
         if (await _repository.GetIdSolicitanteAsync(id) is null)
@@ -451,8 +453,15 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         ValidarTecnicosAsignables(orden.Codigo, encontrados, tipo);
 
         var ahora = DateTime.Now;
+        // Cada técnico entra con su tarifa de este momento (enunciado Avance 2, 5.4)
         foreach (var tecnico in encontrados)
-            orden.Asignaciones.Add(new AsignacionTecnico { IdTecnico = tecnico.IdTecnico, FechaAsignacion = ahora, HorasTrabajadas = 0 });
+            orden.Asignaciones.Add(new AsignacionTecnico
+            {
+                IdTecnico = tecnico.IdTecnico,
+                FechaAsignacion = ahora,
+                HorasTrabajadas = 0,
+                TarifaAplicada = tecnico.TarifaHora
+            });
 
         await _repository.SaveChangesAsync();
 
@@ -704,7 +713,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
 
         _logger.LogInformation("Orden {Codigo} completada: costo total {CostoTotal}; vehículo {CodigoActivo} {Estado}. Usuario: {IdUsuario}",
             orden.Codigo, orden.CostoTotal, orden.Activo.Codigo,
-            orden.Activo.IdEstadoActivo == SeedIds.EstadoActivoOperativo ? "Operativo" : "sigue En Mantenimiento", idUsuario);
+            orden.Activo.IdEstadoActivo == SeedIds.EstadoActivoOperativo ? "Operativo" : "sin cambio de estado", idUsuario);
 
         return await DetalleAsync(id, string.Create(EsCr, $"Orden {orden.Codigo} completada. Costo total: ₡{orden.CostoTotal:N2}."), idUsuario);
     }
@@ -763,20 +772,26 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
             orden.FechaCierre = ahora;
     }
 
-    // Al cerrar desde la ejecución (completar o cancelar): cada asignación guarda la tarifa vigente y la orden guarda sus
-    // costos, que desde ahí no cambian aunque cambien las tarifas o los precios. Mismo redondeo que el cálculo en vivo.
+    // Al cerrar desde la ejecución (completar o cancelar) la orden guarda sus tres costos, que desde ahí no cambian.
+    // La tarifa de cada técnico ya quedó guardada al asignarlo; el ??= solo cubre asignaciones creadas antes de esa regla.
     private static void CongelarCostos(OrdenMantenimiento orden)
     {
         foreach (var asignacion in orden.Asignaciones)
             asignacion.TarifaAplicada ??= asignacion.Tecnico.TarifaHora;
 
         orden.CostoRepuestos = orden.Detalles.Sum(d => d.Subtotal);
-        orden.CostoManoObra = Math.Round(orden.Asignaciones.Sum(a => a.HorasTrabajadas * a.TarifaAplicada!.Value), 2, MidpointRounding.AwayFromZero);
+        orden.CostoManoObra = CostoManoObra(orden.Asignaciones);
         orden.CostoTotal = orden.CostoRepuestos + orden.CostoManoObra;
     }
 
+    // Horas por tarifa redondeado a 2 decimales por técnico y después sumado: así el total es exactamente la suma de los
+    // subtotales que se ven por técnico, y coincide con el reporte de costos, que redondea igual en SQL Server.
+    private static decimal CostoManoObra(IEnumerable<AsignacionTecnico> asignaciones) =>
+        asignaciones.Sum(a => Math.Round(a.HorasTrabajadas * (a.TarifaAplicada ?? a.Tecnico.TarifaHora), 2, MidpointRounding.AwayFromZero));
+
     // En Mantenimiento → Operativo al cerrar desde la ejecución, salvo que otra orden del vehículo siga En Ejecución o
     // En Espera de Repuesto (docs/matriz-estados.md, casos borde). El cambio queda en el historial del vehículo con la orden.
+    // Un vehículo Fuera de Servicio no cambia: lo devuelve a Operativo el Administrador (enunciado Avance 2, 5.3).
     private async Task DevolverVehiculoAsync(OrdenMantenimiento orden, int idUsuario, string observacion)
     {
         var activo = orden.Activo;
@@ -839,7 +854,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         }
     }
 
-    // Asignaciones con la tarifa que corresponde y su subtotal, redondeado igual que el costo de mano de obra
+    // Asignaciones con su tarifa y su subtotal, redondeado igual que el costo de mano de obra
     private async Task<IEnumerable<AsignacionTecnicoDto>> AsignacionesAsync(int idOrden)
     {
         var asignaciones = await _repository.GetAsignacionesAsync(idOrden);
@@ -939,8 +954,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         return usuario;
     }
 
-    // Con la orden cerrada se usan los costos congelados; abierta, se calculan en vivo.
-    // Horas por tarifa se redondea a 2 decimales igual que SQL Server al guardarlo en decimal(18,2) al congelarlo.
+    // Con la orden cerrada se usan los costos congelados; abierta, se calculan en vivo con el mismo redondeo.
     // El Solicitante/Consulta ve el estado y el historial, pero no los costos (docs/requerimientos.md, 7.5): quedan en null.
     private OrdenMantenimientoDetailDto MapearDetalle(OrdenMantenimiento orden, bool ocultarCostos = false)
     {
@@ -954,8 +968,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         }
 
         data.CostoRepuestos = orden.CostoRepuestos ?? orden.Detalles.Sum(d => d.Subtotal);
-        data.CostoManoObra = orden.CostoManoObra
-            ?? Math.Round(orden.Asignaciones.Sum(a => a.HorasTrabajadas * (a.TarifaAplicada ?? a.Tecnico.TarifaHora)), 2, MidpointRounding.AwayFromZero);
+        data.CostoManoObra = orden.CostoManoObra ?? CostoManoObra(orden.Asignaciones);
         data.CostoTotal = orden.CostoTotal ?? data.CostoRepuestos.Value + data.CostoManoObra.Value;
 
         return data;

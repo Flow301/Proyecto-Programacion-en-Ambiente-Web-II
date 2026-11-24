@@ -256,7 +256,7 @@ public static class DevelopmentSeeder
             // Asignaciones y detalle nacen al iniciar la ejecución
             var inicio = demo.Pasos.FirstOrDefault(p => p.IdEstadoNuevo == SeedIds.EstadoOrdenEnEjecucion);
 
-            // La tarifa solo se congela al completar; mientras tanto el costo usa la tarifa vigente del técnico
+            // Cada asignación guarda la tarifa del técnico al momento de asignarlo (enunciado Avance 2, 5.4)
             foreach (var asignacion in demo.Asignaciones ?? [])
             {
                 var tecnico = tecnicos[asignacion.Identificacion];
@@ -266,7 +266,7 @@ public static class DevelopmentSeeder
                     IdTecnico = tecnico.IdTecnico,
                     FechaAsignacion = Fecha(inicio!),
                     HorasTrabajadas = asignacion.Horas,
-                    TarifaAplicada = completada ? tecnico.TarifaHora : null
+                    TarifaAplicada = tecnico.TarifaHora
                 });
             }
 
@@ -306,9 +306,9 @@ public static class DevelopmentSeeder
             if (completada)
             {
                 orden.CostoRepuestos = orden.Detalles.Sum(d => d.Subtotal);
-                orden.CostoManoObra = Math.Round(
-                    orden.Asignaciones.Sum(a => a.HorasTrabajadas * a.TarifaAplicada!.Value),
-                    2, MidpointRounding.AwayFromZero);
+                // Redondeado por técnico, como OrdenMantenimientoService y el reporte de costos
+                orden.CostoManoObra = orden.Asignaciones.Sum(a =>
+                    Math.Round(a.HorasTrabajadas * a.TarifaAplicada!.Value, 2, MidpointRounding.AwayFromZero));
                 orden.CostoTotal = orden.CostoRepuestos + orden.CostoManoObra;
             }
 
