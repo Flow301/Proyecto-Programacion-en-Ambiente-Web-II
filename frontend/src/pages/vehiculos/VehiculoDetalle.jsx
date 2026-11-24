@@ -1,22 +1,27 @@
 import { useCallback, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraPreventivo, { LeyendaPreventivo } from '@/components/shared/BarraPreventivo'
 import BloqueSeccion from '@/components/shared/BloqueSeccion'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import EstadoError from '@/components/shared/EstadoError'
+import EstadoVacio from '@/components/shared/EstadoVacio'
 import ImagenVehiculo from '@/components/shared/ImagenVehiculo'
 import IndicadorCarga from '@/components/shared/IndicadorCarga'
+import LineaTiempo from '@/components/shared/LineaTiempo'
 import PaginaError from '@/components/shared/PaginaError'
 import Separador from '@/components/shared/Separador'
 import TablaPaginada from '@/components/shared/TablaPaginada'
+import { Button } from '@/components/ui/button'
 import useCarga from '@/hooks/useCarga'
-import { obtenerActivo } from '@/services/activoService'
+import { historialActivo, lecturasActivo, obtenerActivo } from '@/services/activoService'
 import { listarOrdenes } from '@/services/ordenService'
 import { formatAntiguedad, formatColones, formatFecha, formatFechaHora, formatKm, formatNumero } from '@/utils/format'
 
 // Detalle del vehículo (enunciado Avance 2, 5.2): encabezado con la foto, datos generales y del contexto,
-// el bloque de uso y mantenimiento preventivo (5.8) y sus órdenes. La evaluación preventiva la calcula la API.
+// el bloque de uso y mantenimiento preventivo (5.8), sus órdenes, su historial de estados (5.7) y sus lecturas de uso.
+// La evaluación preventiva la calcula la API.
 export default function VehiculoDetalle() {
   const { id } = useParams()
   const { state } = useLocation()
@@ -61,6 +66,11 @@ export default function VehiculoDetalle() {
       </div>
 
       <OrdenesVehiculo v={v} />
+
+      <div className="grid items-start gap-5 xl:grid-cols-2">
+        <HistorialVehiculo v={v} />
+        <LecturasVehiculo v={v} />
+      </div>
     </>
   )
 }
@@ -149,6 +159,99 @@ function OrdenesVehiculo({ v }) {
         onCambiarPagina={setPagina}
       />
     </BloqueSeccion>
+  )
+}
+
+// Historial de estados (enunciado Avance 2, 5.7): solo lectura, del más reciente al más antiguo. Un cambio automático
+// muestra la orden que lo provocó. Al Solicitante/Consulta la API solo le muestra el historial de vehículos con
+// órdenes suyas: para los demás responde 404, y aquí se explica en lugar de mostrar un error.
+function HistorialVehiculo({ v }) {
+  const [pagina, setPagina] = useState(1)
+  const cargar = useCallback(() => historialActivo(v.idActivo, pagina, TAMANO), [pagina, v.idActivo])
+  const historial = useCarga(cargar)
+  const datos = historial.datos
+
+  let contenido
+  if (historial.error?.status === 404) {
+    contenido = <EstadoVacio titulo="Historial no disponible" mensaje="Solo puede consultar el historial de los vehículos de sus solicitudes." />
+  } else if (historial.error) {
+    contenido = <EstadoError error={historial.error} onReintentar={historial.recargar} />
+  } else if (historial.cargando && !datos) {
+    contenido = <IndicadorCarga forma="bloque" texto="Cargando el historial…" />
+  } else if (!datos?.data.length) {
+    contenido = <EstadoVacio titulo="Sin cambios de estado registrados" />
+  } else {
+    contenido = (
+      <>
+        <LineaTiempo eventos={datos.data.map((h) => ({
+          id: h.idHistorial, fecha: h.fechaCambio, usuario: h.usuarioNombreCompleto,
+          anterior: h.estadoAnteriorNombre, nuevo: h.estadoNuevoNombre, observacion: h.observacion,
+          orden: h.idOrden ? { codigo: h.ordenCodigo, to: `/ordenes/${h.idOrden}` } : null,
+        }))} />
+        <Paginacion pagina={pagina} totalPaginas={datos.totalPages} totalRegistros={datos.totalRecords} nombre="cambios" cargando={historial.cargando} onCambiar={setPagina} />
+      </>
+    )
+  }
+  return <BloqueSeccion titulo="Historial de estados" detalle="Cada cambio de estado, quién lo hizo y por qué.">{contenido}</BloqueSeccion>
+}
+
+// Lecturas de uso: las registra el Administrador con su acción o las toma el diagnóstico de una orden
+function LecturasVehiculo({ v }) {
+  const [pagina, setPagina] = useState(1)
+  const cargar = useCallback(() => lecturasActivo(v.idActivo, pagina, TAMANO), [pagina, v.idActivo])
+  const lista = useCarga(cargar)
+  const unidad = v.preventivo?.variableControlUnidad ?? 'km'
+  return (
+    <BloqueSeccion titulo="Lecturas de uso" detalle="Alimentan el mantenimiento preventivo. Cada lectura es igual o mayor que la anterior." sinRelleno>
+      <TablaPaginada
+        titulo={`Lecturas de uso del vehículo ${v.codigo}`}
+        nombre="lecturas"
+        className="rounded-none border-0 border-t"
+        filas={lista.datos?.data ?? []}
+        claveFila={(l) => l.idLectura}
+        cargando={lista.cargando}
+        error={lista.error}
+        onReintentar={lista.recargar}
+        vacio={{ titulo: 'Sin lecturas registradas', mensaje: 'Mientras no tenga lecturas, el preventivo queda "Sin lecturas".' }}
+        columnas={[
+          { clave: 'fecha', titulo: 'Fecha', render: (l) => formatFecha(l.fecha) },
+          { clave: 'kilometraje', titulo: 'Lectura', derecha: true, render: (l) => <strong>{formatKm(l.kilometraje, unidad)}</strong> },
+          { clave: 'usuarioNombreCompleto', titulo: 'Registró', render: (l) => <span className="whitespace-normal">{l.usuarioNombreCompleto}</span> },
+          {
+            clave: 'origen', titulo: 'Origen',
+            render: (l) => (l.idOrden
+              ? <Link to={`/ordenes/${l.idOrden}`} className="font-semibold text-primary underline-offset-4 hover:underline">{l.ordenCodigo}</Link>
+              : <span className="text-sm text-muted-foreground">Lectura registrada</span>),
+          },
+        ]}
+        pagina={pagina}
+        tamano={TAMANO}
+        totalRegistros={lista.datos?.totalRecords}
+        totalPaginas={lista.datos?.totalPages}
+        onCambiarPagina={setPagina}
+      />
+    </BloqueSeccion>
+  )
+}
+
+// La misma paginación de TablaPaginada, para el historial (que es una línea de tiempo y no una tabla)
+function Paginacion({ pagina, totalPaginas, totalRegistros, nombre, cargando, onCambiar }) {
+  if (totalPaginas <= 1) return null
+  return (
+    <nav aria-label={`Paginación de ${nombre}`} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-suave pt-3 text-sm tabular-nums">
+      <span className="text-muted-foreground">{formatNumero(totalRegistros)} {nombre}</span>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" disabled={cargando || pagina <= 1} onClick={() => onCambiar(pagina - 1)}>
+          <ChevronLeft aria-hidden="true" />
+          Anterior
+        </Button>
+        <span aria-live="polite">Página {pagina} de {totalPaginas}</span>
+        <Button variant="outline" disabled={cargando || pagina >= totalPaginas} onClick={() => onCambiar(pagina + 1)}>
+          Siguiente
+          <ChevronRight aria-hidden="true" />
+        </Button>
+      </div>
+    </nav>
   )
 }
 
