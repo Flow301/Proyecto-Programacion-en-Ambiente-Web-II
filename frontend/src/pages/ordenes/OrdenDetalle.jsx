@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
-import { useLocation, useParams } from 'react-router'
-import { Ban, BadgeCheck, CirclePlay, CircleX, Clock, Flag, Pencil, Plus, RotateCcw, Search } from 'lucide-react'
+import { Link, useLocation, useParams } from 'react-router'
+import { Ban, BadgeCheck, CirclePlay, CircleX, Clock, Flag, Pencil, Plus, ReceiptText, RotateCcw, Search } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BloqueSeccion from '@/components/shared/BloqueSeccion'
 import DialogoConfirmacion from '@/components/shared/DialogoConfirmacion'
@@ -127,7 +127,15 @@ export default function OrdenDetalle() {
               ? <><p className="whitespace-pre-line">{o.diagnostico}</p><p className="mt-3 text-sm text-muted-foreground">Kilometraje al diagnosticar: {formatKm(o.kilometrajeDiagnostico)}</p></>
               : <p className="text-muted-foreground">Todavía no se ha diagnosticado.</p>}
           </BloqueSeccion>
-          <BloqueSeccion titulo="Costos" detalle={o.estadoOrdenNombre === 'Completada' ? 'Costos cerrados al completar la orden.' : 'Acumulados hasta hoy; se cierran al completar la orden.'}>
+          <BloqueSeccion
+            titulo="Costos"
+            detalle={o.estadoOrdenNombre === 'Completada' ? 'Costos cerrados al completar la orden.' : 'Acumulados hasta hoy; se cierran al completar la orden.'}
+            acciones={!esSolicitante && (
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/ordenes/${o.idOrden}/costos`}><ReceiptText aria-hidden="true" />Reporte de costos</Link>
+              </Button>
+            )}
+          >
             <Datos filas={[
               ['Repuestos', formatColones(o.costoRepuestos ?? detalleRepuestos.reduce((t, d) => t + d.subtotal, 0))],
               ['Mano de obra', o.costoManoObra == null ? `${formatHoras(o.totalHoras)} registradas` : formatColones(o.costoManoObra)],
