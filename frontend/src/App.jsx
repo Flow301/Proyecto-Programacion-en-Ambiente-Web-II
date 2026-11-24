@@ -6,7 +6,6 @@ import RutaProtegida from './components/RutaProtegida'
 import PaginaError from './components/shared/PaginaError'
 import Inicio from './pages/Inicio'
 import Login from './pages/Login'
-import PaginaPendiente from './pages/PaginaPendiente'
 
 // Cada pantalla se descarga cuando se abre por primera vez (AppLayout muestra un esqueleto mientras tanto)
 const CambiarClave = lazy(() => import('./pages/CambiarClave'))
@@ -25,6 +24,7 @@ const Repuestos = lazy(() => import('./pages/repuestos/Repuestos'))
 const TecnicoDetalle = lazy(() => import('./pages/tecnicos/TecnicoDetalle'))
 const TecnicoFormulario = lazy(() => import('./pages/tecnicos/TecnicoFormulario'))
 const Usuarios = lazy(() => import('./pages/usuarios/Usuarios'))
+const VehiculoDetalle = lazy(() => import('./pages/vehiculos/VehiculoDetalle'))
 const Vehiculos = lazy(() => import('./pages/vehiculos/Vehiculos'))
 const Tecnicos = lazy(() => import('./pages/tecnicos/Tecnicos'))
 
@@ -46,8 +46,7 @@ export default function App() {
           <Route path="ordenes" element={<Ordenes />} />
           <Route path="ordenes/:id" element={<OrdenDetalle />} />
           <Route path="vehiculos" element={<Vehiculos />} />
-          {/* Destino de los enlaces del dashboard; la pantalla de detalle llega con el módulo de Vehículos */}
-          <Route path="vehiculos/:id" element={<PaginaPendiente titulo="Detalle del vehículo" />} />
+          <Route path="vehiculos/:id" element={<VehiculoDetalle />} />
 
           {/* Registrar solicitudes: Administrador y Solicitante/Consulta */}
           <Route element={<RutaProtegida roles={[A, S]} />}>

@@ -9,9 +9,10 @@ import { cn } from '@/lib/utils'
  * - codigo: en un detalle, el código del registro es el titular (OM-2026-00006, PKP-0003).
  * - estado: el badge que acompaña al título.
  * - pestana: texto del <title> de la pestaña ("Orden OM-2026-00006"); por defecto, el título.
+ * - imagen: la foto del registro, a la izquierda del título (detalle del vehículo).
  * Al cambiar de pantalla el foco va al título, para que el lector de pantalla anuncie dónde está.
  */
-export default function EncabezadoPagina({ titulo, codigo, estado, detalle, volver, acciones, pestana, className }) {
+export default function EncabezadoPagina({ titulo, codigo, estado, detalle, volver, acciones, pestana, imagen, className }) {
   const tituloRef = useRef(null)
   const { pathname } = useLocation()
 
@@ -29,6 +30,7 @@ export default function EncabezadoPagina({ titulo, codigo, estado, detalle, volv
         </Link>
       )}
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+        {imagen}
         <div className="flex min-w-0 flex-[1_1_28rem] flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
             <h1
