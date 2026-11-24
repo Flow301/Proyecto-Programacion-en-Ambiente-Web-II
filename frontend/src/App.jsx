@@ -17,6 +17,7 @@ const Ordenes = lazy(() => import('./pages/Ordenes'))
 const OrdenDetalle = lazy(() => import('./pages/ordenes/OrdenDetalle'))
 const OrdenNueva = lazy(() => import('./pages/ordenes/OrdenNueva'))
 const Preventivo = lazy(() => import('./pages/Preventivo'))
+const ReporteCostos = lazy(() => import('./pages/ordenes/ReporteCostos'))
 const Proveedores = lazy(() => import('./pages/proveedores/Proveedores'))
 const RepuestoDetalle = lazy(() => import('./pages/repuestos/RepuestoDetalle'))
 const RepuestoFormulario = lazy(() => import('./pages/repuestos/RepuestoFormulario'))
@@ -54,6 +55,7 @@ export default function App() {
 
           {/* Consulta: Administrador y Coordinador/Técnico */}
           <Route element={<RutaProtegida roles={[A, C]} />}>
+            <Route path="ordenes/:id/costos" element={<ReporteCostos />} />
             <Route path="preventivo" element={<Preventivo />} />
             <Route path="categorias" element={<Categorias />} />
             <Route path="especialidades" element={<Especialidades />} />
