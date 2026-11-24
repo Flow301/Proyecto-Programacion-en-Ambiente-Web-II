@@ -45,10 +45,13 @@ export function onSesionExpirada(funcion) {
   alExpirarSesion = funcion
 }
 
+// body puede ser un objeto (va como JSON) o un FormData (archivos: la imagen del vehículo). Con FormData el navegador
+// pone el Content-Type multipart con su separador, así que no se indica aquí.
 export async function api(ruta, { method = 'GET', body } = {}) {
   const sesion = leerSesion()
   const headers = {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const esArchivo = body instanceof FormData
+  if (body !== undefined && !esArchivo) headers['Content-Type'] = 'application/json'
   if (sesion) headers.Authorization = `Bearer ${sesion.token}`
 
   let respuesta
@@ -56,7 +59,7 @@ export async function api(ruta, { method = 'GET', body } = {}) {
     respuesta = await fetch(`${API_URL}/api/${ruta}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined || esArchivo ? body : JSON.stringify(body),
     })
   } catch {
     throw new ErrorApi(0, 'Sin conexión', 'No se pudo conectar con la API. Intente de nuevo.')
