@@ -25,6 +25,7 @@ const Repuestos = lazy(() => import('./pages/repuestos/Repuestos'))
 const TecnicoDetalle = lazy(() => import('./pages/tecnicos/TecnicoDetalle'))
 const TecnicoFormulario = lazy(() => import('./pages/tecnicos/TecnicoFormulario'))
 const Usuarios = lazy(() => import('./pages/usuarios/Usuarios'))
+const Vehiculos = lazy(() => import('./pages/vehiculos/Vehiculos'))
 const Tecnicos = lazy(() => import('./pages/tecnicos/Tecnicos'))
 
 const { administrador: A, coordinador: C, solicitante: S } = ROLES
@@ -44,7 +45,7 @@ export default function App() {
           <Route path="cuenta/clave" element={<CambiarClave />} />
           <Route path="ordenes" element={<Ordenes />} />
           <Route path="ordenes/:id" element={<OrdenDetalle />} />
-          <Route path="vehiculos" element={<PaginaPendiente titulo="Vehículos" />} />
+          <Route path="vehiculos" element={<Vehiculos />} />
           {/* Destino de los enlaces del dashboard; la pantalla de detalle llega con el módulo de Vehículos */}
           <Route path="vehiculos/:id" element={<PaginaPendiente titulo="Detalle del vehículo" />} />
 
