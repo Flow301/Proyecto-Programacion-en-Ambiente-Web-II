@@ -74,6 +74,13 @@ export default function ReporteCostos() {
         {r.repuestosPendientes.length > 0 && <RepuestosPendientes r={r} />}
       </BloqueSeccion>
 
+      <BloqueSeccion
+        titulo="Mano de obra"
+        detalle="Horas de cada técnico por la tarifa registrada al asignarlo a la orden."
+        sinRelleno
+      >
+        <TablaManoObra r={r} />
+      </BloqueSeccion>
     </>
   )
 }
@@ -242,6 +249,43 @@ function RepuestosPendientes({ r }) {
         ))}
       </ul>
     </div>
+  )
+}
+
+function TablaManoObra({ r }) {
+  if (r.manoObra.length === 0) {
+    return <EstadoVacio titulo="No hay técnicos con horas registradas" mensaje="El costo de mano de obra es ₡0." className="mx-6 mb-5" />
+  }
+  return (
+    <Table className="text-[0.9375rem] tabular-nums">
+      <TableCaption className="sr-only">Mano de obra de la orden {r.codigo}</TableCaption>
+      <TableHeader className="[&_tr]:border-border">
+        <TableRow className="hover:bg-transparent">
+          <TableHead scope="col" className={TH}>Técnico</TableHead>
+          <TableHead scope="col" className={cn(TH, 'text-right')}>Horas</TableHead>
+          <TableHead scope="col" className={cn(TH, 'text-right')}>Tarifa registrada</TableHead>
+          <TableHead scope="col" className={cn(TH, 'text-right')}>Costo</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {r.manoObra.map((t) => (
+          <TableRow key={t.idTecnico} className="border-border-suave hover:bg-muted/40">
+            <TableCell className={cn(TD, 'font-semibold whitespace-normal')}>{t.tecnicoNombre}</TableCell>
+            <TableCell className={cn(TD, 'text-right')}>{formatHoras(t.horas)}</TableCell>
+            <TableCell className={cn(TD, 'text-right')}>{formatColones(t.tarifaHora)} / h</TableCell>
+            <TableCell className={cn(TD, 'text-right')}>{formatColones(t.costo)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+      <TableFooter className="bg-muted/40">
+        <TableRow className="hover:bg-transparent">
+          <TableHead scope="row" className={cn(TD, 'h-auto font-semibold text-foreground')}>Total</TableHead>
+          <TableCell className={cn(TD, 'text-right font-bold')}>{formatHoras(r.totalHoras)}</TableCell>
+          <TableCell className={TD} />
+          <TableCell className={cn(TD, 'text-right font-bold')}>{formatColones(r.costoManoObra)}</TableCell>
+        </TableRow>
+      </TableFooter>
+    </Table>
   )
 }
 
