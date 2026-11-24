@@ -238,7 +238,7 @@ La clave primaria es compuesta, (`IdRepuesto`, `IdProveedor`), lo que impide dup
 - `IdTecnico` (int): FK a `Tecnico`.
 - `FechaAsignacion` (datetime2): obligatorio.
 - `HorasTrabajadas` (decimal(6,2)): obligatorio, empieza en 0; cada registro de horas se suma.
-- `TarifaAplicada` (decimal(10,2)): opcional; copia de la tarifa del técnico al cerrar la orden.
+- `TarifaAplicada` (decimal(10,2)): opcional; copia de la tarifa del técnico al asignarlo. Solo queda vacía en asignaciones anteriores a esa regla, que la toman al cerrar la orden.
 
 La clave primaria es compuesta, (`IdOrden`, `IdTecnico`), así que un técnico no se asigna dos veces a la misma orden.
 
@@ -606,4 +606,4 @@ Si en el Avance 1 no alcanza el tiempo, priorizamos sembrar las órdenes 1 a 7 y
   - el paso de `BUS-0002` a Fuera de Servicio (`admin`, "Impacto en la suspensión delantera");
   - el de `ADM-0001` a Dado de Baja (`admin`, "Unidad vendida").
 - Los técnicos asignados tienen la especialidad que exige el tipo de cada orden. El kilometraje del último preventivo de `BUI-0001` y `PKP-0001` coincide con el de su orden preventiva completada.
-- Las órdenes completadas tienen fecha de cierre, tarifa aplicada en cada asignación y los tres costos congelados. La cancelada y la rechazada tienen fecha de cierre y no tienen costos.
+- Todas las asignaciones tienen su tarifa aplicada. Las órdenes completadas tienen fecha de cierre y los tres costos congelados. La cancelada y la rechazada tienen fecha de cierre y no tienen costos.
