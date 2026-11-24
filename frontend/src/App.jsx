@@ -44,6 +44,8 @@ export default function App() {
           <Route path="ordenes" element={<Ordenes />} />
           <Route path="ordenes/:id" element={<OrdenDetalle />} />
           <Route path="vehiculos" element={<PaginaPendiente titulo="Vehículos" />} />
+          {/* Destino de los enlaces del dashboard; la pantalla de detalle llega con el módulo de Vehículos */}
+          <Route path="vehiculos/:id" element={<PaginaPendiente titulo="Detalle del vehículo" />} />
 
           {/* Registrar solicitudes: Administrador y Solicitante/Consulta */}
           <Route element={<RutaProtegida roles={[A, S]} />}>
