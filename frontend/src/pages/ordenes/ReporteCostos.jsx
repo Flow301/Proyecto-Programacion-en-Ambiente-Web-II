@@ -5,6 +5,7 @@ import BadgeEstado from '@/components/shared/BadgeEstado'
 import BloqueSeccion from '@/components/shared/BloqueSeccion'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import EstadoError from '@/components/shared/EstadoError'
+import EstadoVacio from '@/components/shared/EstadoVacio'
 import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import PaginaError from '@/components/shared/PaginaError'
 import Separador from '@/components/shared/Separador'
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import useCarga from '@/hooks/useCarga'
 import { cn } from '@/lib/utils'
 import { obtenerCostosOrden } from '@/services/reporteService'
-import { formatColones, formatFechaHora, formatHoras, formatPorcentaje } from '@/utils/format'
+import { formatColones, formatFechaHora, formatHoras, formatNumero, formatPorcentaje } from '@/utils/format'
 
 // Reporte de costos por orden (reporte B1). Se abre con el botón "Reporte de costos" del detalle de la orden.
 // Una sola petición (GET api/Reporte/costos-orden/{id}): subtotales, porcentajes, promedio e indicador los calcula
@@ -61,6 +62,8 @@ export default function ReporteCostos() {
         <ResumenCostos r={r} />
       </div>
 
+      <Comparacion r={r} />
+
     </>
   )
 }
@@ -105,6 +108,69 @@ function ResumenCostos({ r }) {
       </dl>
     </section>
   )
+}
+
+// Bloque de nivelación: costo de esta orden contra el promedio de las Completadas del mismo tipo y prioridad.
+// El indicador (Por debajo / Dentro / Por encima) lo decide la API con la tolerancia del equipo; aquí lleva texto,
+// ícono y color (BadgeEstado). Sin comparables, se dice así en lugar de mostrar ceros.
+const TEXTO_INDICADOR = {
+  'Por debajo': 'Por debajo de lo esperado',
+  'Dentro': 'Dentro de lo esperado',
+  'Por encima': 'Por encima de lo esperado',
+}
+
+function Comparacion({ r }) {
+  const c = r.comparacion
+  const grupo = `${r.tipoMantenimientoNombre} con prioridad ${r.prioridadNombre ?? 'sin asignar'}`
+  const sinComparables = !TEXTO_INDICADOR[c.indicador]
+
+  return (
+    <BloqueSeccion
+      titulo="Comparación con órdenes similares"
+      detalle={`Órdenes Completadas de ${grupo}, sin contar esta.`}
+      acciones={!sinComparables && <BadgeEstado estado={c.indicador} className="h-8 px-3 text-[0.9375rem]">{TEXTO_INDICADOR[c.indicador]}</BadgeEstado>}
+    >
+      {sinComparables ? (
+        <EstadoVacio
+          titulo="Sin órdenes comparables"
+          mensaje={`No hay otras órdenes Completadas de ${grupo} con las cuales comparar el costo.`}
+        />
+      ) : (
+        <div className="flex flex-col gap-4 tabular-nums">
+          <dl className="grid grid-cols-2 overflow-hidden rounded-sm border md:grid-cols-4">
+            <Cifra etiqueta="Costo promedio" valor={formatColones(c.costoPromedio)} />
+            <Cifra etiqueta="Órdenes comparadas" valor={formatNumero(c.cantidadComparadas)} />
+            <Cifra etiqueta="Diferencia" valor={conSigno(c.diferencia, formatColones)} />
+            <Cifra etiqueta="Diferencia (%)" valor={conSigno(c.diferenciaPorcentaje, formatPorcentaje)} />
+          </dl>
+          <p className="max-w-prose text-[0.9375rem] text-muted-foreground">
+            {r.etiquetaCosto === 'Costo final' ? 'Esta orden costó ' : 'Esta orden lleva acumulado '}
+            <strong className="text-foreground">{formatColones(r.costoTotal)}</strong>
+            {c.diferencia === 0
+              ? ', igual que el promedio. '
+              : <>, {formatColones(Math.abs(c.diferencia))} {c.diferencia > 0 ? 'más' : 'menos'} que el promedio. </>}
+            Se considera dentro de lo esperado una diferencia de hasta ±{formatNumero(c.toleranciaPorcentaje)} %.
+          </p>
+        </div>
+      )}
+    </BloqueSeccion>
+  )
+}
+
+function Cifra({ etiqueta, valor }) {
+  return (
+    <div className="-mr-px -mb-px flex flex-col gap-1 border-r border-b px-4 py-3">
+      <dt className="text-sm text-muted-foreground">{etiqueta}</dt>
+      <dd className="text-xl font-bold">{valor}</dd>
+    </div>
+  )
+}
+
+// +₡20 200 / −₡4 500: el signo hace evidente si está por encima o por debajo del promedio
+function conSigno(valor, formato) {
+  if (valor > 0) return `+${formato(valor)}`
+  if (valor < 0) return `−${formato(Math.abs(valor))}`
+  return formato(valor)
 }
 
 function Datos({ filas }) {
