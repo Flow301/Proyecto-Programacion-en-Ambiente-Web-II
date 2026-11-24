@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SGMA.Domain.Entities;
 using SGMA.Infrastructure.Data;
+using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Interfaces;
 
 namespace SGMA.Infrastructure.Implementation;
@@ -129,6 +130,14 @@ public class ActivoRepository : IActivoRepository
     {
         return await _context.OrdenMantenimiento
             .AnyAsync(o => o.IdActivo == id && !o.EstadoOrden.EsFinal);
+    }
+
+    // ¿Alguna orden del vehículo está En Ejecución o En Espera de Repuesto? Mientras la tenga, no admite cambios manuales
+    public async Task<bool> HasOrdenEnCursoAsync(int id)
+    {
+        return await _context.OrdenMantenimiento
+            .AnyAsync(o => o.IdActivo == id
+                && (o.IdEstadoOrden == SeedIds.EstadoOrdenEnEjecucion || o.IdEstadoOrden == SeedIds.EstadoOrdenEnEsperaDeRepuesto));
     }
 
     // Historial para el Solicitante/Consulta: el vehículo tiene alguna orden suya, abierta o cerrada

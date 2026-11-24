@@ -245,7 +245,7 @@ public class ActivoController : ControllerBase
     /// <response code="400">Datos inválidos o el estado no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
     /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
-    /// <response code="409">La transición no está permitida, el vehículo tiene órdenes abiertas (al dar de baja) u otro usuario cambió su estado al mismo tiempo.</response>
+    /// <response code="409">La transición no está permitida, el vehículo tiene una orden En Ejecución o En Espera de Repuesto, tiene órdenes abiertas (al dar de baja) u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/estado")]
     [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]

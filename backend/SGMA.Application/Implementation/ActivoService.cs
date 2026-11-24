@@ -282,6 +282,16 @@ public class ActivoService : IActivoService
             throw new TransicionNoPermitidaException(
                 $"El vehículo {activo.Codigo} está {actual} y no puede pasar a {destino.Nombre}.", actual, destino.Nombre);
 
+        // Decisión del equipo (docs/requerimientos.md, 7.1): mientras una orden del vehículo esté En Ejecución o En Espera
+        // de Repuesto no hay cambios manuales. Un vehículo Fuera de Servicio conserva ese estado durante su reparación
+        // (enunciado Avance 2, 5.3), así que sin esta regla podría pasar a Operativo con el taller trabajando en él.
+        if (await _repository.HasOrdenEnCursoAsync(id))
+        {
+            _logger.LogWarning("Intento de cambiar a mano el estado del vehículo {Codigo}, que tiene una orden en curso", activo.Codigo);
+            throw new ReglaNegocioException(
+                $"El vehículo {activo.Codigo} tiene una orden En Ejecución o En Espera de Repuesto: su estado no se cambia a mano hasta que se complete o se cancele.");
+        }
+
         if (idEstadoNuevo == SeedIds.EstadoActivoDadoDeBaja && await _repository.HasOrdenesAbiertasAsync(id))
         {
             _logger.LogWarning("Intento de dar de baja el vehículo {Codigo}, que tiene órdenes abiertas", activo.Codigo);

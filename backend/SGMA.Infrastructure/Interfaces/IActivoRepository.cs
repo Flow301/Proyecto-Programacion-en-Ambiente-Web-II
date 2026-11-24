@@ -19,6 +19,7 @@ public interface IActivoRepository
     Task<bool> ExistsAsync(int id);
     Task<bool> ExistsByPlacaAsync(string placa, int? excludeId = null);
     Task<bool> HasOrdenesAbiertasAsync(int id);
+    Task<bool> HasOrdenEnCursoAsync(int id);
     Task<bool> HasOrdenesDelSolicitanteAsync(int id, int idUsuario);
     // Escritura
     Task<Activo?> GetForUpdateAsync(int id);
