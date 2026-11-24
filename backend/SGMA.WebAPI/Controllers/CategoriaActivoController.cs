@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
-using SGMA.Shared.Constants;
+using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
 
@@ -14,7 +14,7 @@ namespace SGMA.WebAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
-[Authorize(Roles = $"{Roles.Administrador},{Roles.CoordinadorTecnico}")] // escribir pide además Administrador
+[Authorize(Policy = AuthorizationPolicies.AdministradorOCoordinador)] // escribir pide además Administrador
 [ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]           // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
@@ -75,14 +75,14 @@ public class CategoriaActivoController : ControllerBase
     /// </summary>
     /// <remarks>
     /// El nombre y el prefijo no se repiten. El prefijo son tres letras y se guarda en mayúscula;
-    /// con él se generan los códigos de los vehículos (PKP-0001). El margen de aviso debe ser menor que el intervalo.
+    /// con él se generan los códigos de los vehículos (PKP-0001). El porcentaje de aviso va de 1 a 99: desde ese porcentaje del intervalo el vehículo queda Próximo.
     /// </remarks>
     /// <param name="categoria">Datos de la categoría.</param>
     /// <response code="201">Categoría creada; el encabezado Location apunta a GET api/CategoriaActivo/{id}.</response>
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="409">Ya existe una categoría con ese nombre o prefijo.</response>
     [HttpPost]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
@@ -108,7 +108,7 @@ public class CategoriaActivoController : ControllerBase
     /// <response code="404">La categoría no existe.</response>
     /// <response code="409">El nombre o el prefijo pertenecen a otra categoría, o se quiso cambiar el prefijo de una categoría con vehículos.</response>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<CategoriaActivoDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
@@ -127,7 +127,7 @@ public class CategoriaActivoController : ControllerBase
     /// <response code="404">La categoría no existe.</response>
     /// <response code="409">La categoría tiene vehículos y no se puede eliminar.</response>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]

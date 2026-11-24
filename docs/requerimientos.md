@@ -54,7 +54,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - *Decisión del equipo:* el Administrador no puede cambiar el estado a mano mientras el vehículo tenga una orden En Ejecución o En Espera de Repuesto. Si pudiera, el sistema pisaría su cambio al cerrarse la orden.
 - *Decisión del equipo:* no se puede dar de baja un vehículo con órdenes abiertas; primero se completan o se cancelan.
 - Un vehículo En Mantenimiento no admite una nueva orden abierta, salvo que sea de un tipo de naturaleza Emergencia. Se valida al crear la orden (ver 7.5).
-- El kilometraje nunca disminuye, y el kilometraje del último preventivo no puede ser mayor que el actual.
+- El kilometraje nunca disminuye, y el kilometraje del último preventivo no puede ser mayor que el actual. Después del registro, el kilometraje solo cambia con una lectura de uso (ver 7.9); el PUT del vehículo no lo modifica.
 - La imagen debe ser JPG, PNG o WebP y pesar como máximo 2 MB.
 - Todo cambio de estado, incluido el registro inicial, genera una entrada en el historial (ver 7.8).
 
@@ -77,15 +77,16 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Nombre.
 - Descripción.
 - Prefijo para el código de los vehículos, de tres letras.
-- Intervalo de mantenimiento preventivo, en km.
-- Margen de aviso, en km: cuánto antes de cumplir el intervalo el vehículo se considera "próximo a vencer".
+- Regla de mantenimiento preventivo: variable de control (de la lista `GET api/Catalogo/variables-control`), intervalo en la unidad de esa variable (km) y porcentaje de aviso: desde qué porcentaje del intervalo el vehículo se considera "Próximo".
+- Calculado: cantidad de vehículos de la categoría.
 
 **Acciones.** Registrar, consultar, actualizar y eliminar una categoría.
 
 **Validaciones y reglas de negocio.**
 
 - El nombre y el prefijo son únicos.
-- El intervalo es mayor que cero; el margen es mayor o igual que cero y menor que el intervalo.
+- El intervalo es mayor que cero y el porcentaje de aviso va de 1 a 99.
+- La variable de control debe existir (400 si no). *Decisión del equipo:* en flota vehicular la única variable de uso real es el kilometraje, así que el catálogo tiene solo "Kilometraje (km)"; se elige de una lista para que el formulario no tenga datos fijos y para que agregar otra variable no cambie la estructura.
 - No se puede eliminar una categoría con vehículos asociados, aunque estén dados de baja. Si no tiene vehículos, se elimina físicamente.
 - *Decisión del equipo:* el prefijo no se puede cambiar si la categoría ya tiene vehículos, porque sus códigos ya se generaron con ese prefijo.
 
@@ -191,13 +192,13 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Motivo de la solicitud.
 - Usuario solicitante.
 - Fecha de solicitud.
-- Prioridad: Baja, Media, Alta o Crítica.
+- Prioridad: Baja, Media, Alta o Crítica. Se elige al crear la solicitud (Media si no se indica, como pide el enunciado del Avance 2 en 4.4) y el diagnóstico la puede cambiar.
 - Diagnóstico y kilometraje registrado en el diagnóstico.
 - Fecha programada y fecha de cierre.
 - Costo de repuestos, costo de mano de obra y costo total.
 - Estado actual.
 
-**Catálogo de tipos de mantenimiento.** *Decisión del equipo:* el enunciado usa "tipo" para dos cosas: la emergencia ("orden de tipo emergencia") y la especialidad ("la especialidad requerida por el tipo de mantenimiento"). Por eso cada tipo tiene un nombre, una naturaleza (Preventivo, Correctivo o Emergencia) y la especialidad que requiere. Por ejemplo: "Servicio preventivo por kilometraje" es Preventivo y requiere mecánica general; "Reparación de frenos" es Correctivo y requiere frenos; "Auxilio por avería en ruta" es Emergencia y requiere mecánica general. El catálogo se carga con los seeders y todos los roles que crean o atienden órdenes lo pueden consultar.
+**Catálogo de tipos de mantenimiento.** *Decisión del equipo:* el enunciado usa "tipo" para dos cosas: la emergencia ("orden de tipo emergencia") y la especialidad ("la especialidad requerida por el tipo de mantenimiento"). Por eso cada tipo tiene un nombre, una naturaleza (Preventivo, Correctivo o Emergencia) y la especialidad que requiere. Por ejemplo: "Servicio preventivo por kilometraje" es Preventivo y requiere mecánica general; "Reparación de frenos" es Correctivo y requiere frenos; "Auxilio por avería en ruta" es Emergencia y requiere mecánica general. El catálogo se carga con los seeders y los tres roles lo consultan en `GET api/Catalogo/tipos-mantenimiento` (ver [Catálogos de consulta](#catálogos-de-consulta)).
 
 **Acciones.**
 
@@ -215,15 +216,15 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Validaciones y reglas de negocio.**
 
-- Toda orden queda vinculada a un único vehículo existente. *Decisión del equipo:* no se crean órdenes para vehículos Dado de Baja; para vehículos Fuera de Servicio sí, porque así vuelve a operar una unidad dañada.
+- Toda orden queda vinculada a un único vehículo existente. *Decisión del equipo:* no se crean órdenes para vehículos Dado de Baja; para vehículos Fuera de Servicio sí, porque así se repara una unidad dañada. El vehículo sigue Fuera de Servicio durante y después de la orden, porque el sistema no sobrescribe un estado administrativo (enunciado Avance 2, 5.3); el Administrador lo devuelve a Operativo cuando corresponda.
 - Si el vehículo está En Mantenimiento, solo se puede crear una orden cuyo tipo sea de naturaleza Emergencia.
   - *Decisión del equipo:* el enunciado habla de una "nueva" orden, así que se valida al crear; las órdenes que ya estaban abiertas siguen su curso.
   - La misma regla se vuelve a validar cada vez que cambia el tipo de una orden (al editar la solicitud o al corregirlo en el diagnóstico). Si no, una orden creada como emergencia sobre un vehículo En Mantenimiento podría pasar a ser correctiva y saltarse el bloqueo.
 - Toda orden nace en estado Solicitada.
 - Cada cambio de estado se valida contra la [matriz de transiciones](matriz-estados.md). Una transición no permitida se rechaza con una excepción de negocio propia, no con un error genérico.
 - Cada cambio de estado genera automáticamente su registro en el historial, con observación opcional.
-- En el diagnóstico, el Coordinador define la prioridad y registra el kilometraje del vehículo.
-  - Ese kilometraje no puede ser menor que el actual del vehículo, y al registrarlo actualiza el del vehículo.
+- En el diagnóstico, el Coordinador confirma o cambia la prioridad y registra el kilometraje del vehículo.
+  - Ese kilometraje no puede ser menor que el actual del vehículo, y al registrarlo actualiza el del vehículo y queda como una lectura de uso con el código de la orden.
   - *Decisión del equipo:* en el diagnóstico el Coordinador también puede corregir el tipo de mantenimiento.
 - Al aprobar, el Administrador fija la fecha programada. Es obligatoria y no puede estar en el pasado.
 - Iniciar la ejecución exige asignar al menos un técnico (ver 7.7).
@@ -232,9 +233,10 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
   - Costo de repuestos: suma de los subtotales del detalle.
   - Costo de mano de obra: horas por tarifa de cada técnico.
   - Mientras la orden está abierta, los costos se calculan en vivo.
-  - Al completar, o al cancelar una orden que tuvo ejecución, se congela la tarifa en cada asignación y se guardan los tres costos.
+  - La tarifa de cada técnico se toma al asignarlo y queda guardada en la asignación (enunciado Avance 2, 5.4), así un cambio posterior de su tarifa no altera la orden.
+  - Al completar, o al cancelar una orden que tuvo ejecución, se guardan los tres costos.
 - La fecha de cierre se registra en cualquier estado final: Completada, Cancelada o Rechazada.
-- Al completar una orden de naturaleza Preventivo, el kilometraje del último preventivo del vehículo pasa a ser el registrado en esa orden.
+- Al completar una orden de naturaleza Preventivo, el kilometraje del último preventivo del vehículo (la lectura base) pasa a ser su kilometraje actual (la última lectura).
 - Una orden nunca se elimina físicamente; para eso existe Cancelar, disponible desde cualquier estado no final.
 - El usuario responsable (solicitante, quien cambia el estado) se toma siempre del token, nunca del cuerpo de la petición.
 
@@ -243,7 +245,14 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - Administrador: crear, consultar todas, editar mientras está Solicitada, aprobar o rechazar, y cancelar.
 - Coordinador/Técnico: consultar todas, diagnosticar, iniciar ejecución, registrar repuestos y horas, reanudar, completar y cancelar. No crea órdenes.
   - *Decisión del equipo:* la tabla de la sección 11 no lista cancelar para este rol, pero la sección 6 le asigna los "cambios de estado" de la gestión operativa. Cancelar una orden que el taller no puede ejecutar es parte de esa gestión.
-- Solicitante/Consulta: crear y consultar solo las suyas. Ve el estado y el historial, pero no repuestos, horas ni costos.
+- Solicitante/Consulta: crear y consultar solo las suyas. Ve el estado y el historial, pero no repuestos, horas ni costos. Una orden ajena responde 403 (enunciado del Avance 2, 5.3); el filtro de "solo las suyas" va en la consulta del backend.
+
+**Listado y detalle (enunciado del Avance 2, 3.4 y 5.3).**
+
+- El listado se filtra por estado (uno o varios: `?idEstadoOrden=1&idEstadoOrden=3`, así abre la bandeja del Coordinador con Solicitada, Aprobada, En Ejecución y En Espera de Repuesto) y por vehículo (`?idActivo=`). Cada fila trae los días en el estado actual.
+- El detalle es la pantalla central del proceso. Además de los datos y costos, trae: categoría y estado del vehículo, especialidad requerida, días en el estado actual, total de horas, cantidad de técnicos, la tabla de técnicos con horas y costo, los repuestos consumidos y pendientes, y las **acciones disponibles**.
+- *Decisión del equipo:* las acciones disponibles salen de la misma matriz de transiciones que valida cada cambio, para el rol del usuario del token. Se suman las acciones que no cambian el estado (editar en Solicitada para el Administrador; asignar técnicos, registrar horas y registrar repuestos En Ejecución para el Coordinador). "Reanudar" solo aparece cuando ya hay stock para todos los pendientes. El frontend dibuja solo esos botones y nunca decide qué transición es válida.
+- Al crear la solicitud se elige la prioridad; si no se indica, queda Media.
 
 **Avance.** El modelo completo, crear y consultar van en el Avance 1, con la validación del vehículo, del bloqueo por En Mantenimiento y del código. El resto del ciclo de vida va en el Avance 2.
 
@@ -290,7 +299,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Objetivo.** Registrar qué técnicos participaron en una orden y cuántas horas dedicó cada uno, como base del costo de mano de obra y de la carga técnica.
 
-**Campos.** Técnico, fecha de asignación, horas trabajadas y tarifa aplicada (se congela al cerrar la orden).
+**Campos.** Técnico, fecha de asignación, horas trabajadas y tarifa aplicada (la del técnico al momento de asignarlo).
 
 **Acciones.**
 
@@ -320,12 +329,13 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Objetivo.** Mantener la trazabilidad completa de los cambios de estado de los vehículos y de las órdenes.
 
-**Campos.** Estado anterior, estado nuevo, fecha y hora del cambio, usuario responsable y observación opcional. Llevamos dos historiales separados: uno de vehículos y otro de órdenes.
+**Campos.** Estado anterior, estado nuevo, fecha y hora del cambio, usuario responsable y observación opcional. Llevamos dos historiales separados: uno de vehículos y otro de órdenes. En el del vehículo, cada cambio automático trae el código de la orden que lo provocó.
 
 **Acciones.**
 
-- Consultar el historial de estados de un vehículo.
-- Consultar el historial de estados de una orden.
+- Consultar el historial de estados de un vehículo (`GET api/Activo/{id}/historial/{pageNumber}/{pageSize}`).
+- Consultar el historial de estados de una orden (`GET api/OrdenMantenimiento/{id}/historial/{pageNumber}/{pageSize}`).
+- Los dos van del cambio más reciente al más antiguo y paginados (enunciado del Avance 2, 5.7).
 
 **Validaciones y reglas de negocio.**
 
@@ -352,25 +362,31 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Campos.**
 
-- En la categoría: intervalo y margen de aviso, en km.
-- En el vehículo: kilometraje actual, kilometraje del último preventivo e intervalo propio opcional.
+- En la categoría: variable de control (Kilometraje, en km), umbral (intervalo) y porcentaje de aviso.
+- En el vehículo: lectura actual (kilometraje actual), lectura base (kilometraje del último preventivo) e intervalo propio opcional.
+- Lecturas de uso: kilometraje, fecha, usuario y, si la tomó un diagnóstico, la orden.
+- Calculados en el backend: uso acumulado, porcentaje del umbral consumido y estado preventivo.
 
 **Acciones.**
 
 - Configurar la regla por categoría o por vehículo.
+- Registrar una lectura de uso de un vehículo y consultar sus lecturas (`POST` y `GET api/Activo/{id}/lecturas`).
 - Evaluar bajo demanda qué vehículos cumplen o están próximos a cumplir su umbral.
 - Generar una orden preventiva a partir de una sugerencia.
 
 **Validaciones y reglas de negocio.**
 
-- Cada vehículo queda Vencido, Próximo a vencer o Al día según la fórmula de [decisiones técnicas](decisiones-tecnicas.md). Si el vehículo tiene intervalo propio, ese reemplaza al de la categoría.
-- *Decisión del equipo:* la variable es solo el kilometraje, sin combinarla con tiempo.
+- Cada vehículo queda Vencido, Próximo, Al día o Sin lecturas según la fórmula de [decisiones técnicas](decisiones-tecnicas.md). Si el vehículo tiene intervalo propio, ese reemplaza al de la categoría.
+- *Decisión del equipo:* la variable es solo el kilometraje, sin combinarla con tiempo, y el aviso es al 90 % del umbral.
 - *Decisión del equipo:* "bajo demanda" significa que se calcula en cada consulta, sin procesos programados.
-- Se excluyen los vehículos Dado de Baja.
-- Si el vehículo ya tiene una orden preventiva abierta, aparece como "orden en curso" y no se sugiere otra.
-- *Decisión del equipo:* si el vehículo está En Mantenimiento, aparece como "en taller" y no se sugiere la orden: crearla se rechazaría, porque una orden preventiva no es de emergencia (ver 7.5). Se sugiere cuando el vehículo vuelva a Operativo.
-- *Decisión del equipo:* el sistema sugiere y el Administrador confirma. La orden generada nace Solicitada, con un tipo de naturaleza Preventivo y con el Administrador como solicitante.
-- Al completarse una orden preventiva, el contador del vehículo se reinicia (ver 7.5).
+- El kilometraje solo cambia con una lectura de uso (la acción del Administrador o el diagnóstico de una orden). Una lectura menor que la anterior, o con fecha futura o anterior a la última, se rechaza con 400.
+- Se evalúan los vehículos Operativos y En Mantenimiento, del mayor al menor porcentaje. Se excluyen los Fuera de Servicio y Dado de Baja, y generar su orden preventiva se rechaza con 409.
+- Un vehículo sin lecturas registradas se muestra como "Sin lecturas" y no se evalúa como Al día.
+- Si el vehículo ya tiene una orden preventiva abierta, aparece como "Orden en curso", con el enlace a esa orden, y no se sugiere otra.
+- *Decisión del equipo:* si el vehículo está En Mantenimiento, aparece como "En taller" y no se sugiere la orden: crearla se rechazaría, porque una orden preventiva no es de emergencia (ver 7.5). Se sugiere cuando el vehículo vuelva a Operativo.
+- *Decisión del equipo:* el sistema sugiere y el Administrador confirma. La orden generada nace Solicitada, con un tipo de naturaleza Preventivo, el Administrador como solicitante, prioridad Alta si el vehículo está Vencido (Media si está Próximo) y el motivo con la lectura y el porcentaje.
+- Al completarse una orden preventiva, la lectura actual pasa a ser la nueva lectura base y el vehículo vuelve a Al día (ver 7.5).
+- Al generar la orden, el vehículo se vuelve a evaluar: si ya no se sugiere (otra orden, otro kilometraje), se rechaza con 409 indicando por qué. El tipo debe ser de naturaleza Preventivo y, si el Administrador no escribe un motivo, se arma con la lectura y el porcentaje de la evaluación.
 
 **Permisos.**
 
@@ -403,11 +419,11 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 | Método | Ruta | Quién | Qué hace |
 |---|---|---|---|
-| POST | `api/Auth/login` | Público | Valida las credenciales y devuelve el token, su expiración y el usuario. |
+| POST | `api/Auth/login` | Público | Valida las credenciales y devuelve el token, su expiración y el usuario. Bloquea al usuario 5 minutos tras 5 intentos fallidos (429). |
 | GET | `api/Auth/perfil` | Cualquier rol | Datos del usuario del token. |
 | PUT | `api/Auth/clave` | Cualquier rol | Cambia la contraseña propia; pide la actual. |
 | GET | `api/Usuario` | Administrador | Lista todos los usuarios, incluidos los inactivos. |
-| GET | `api/Usuario/{pageNumber}/{pageSize}` | Administrador | Lista paginada. |
+| GET | `api/Usuario/{pageNumber}/{pageSize}` | Administrador | Lista paginada, con filtros opcionales `?idRol=` y `?estado=`. Cada usuario trae `tieneActividad`. |
 | GET | `api/Usuario/{id}` | Administrador | Detalle. |
 | GET | `api/Usuario/roles` | Administrador | Los tres roles, para el formulario. |
 | POST | `api/Usuario` | Administrador | Registra un usuario con su contraseña inicial. |
@@ -427,6 +443,7 @@ El cierre de sesión no tiene endpoint: el cliente descarta el token.
 - Los usuarios nunca se eliminan físicamente, solo se desactivan, porque tienen actividad registrada (órdenes, cambios de estado).
 - Un usuario inactivo no puede iniciar sesión aunque sus credenciales sean correctas.
   - El login responde 401 con el mismo mensaje si el usuario no existe, está inactivo o la contraseña es incorrecta, para no revelar qué cuentas existen.
+  - Tras 5 intentos fallidos seguidos, ese usuario queda bloqueado 5 minutos desde el último intento: el login responde 429, aunque la contraseña sea la correcta. Los demás usuarios no se ven afectados, y un usuario inexistente recibe el mismo trato para no revelar qué cuentas existen. Un login correcto reinicia la cuenta de fallos.
   - Caso borde: un token emitido antes de la desactivación sigue siendo válido hasta que expira. `api/Auth/perfil` sí responde 401 a ese usuario, y los servicios que validan al usuario responsable lo rechazan.
   - Caso borde: si se cambia el rol de un usuario con sesión abierta, su token conserva el rol anterior hasta que expira. El nuevo rol aplica desde su siguiente inicio de sesión.
 - Cambio de la contraseña propia:
@@ -440,6 +457,8 @@ El cierre de sesión no tiene endpoint: el cliente descarta el token.
 - El usuario responsable de cada acción sale del token, nunca del cuerpo de la petición.
 - El seeder crea al menos un Administrador (`admin`).
 - *Decisión del equipo:* no se puede desactivar ni quitarle el rol al último Administrador activo, para que el sistema nunca quede sin acceso administrativo.
+- El Administrador no puede desactivarse a sí mismo ni quitarse su propio rol de Administrador, aunque haya otros (409, enunciado del Avance 2, 5.1).
+- Campo calculado `tieneActividad`: el usuario solicitó órdenes, hizo cambios de estado o registró lecturas. Indica que solo se puede desactivar.
 - El último acceso se actualiza en cada inicio de sesión. El cierre de sesión se hace del lado del cliente, descartando el token.
 
 **Permisos.**
@@ -452,6 +471,27 @@ El cierre de sesión no tiene endpoint: el cliente descarta el token.
 
 ---
 
+## Catálogos de consulta
+
+**Objetivo.** Los formularios del frontend necesitan las opciones de los catálogos fijos. Como la sección 15 del enunciado prohíbe datos fijos en React, salen de la API.
+
+*Decisión del equipo:* estos catálogos los cargan los seeders y no se administran desde el sistema: el enunciado no los pide como módulo y cambiarlos alteraría reglas de negocio (por ejemplo, la naturaleza Emergencia o los estados de la matriz). Por eso solo tienen consulta.
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| GET | `api/Catalogo/tipos-mantenimiento` | Cualquier rol | Solicitar, editar y diagnosticar una orden. Trae la naturaleza y la especialidad requerida. |
+| GET | `api/Catalogo/prioridades` | Cualquier rol | Diagnosticar; ordenadas de la más baja a la más urgente. |
+| GET | `api/Catalogo/niveles-certificacion` | Administrador y Coordinador/Técnico | Asociar una especialidad a un técnico. El Solicitante no tiene acceso al módulo de técnicos. |
+| GET | `api/Catalogo/estados-orden` | Cualquier rol | Filtros y etiquetas de estado; marca los estados finales. |
+| GET | `api/Catalogo/estados-activo` | Cualquier rol | Filtros, etiquetas y el cambio manual de estado del vehículo. |
+| GET | `api/Catalogo/variables-control` | Cualquier rol | La lista "Variable de control" del formulario de categoría, con su unidad. |
+
+Los roles salen de `api/Usuario/roles` (solo Administrador), junto con el resto de la gestión de usuarios.
+
+**Avance.** Avance 2.
+
+---
+
 ## Proceso principal de la orden (sección 8)
 
 La orden recorre este camino:
@@ -459,7 +499,7 @@ La orden recorre este camino:
 1. **Solicitada:** la crea un Solicitante o el Administrador.
 2. **Diagnosticada:** el Coordinador la revisa y define alcance, prioridad y kilometraje.
 3. **Aprobada** con fecha programada, o **Rechazada:** lo decide el Administrador.
-4. **En Ejecución:** el Coordinador asigna técnicos e inicia el trabajo, y el vehículo pasa a En Mantenimiento.
+4. **En Ejecución:** el Coordinador asigna técnicos e inicia el trabajo, y el vehículo Operativo pasa a En Mantenimiento. Uno Fuera de Servicio conserva ese estado.
 5. **En Espera de Repuesto:** pasa sola si falta stock; vuelve a En Ejecución cuando el Coordinador la reanuda con stock suficiente.
 6. **Completada:** el Coordinador la cierra, se congelan los costos y el vehículo vuelve a Operativo.
 
@@ -473,18 +513,22 @@ El detalle de cada transición, su rol y sus efectos está en la [matriz de esta
 
 ## Reportes y dashboard (sección 10)
 
+**Combinación escogida para el Avance 2 (enunciado del Avance 2, 5.9): Dashboard general (familia A) + Costos por orden (familia B).** Solo se evalúan esos dos; los otros dos quedan descritos abajo como referencia del enunciado general, pero no se implementan. La justificación está en [decisiones técnicas](decisiones-tecnicas.md#5-reportes-escogidos).
+
 Todos los totales, conteos y promedios se calculan en el backend con consultas LINQ que agregan varias tablas. El frontend solo los muestra.
 
 - **Dashboard** (Administrador): es la vista principal al ingresar. Muestra:
   - la cantidad de órdenes por estado;
   - los vehículos con preventivo vencido o próximo a vencer;
   - los repuestos con stock bajo el mínimo.
-- **Reporte de costos por orden** (Administrador y Coordinador/Técnico): una orden o un rango por fecha de cierre, filtrable por tipo y prioridad.
-  - Muestra el subtotal de repuestos, el costo de mano de obra y el total.
-  - *Decisión del equipo:* como el enunciado no define "lo esperado", junto a cada orden mostramos el costo promedio de las órdenes completadas del mismo tipo y prioridad.
-- **Reporte de historial de un vehículo** (Administrador): línea de tiempo con sus cambios de estado y las órdenes de cada período, desde su registro hasta la fecha de consulta.
-- **Reporte de carga técnica** (Administrador y Coordinador/Técnico): para un período, la cantidad de órdenes distintas por técnico con asignaciones en ese período.
-  - *Decisión del equipo:* el enunciado solo pide la cantidad de órdenes. No mostramos horas por período porque las horas se guardan acumuladas por asignación, sin la fecha de cada registro.
+  - Endpoint: `GET api/Dashboard`. Trae todos los estados (también los que tienen 0 órdenes) con un `GroupBy` por estado que cuenta las órdenes y busca la solicitud más antigua; el total de órdenes y las abiertas; los conteos de Vencidos y Próximos con las 10 alertas de mayor porcentaje; y los repuestos bajo el mínimo con su faltante y su proveedor recomendado.
+- **Reporte de costos por orden** (Administrador y Coordinador/Técnico): `GET api/Reporte/costos-orden/{idOrden}` (404 si la orden no existe). Se abre con el botón "Reporte de costos" del detalle de la orden.
+  - Encabezado de la orden; repuestos consumidos con el costo unitario al momento del uso y su subtotal; los pendientes aparte, sin sumar.
+  - Mano de obra por técnico (horas, tarifa registrada y costo), con el total de horas y de mano de obra.
+  - Costo total con la etiqueta "Costo final" (Completada) o "Costo acumulado a la fecha" (abierta), y la proporción de repuestos y de mano de obra.
+  - Comparación con las órdenes Completadas del mismo tipo y prioridad (sin contar la consultada): cantidad comparada, costo promedio, diferencia en monto y en porcentaje, e indicador Por debajo / Dentro / Por encima.
+  - *Decisión del equipo:* la tolerancia es ±15 % del promedio (ver [decisiones técnicas](decisiones-tecnicas.md#5-reportes-escogidos)). Sin órdenes comparables, el indicador dice "Sin órdenes comparables".
+- **Reporte de historial de un vehículo** y **reporte de carga técnica**: no se implementan en el Avance 2 (no entran en la combinación escogida).
 
 **Avance.** Avance 2.
 
@@ -494,6 +538,7 @@ Todo esto corresponde al Avance 2.
 
 - **Navegación y sesión.**
   - El menú muestra solo lo que corresponde al rol e indica la sección activa.
+  - Dentro de cada pantalla, el usuario tampoco ve acciones ni datos que su rol no puede usar: por ejemplo, el Coordinador/Técnico no ve Aprobar ni Rechazar, y el Solicitante/Consulta no ve repuestos, horas ni costos. Se ocultan, no solo se deshabilitan, porque el enunciado pide que no se vean.
   - En todas las pantallas se ven el usuario autenticado, su rol y la opción de cerrar sesión.
   - Si el token expira o es inválido, la aplicación vuelve al login con un mensaje explicativo.
 - **Estados.**
@@ -602,7 +647,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 - [x] CRUD de usuarios con desactivación, reactivación y asignación de rol.
 - [x] Reseteo de contraseña por el Administrador.
 - [x] Protección del último Administrador activo.
-- [x] Autorización por rol en todos los endpoints, con 401 y 403. Hecho en activos, categorías, especialidades y técnicos; faltan repuestos, proveedores y órdenes.
+- [x] Autorización por rol en todos los endpoints, con 401 y 403.
 - [x] Solicitante/Consulta ve solo sus órdenes y el historial de los vehículos relacionados con ellas.
 - [x] El usuario responsable sale del token en todos los endpoints.
 
@@ -610,45 +655,56 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 **Ciclo de vida de la orden**
 
-- [ ] Diagnosticar, aprobar, rechazar, iniciar, reanudar, completar y cancelar según la matriz y los roles.
-- [ ] Excepción de negocio propia en toda transición no permitida.
-- [ ] Edición solo en estado Solicitada.
-- [ ] Cambios automáticos del vehículo a En Mantenimiento y de vuelta a Operativo, con sus casos borde.
-- [ ] Kilometraje en el diagnóstico y reinicio del contador al completar una preventiva.
-- [ ] Costos en vivo y congelados al cierre.
+- [x] Diagnosticar, aprobar, rechazar, iniciar, reanudar, completar y cancelar según la matriz y los roles.
+- [x] Excepción de negocio propia en toda transición no permitida.
+- [x] Edición solo en estado Solicitada.
+- [x] Cambios automáticos del vehículo a En Mantenimiento y de vuelta a Operativo, con sus casos borde.
+- [x] Kilometraje en el diagnóstico y reinicio del contador al completar una preventiva.
+- [x] Lecturas de uso con su historial (registrar y consultar).
+- [x] Costos en vivo y congelados al cierre.
 
 **Detalle de repuestos**
 
-- [ ] Registro con validación de stock y descuento en la misma operación.
-- [ ] Paso automático a En Espera de Repuesto con pendientes y mensaje claro.
-- [ ] Reanudación que consume los pendientes o se rechaza indicando qué falta.
+- [x] Registro con validación de stock y descuento en la misma operación.
+- [x] Paso automático a En Espera de Repuesto con pendientes y mensaje claro.
+- [x] Reanudación que consume los pendientes o se rechaza indicando qué falta.
 
 **Asignación de técnicos**
 
-- [ ] Asignación con validación de especialidad, actividad y disponibilidad.
-- [ ] Registro de horas solo En Ejecución.
-- [ ] Costo de mano de obra con la tarifa congelada al cierre.
+- [x] Asignación con validación de especialidad, actividad y disponibilidad.
+- [x] Registro de horas solo En Ejecución.
+- [x] Costo de mano de obra con la tarifa tomada al asignar el técnico.
 
 **Historial**
 
-- [ ] Historial automático de órdenes y de los cambios automáticos del vehículo.
+- [x] Historial automático de órdenes y de los cambios automáticos del vehículo.
 - [ ] Solo lectura para todos los roles y visible desde el detalle en el frontend.
 
 **Mantenimiento preventivo**
 
-- [ ] Evaluación bajo demanda con estados Vencido, Próximo a vencer y Al día.
-- [ ] Exclusión de vehículos dados de baja y detección de órdenes preventivas en curso.
-- [ ] Generación de la orden preventiva confirmada por el Administrador.
+- [x] Evaluación bajo demanda por porcentaje del umbral, con estados Vencido, Próximo, Al día y Sin lecturas.
+- [x] Exclusión de vehículos Fuera de Servicio y dados de baja, y detección de órdenes preventivas en curso.
+- [x] Generación de la orden preventiva confirmada por el Administrador.
 
 **Reportes y dashboard**
 
-- [ ] Dashboard del Administrador.
-- [ ] Reporte de costos por orden.
-- [ ] Reporte de historial de un vehículo.
-- [ ] Reporte de carga técnica.
+- [x] Combinación declarada: Dashboard general + Costos por orden.
+- [ ] Dashboard del Administrador. El endpoint está (`api/Dashboard`); falta la pantalla.
+- [ ] Reporte de costos por orden. El endpoint está (`api/Reporte/costos-orden/{idOrden}`); falta la pantalla.
+
+**API del Avance 2 (enunciado del Avance 2, 3.4 y 5)**
+
+- [x] Detalle de la orden con técnicos, repuestos, días en el estado, total de horas y acciones disponibles.
+- [x] Listado de órdenes filtrado por estado (uno o varios) y por vehículo.
+- [x] Historial de órdenes y vehículos del más reciente al más antiguo, paginado; el del vehículo con el código de la orden.
+- [x] Usuarios: filtros por rol y estado, `tieneActividad` y bloqueo para desactivarse o quitarse el rol a sí mismo.
+- [x] Filtros de vehículos (categoría y estado) y técnicos (especialidad y disponibilidad); cantidad de vehículos por categoría y de especialidades por técnico.
+- [x] Repuestos con faltante e indicador de stock bajo, y filtro "Stock bajo el mínimo" paginado.
+- [x] Prioridad al crear la solicitud (Media por defecto).
 
 **Frontend**
 
+- [x] Catálogos de consulta en la API para llenar los formularios.
 - [ ] React consumiendo la API en todos los módulos, sin datos fijos.
 - [ ] Menú y pantallas según el rol, y manejo de token expirado.
 - [ ] Requerimientos de interfaz de la sección 12.

@@ -120,6 +120,15 @@ public static class DevelopmentSeeder
             // El estado actual es el del último cambio; la fecha de registro, la del primero
             activo.IdEstadoActivo = estadoAnterior!.Value;
             activo.FechaRegistro = activo.HistorialEstados.First().FechaCambio;
+
+            if (activo.Codigo != DemoData.CodigoSinLecturas)
+                activo.Lecturas.Add(new LecturaUso
+                {
+                    Kilometraje = activo.KilometrajeActual,
+                    Fecha = hoy.AddDays(-DemoData.DiasUltimaLectura(activo.Codigo)),
+                    IdUsuario = usuarioIds[MasterSeeder.LoginAdmin],
+                    FechaRegistro = hoy.AddDays(-DemoData.DiasUltimaLectura(activo.Codigo)).AddHours(9)
+                });
         }
 
         context.Set<Activo>().AddRange(activos);
@@ -217,7 +226,7 @@ public static class DevelopmentSeeder
                 Codigo = $"OM-{anio}-{consecutivos[anio]:D5}",
                 IdActivo = activoIds[demo.CodigoActivo],
                 IdTipoMantenimiento = demo.IdTipoMantenimiento,
-                IdPrioridad = demo.IdPrioridad,
+                IdPrioridad = demo.IdPrioridad ?? SeedIds.PrioridadMedia,   // toda solicitud nace con prioridad; Media por defecto
                 IdEstadoOrden = ultimo.IdEstadoNuevo,          // el estado actual es el del último paso
                 IdUsuarioSolicitante = usuarioIds[demo.LoginSolicitante],
                 Motivo = demo.Motivo,
@@ -247,7 +256,7 @@ public static class DevelopmentSeeder
             // Asignaciones y detalle nacen al iniciar la ejecución
             var inicio = demo.Pasos.FirstOrDefault(p => p.IdEstadoNuevo == SeedIds.EstadoOrdenEnEjecucion);
 
-            // La tarifa solo se congela al completar; mientras tanto el costo usa la tarifa vigente del técnico
+            // Cada asignación guarda la tarifa del técnico al momento de asignarlo (enunciado Avance 2, 5.4)
             foreach (var asignacion in demo.Asignaciones ?? [])
             {
                 var tecnico = tecnicos[asignacion.Identificacion];
@@ -257,7 +266,7 @@ public static class DevelopmentSeeder
                     IdTecnico = tecnico.IdTecnico,
                     FechaAsignacion = Fecha(inicio!),
                     HorasTrabajadas = asignacion.Horas,
-                    TarifaAplicada = completada ? tecnico.TarifaHora : null
+                    TarifaAplicada = tecnico.TarifaHora
                 });
             }
 
@@ -297,9 +306,9 @@ public static class DevelopmentSeeder
             if (completada)
             {
                 orden.CostoRepuestos = orden.Detalles.Sum(d => d.Subtotal);
-                orden.CostoManoObra = Math.Round(
-                    orden.Asignaciones.Sum(a => a.HorasTrabajadas * a.TarifaAplicada!.Value),
-                    2, MidpointRounding.AwayFromZero);
+                // Redondeado por técnico, como OrdenMantenimientoService y el reporte de costos
+                orden.CostoManoObra = orden.Asignaciones.Sum(a =>
+                    Math.Round(a.HorasTrabajadas * a.TarifaAplicada!.Value, 2, MidpointRounding.AwayFromZero));
                 orden.CostoTotal = orden.CostoRepuestos + orden.CostoManoObra;
             }
 

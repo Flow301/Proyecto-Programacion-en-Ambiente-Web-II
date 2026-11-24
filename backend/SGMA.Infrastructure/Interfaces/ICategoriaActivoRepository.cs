@@ -11,6 +11,7 @@ public interface ICategoriaActivoRepository
     Task<CategoriaActivo?> GetByIdAsync(int id);
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsAsync(int id);
+    Task<bool> VariableControlExistsAsync(int idVariableControl);
     Task<bool> ExistsByNameAsync(string nombre, int? excludeId = null);
     Task<bool> ExistsByPrefijoAsync(string prefijo, int? excludeId = null);
     Task<bool> HasActivosAsync(int id);

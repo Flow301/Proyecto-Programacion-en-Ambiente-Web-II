@@ -90,15 +90,59 @@ public record class OrdenMantenimientoDetailDto
     /// <example>null</example>
     public DateTime? FechaCierre { get; set; }
 
-    /// <summary>Costo de repuestos en colones: suma de los subtotales del detalle.</summary>
+    /// <summary>Costo de repuestos en colones: suma de los subtotales del detalle. null para el Solicitante/Consulta, que no ve costos.</summary>
     /// <example>113000</example>
-    public decimal CostoRepuestos { get; set; }
+    public decimal? CostoRepuestos { get; set; }
 
-    /// <summary>Costo de mano de obra en colones: horas por tarifa de cada técnico.</summary>
+    /// <summary>Costo de mano de obra en colones: horas por tarifa de cada técnico. null para el Solicitante/Consulta.</summary>
     /// <example>57200</example>
-    public decimal CostoManoObra { get; set; }
+    public decimal? CostoManoObra { get; set; }
 
-    /// <summary>Costo total en colones: repuestos más mano de obra.</summary>
+    /// <summary>Costo total en colones: repuestos más mano de obra. null para el Solicitante/Consulta.</summary>
     /// <example>170200</example>
-    public decimal CostoTotal { get; set; }
+    public decimal? CostoTotal { get; set; }
+
+    // ---------- Calculados del Avance 2 (sección 3.4): los llena el servicio, no se guardan ----------
+
+    /// <summary>Categoría del vehículo.</summary>
+    /// <example>Camión liviano</example>
+    public string? ActivoCategoriaNombre { get; set; }
+
+    /// <summary>Estado actual del vehículo.</summary>
+    /// <example>Operativo</example>
+    public string? ActivoEstadoActivoNombre { get; set; }
+
+    /// <summary>Especialidad que requiere el tipo de mantenimiento: es con la que participan los técnicos.</summary>
+    /// <example>Frenos</example>
+    public string? TipoMantenimientoEspecialidadRequeridaNombre { get; set; }
+
+    /// <summary>Fecha y hora del último cambio de estado.</summary>
+    /// <example>2026-11-20T10:15:00</example>
+    public DateTime FechaUltimoCambioEstado { get; set; }
+
+    /// <summary>Días completos en el estado actual.</summary>
+    /// <example>2</example>
+    public int DiasEnEstadoActual { get; set; }
+
+    /// <summary>Total de horas trabajadas por todos los técnicos.</summary>
+    /// <example>6.5</example>
+    public decimal TotalHoras { get; set; }
+
+    /// <summary>Cantidad de técnicos asignados.</summary>
+    /// <example>2</example>
+    public int CantidadTecnicos { get; set; }
+
+    /// <summary>Técnicos asignados con sus horas, tarifa y costo. null para el Solicitante/Consulta, que no ve costos.</summary>
+    public List<AsignacionTecnicoDto>? Tecnicos { get; set; }
+
+    /// <summary>Repuestos consumidos y pendientes. null para el Solicitante/Consulta.</summary>
+    public OrdenRepuestosDto? Repuestos { get; set; }
+
+    /// <summary>
+    /// Acciones que el usuario autenticado puede ejecutar ahora, según el estado y su rol (la matriz de transiciones):
+    /// diagnosticar, aprobar, rechazar, iniciar, reanudar, completar, cancelar, editar, asignarTecnicos, registrarHoras
+    /// y registrarRepuestos. El frontend solo dibuja estos botones.
+    /// </summary>
+    /// <example>["diagnosticar", "cancelar"]</example>
+    public List<string> AccionesDisponibles { get; set; } = [];
 }

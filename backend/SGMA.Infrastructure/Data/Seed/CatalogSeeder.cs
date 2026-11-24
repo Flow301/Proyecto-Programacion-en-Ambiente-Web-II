@@ -62,18 +62,23 @@ public static class CatalogSeeder
             new NivelCertificacion { IdNivelCertificacion = SeedIds.NivelCertificacionExperto, Nombre = "Experto" }
         );
 
+        // VariableControl: en flota vehicular la variable de uso real es el kilometraje
+        modelBuilder.Entity<VariableControl>().HasData(
+            new VariableControl { IdVariableControl = SeedIds.VariableControlKilometraje, Nombre = "Kilometraje", Unidad = "km" }
+        );
+
         // CategoriaActivo (intervalos justificados en docs/decisiones-tecnicas.md)
         modelBuilder.Entity<CategoriaActivo>().HasData(
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaPickup, Nombre = "Pickup", Prefijo = "PKP", IntervaloKm = 10000, MargenAvisoKm = 1000 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaCamionLiviano, Nombre = "Camión liviano", Prefijo = "CML", IntervaloKm = 10000, MargenAvisoKm = 1000 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaCamionPesado, Nombre = "Camión pesado", Prefijo = "CMP", IntervaloKm = 15000, MargenAvisoKm = 1500 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaTractocamion, Nombre = "Tractocamión", Prefijo = "TRC", IntervaloKm = 20000, MargenAvisoKm = 2000 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaBusUrbano, Nombre = "Bus urbano", Prefijo = "BUS", IntervaloKm = 10000, MargenAvisoKm = 1000 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaBusInterurbano, Nombre = "Bus interurbano", Prefijo = "BUI", IntervaloKm = 15000, MargenAvisoKm = 1500 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaMicrobus, Nombre = "Microbús", Prefijo = "MCB", IntervaloKm = 10000, MargenAvisoKm = 1000 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaVanDeCarga, Nombre = "Van de carga", Prefijo = "VAN", IntervaloKm = 10000, MargenAvisoKm = 1000 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaVehiculoAdministrativo, Nombre = "Vehículo administrativo", Prefijo = "ADM", IntervaloKm = 10000, MargenAvisoKm = 1000 },
-            new CategoriaActivo { IdCategoria = SeedIds.CategoriaMotocicleta, Nombre = "Motocicleta", Prefijo = "MOT", IntervaloKm = 5000, MargenAvisoKm = 500 }
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaPickup, Nombre = "Pickup", Prefijo = "PKP", IntervaloKm = 10000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaCamionLiviano, Nombre = "Camión liviano", Prefijo = "CML", IntervaloKm = 10000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaCamionPesado, Nombre = "Camión pesado", Prefijo = "CMP", IntervaloKm = 15000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaTractocamion, Nombre = "Tractocamión", Prefijo = "TRC", IntervaloKm = 20000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaBusUrbano, Nombre = "Bus urbano", Prefijo = "BUS", IntervaloKm = 10000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaBusInterurbano, Nombre = "Bus interurbano", Prefijo = "BUI", IntervaloKm = 15000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaMicrobus, Nombre = "Microbús", Prefijo = "MCB", IntervaloKm = 10000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaVanDeCarga, Nombre = "Van de carga", Prefijo = "VAN", IntervaloKm = 10000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaVehiculoAdministrativo, Nombre = "Vehículo administrativo", Prefijo = "ADM", IntervaloKm = 10000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje },
+            new CategoriaActivo { IdCategoria = SeedIds.CategoriaMotocicleta, Nombre = "Motocicleta", Prefijo = "MOT", IntervaloKm = 5000, PorcentajeAviso = 90, IdVariableControl = SeedIds.VariableControlKilometraje }
         );
 
         // Especialidad

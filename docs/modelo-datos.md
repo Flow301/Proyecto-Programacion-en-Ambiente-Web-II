@@ -81,6 +81,14 @@ Valores: 1 Preventivo, 2 Correctivo, 3 Emergencia.
 
 Valores: 1 Básico, 2 Intermedio, 3 Avanzado, 4 Experto.
 
+### VariableControl
+
+- `IdVariableControl` (int): clave primaria.
+- `Nombre` (nvarchar(40)): obligatorio y único.
+- `Unidad` (nvarchar(10)): obligatorio; se muestra junto al umbral y las lecturas.
+
+Valores: 1 Kilometraje (km). Es la variable de control del mantenimiento preventivo de cada categoría.
+
 ### TipoMantenimiento
 
 - `IdTipoMantenimiento` (int): clave primaria.
@@ -101,8 +109,9 @@ Los valores están en la sección de seeders.
 - `Nombre` (nvarchar(60)): obligatorio y único.
 - `Descripcion` (nvarchar(250)): opcional.
 - `Prefijo` (char(3)): obligatorio y único; se usa en el código de los vehículos.
+- `IdVariableControl` (int): obligatorio, FK a `VariableControl`; por defecto 1 (Kilometraje).
 - `IntervaloKm` (int): obligatorio; cada cuántos km corresponde el mantenimiento preventivo.
-- `MargenAvisoKm` (int): obligatorio; cuántos km antes del intervalo el vehículo pasa a "próximo a vencer".
+- `PorcentajeAviso` (int): obligatorio, de 1 a 99; desde qué porcentaje del intervalo el vehículo pasa a "Próximo".
 
 Se siembra con `HasData`, como la categoría del material.
 
@@ -121,8 +130,8 @@ Se siembra con `HasData`, como la categoría del material.
 - `Marca` (nvarchar(40)): obligatorio.
 - `Modelo` (nvarchar(40)): obligatorio.
 - `Anio` (smallint): obligatorio; año de fabricación.
-- `KilometrajeActual` (int): obligatorio.
-- `KilometrajeUltimoPreventivo` (int): obligatorio.
+- `KilometrajeActual` (int): obligatorio; la lectura actual. Solo cambia con una lectura de uso (la acción del Administrador o el diagnóstico de una orden), nunca con el PUT del vehículo. Es token de concurrencia, como `IdEstadoActivo`.
+- `KilometrajeUltimoPreventivo` (int): obligatorio; la lectura base. La fija el registro del vehículo y después solo la cambia completar una orden preventiva.
 - `IntervaloKmPropio` (int): opcional; si existe, reemplaza al de la categoría.
 - `FechaRegistro` (datetime2): obligatorio, con valor por defecto `sysdatetime()`.
 
@@ -229,7 +238,7 @@ La clave primaria es compuesta, (`IdRepuesto`, `IdProveedor`), lo que impide dup
 - `IdTecnico` (int): FK a `Tecnico`.
 - `FechaAsignacion` (datetime2): obligatorio.
 - `HorasTrabajadas` (decimal(6,2)): obligatorio, empieza en 0; cada registro de horas se suma.
-- `TarifaAplicada` (decimal(10,2)): opcional; copia de la tarifa del técnico al cerrar la orden.
+- `TarifaAplicada` (decimal(10,2)): opcional; copia de la tarifa del técnico al asignarlo. Solo queda vacía en asignaciones anteriores a esa regla, que la toman al cerrar la orden.
 
 La clave primaria es compuesta, (`IdOrden`, `IdTecnico`), así que un técnico no se asigna dos veces a la misma orden.
 
@@ -281,6 +290,20 @@ La clave primaria es compuesta, (`IdOrden`, `IdRepuesto`). Guarda lo que no se p
 
 Ninguna de las dos tablas tiene endpoints de escritura: solo las llenan los servicios al cambiar un estado, y los seeders.
 
+### LecturaUso
+
+Historial de lecturas del kilometraje (enunciado del Avance 2, sección 5.8). Nunca se edita ni se borra.
+
+- `IdLectura` (int): clave primaria.
+- `IdActivo` (int): obligatorio, FK a `Activo`.
+- `Kilometraje` (int): obligatorio, 0 o más; no menor que la lectura anterior del vehículo.
+- `Fecha` (date): obligatorio; la fecha de la lectura, no futura ni anterior a la última.
+- `IdUsuario` (int): obligatorio, FK a `Usuario`; quien la registró.
+- `IdOrden` (int): opcional, FK a `OrdenMantenimiento`; la orden cuyo diagnóstico tomó la lectura.
+- `FechaRegistro` (datetime2): obligatorio, con valor por defecto `sysdatetime()`.
+
+Índice `IX_LecturaUso_Activo_Fecha` sobre (`IdActivo`, `Fecha`), porque toda consulta es "las lecturas de un vehículo, de la más reciente a la más antigua". Un vehículo sin ninguna fila aquí queda "Sin lecturas" en la evaluación preventiva.
+
 ---
 
 ## Relaciones
@@ -288,9 +311,10 @@ Ninguna de las dos tablas tiene endpoints de escritura: solo las llenan los serv
 **Relaciones 1:N**
 
 - Un `Rol` tiene muchos `Usuario`.
+- Una `VariableControl` está en muchas `CategoriaActivo`.
 - Una `CategoriaActivo` tiene muchos `Activo`.
 - Un `EstadoActivo` está en muchos `Activo`.
-- Un `Activo` tiene muchas `OrdenMantenimiento` y muchos `HistorialEstadoActivo`.
+- Un `Activo` tiene muchas `OrdenMantenimiento`, muchos `HistorialEstadoActivo` y muchas `LecturaUso`.
 - Una `NaturalezaMantenimiento` agrupa muchos `TipoMantenimiento`.
 - Una `Especialidad` es requerida por muchos `TipoMantenimiento`.
 - Un `TipoMantenimiento` está en muchas `OrdenMantenimiento`.
@@ -327,7 +351,7 @@ Todos los índices únicos se configuran con `.IsUnique()`. El material de clase
 
 Son la última defensa en la base; las mismas reglas se validan antes en los servicios.
 
-- **CategoriaActivo:** `IntervaloKm > 0`, y `MargenAvisoKm >= 0 AND MargenAvisoKm < IntervaloKm`.
+- **CategoriaActivo:** `IntervaloKm > 0`, y `PorcentajeAviso BETWEEN 1 AND 99`.
 - **Activo:**
   - `KilometrajeActual >= 0`;
   - `KilometrajeUltimoPreventivo BETWEEN 0 AND KilometrajeActual`;
@@ -339,6 +363,7 @@ Son la última defensa en la base; las mismas reglas se validan antes en los ser
 - **AsignacionTecnico:** `HorasTrabajadas >= 0`.
 - **DetalleRepuesto:** `Cantidad > 0` y `CostoUnitario > 0`.
 - **RepuestoPendiente:** `Cantidad > 0`.
+- **LecturaUso:** `Kilometraje >= 0`.
 
 ---
 
@@ -359,18 +384,18 @@ Todos los nombres de personas y empresas son ficticios. Las marcas y modelos de 
 
 ### Categorías (HasData, 10)
 
-Cada categoría indica su prefijo, su intervalo y su margen de aviso. La justificación de estos valores está en [decisiones técnicas](decisiones-tecnicas.md).
+Cada categoría indica su prefijo, su intervalo y su porcentaje de aviso, que es del 90 % en todas. La justificación de estos valores está en [decisiones técnicas](decisiones-tecnicas.md).
 
-1. Pickup — `PKP` — cada 10 000 km — aviso a 1 000 km.
-2. Camión liviano — `CML` — 10 000 km — 1 000 km.
-3. Camión pesado — `CMP` — 15 000 km — 1 500 km.
-4. Tractocamión — `TRC` — 20 000 km — 2 000 km.
-5. Bus urbano — `BUS` — 10 000 km — 1 000 km.
-6. Bus interurbano — `BUI` — 15 000 km — 1 500 km.
-7. Microbús — `MCB` — 10 000 km — 1 000 km.
-8. Van de carga — `VAN` — 10 000 km — 1 000 km.
-9. Vehículo administrativo — `ADM` — 10 000 km — 1 000 km.
-10. Motocicleta — `MOT` — 5 000 km — 500 km.
+1. Pickup — `PKP` — cada 10 000 km — aviso al 90 %.
+2. Camión liviano — `CML` — 10 000 km — 90 %.
+3. Camión pesado — `CMP` — 15 000 km — 90 %.
+4. Tractocamión — `TRC` — 20 000 km — 90 %.
+5. Bus urbano — `BUS` — 10 000 km — 90 %.
+6. Bus interurbano — `BUI` — 15 000 km — 90 %.
+7. Microbús — `MCB` — 10 000 km — 90 %.
+8. Van de carga — `VAN` — 10 000 km — 90 %.
+9. Vehículo administrativo — `ADM` — 10 000 km — 90 %.
+10. Motocicleta — `MOT` — 5 000 km — 90 %.
 
 Microbús y Motocicleta quedan sin vehículos a propósito, para poder demostrar que una categoría sin vehículos sí se puede eliminar.
 
@@ -439,12 +464,15 @@ Cada vehículo lleva también su descripción, su fecha de adquisición y su val
 
 **Pendiente:** conseguir las 12 fotos, propias o con licencia libre.
 
+Cada vehículo tiene una lectura de uso con su kilometraje actual, registrada por `admin` tres días antes de la siembra (la de `ADM-0001`, antes de su baja). `VAN-0001` no tiene ninguna, a propósito.
+
 Con estos datos, la evaluación preventiva muestra todos los casos:
 
-- **Vencidos:** `PKP-0003` (ya tiene una orden preventiva abierta, así que aparece como "orden en curso") y `BUS-0002`.
-- **Próximos a vencer:** `PKP-0002` (faltan 600 km), `CML-0002` (350 km) y `TRC-0001` (1 400 km).
-- **Al día:** el resto.
-- **Excluido:** `ADM-0001`, por estar dado de baja.
+- **Vencido:** `PKP-0003` (142 %; ya tiene una orden preventiva abierta, así que aparece como "Orden en curso").
+- **Próximos:** `CML-0002` (96,5 %), `PKP-0002` (94 %) y `TRC-0001` (93 %).
+- **Al día:** el resto; `CMP-0001` y `CML-0001` aparecen "En taller" porque están En Mantenimiento.
+- **Sin lecturas:** `VAN-0001`.
+- **Excluidos:** `BUS-0002`, por estar Fuera de Servicio, y `ADM-0001`, por estar dado de baja.
 
 ### Técnicos (10)
 
@@ -525,11 +553,11 @@ Los stocks listados son los finales, ya descontado lo que consumen las órdenes 
 - Las pastillas de freno permiten demostrar que un proveedor inactivo no entra en la recomendación.
 - La llanta 245/70R16 tiene un solo proveedor.
 
-### Órdenes de mantenimiento (12)
+### Órdenes de mantenimiento (14)
 
 Formato de cada orden: código — vehículo — tipo — solicitante — estado, con sus datos principales.
 
-1. `OM-2026-00001` — `PKP-0003` — Servicio preventivo por kilometraje — `admin` — **Solicitada**. Se generó desde la evaluación preventiva porque el vehículo superó el intervalo.
+1. `OM-2026-00001` — `PKP-0003` — Servicio preventivo por kilometraje — `admin` — **Solicitada**. Prioridad Alta. Se generó desde la evaluación preventiva porque el vehículo superó el intervalo.
 2. `OM-2026-00002` — `BUS-0001` — Reparación de aire acondicionado — `cjimenez` — **Solicitada**. Los pasajeros reportan que el aire no enfría.
 3. `OM-2026-00003` — `CML-0002` — Reparación de frenos — `jchaves` — **Diagnosticada**. Prioridad Alta, 142 650 km; ruido metálico al frenar por desgaste de las zapatas traseras.
 4. `OM-2026-00004` — `TRC-0001` — Cambio y alineamiento de llantas — `jchaves` — **Aprobada**. Prioridad Media, 538 600 km, programada para 14 días después de la fecha en que corre el seeder, para que nunca aparezca vencida en una demostración; desgaste irregular en el eje delantero.
@@ -556,6 +584,16 @@ Formato de cada orden: código — vehículo — tipo — solicitante — estado
     - Pendiente: 2 amortiguadores delanteros.
 11. `OM-2026-00011` — `VAN-0001` — Reparación de transmisión y embrague — `rmendez` — **Cancelada** desde Aprobada. La unidad se envía a la agencia por garantía.
 12. `OM-2026-00012` — `CMP-0001` — Atención de emergencia en taller — `jchaves` — **Solicitada**. Fuga de combustible detectada durante la reparación del motor. Muestra la excepción de emergencia: el vehículo ya estaba En Mantenimiento por la orden 6.
+13. `OM-2026-00013` — `BUS-0001` — Servicio preventivo por kilometraje — `admin` — **Completada** hace unos 150 días.
+    - Prioridad Baja, 350 000 km (la lectura base actual del bus).
+    - Técnico: Jorge Mora (3 h). Detalle: 1 filtro de aceite, 1 filtro de aire y 3 galones de aceite. Total ₡99 500.
+14. `OM-2026-00014` — `PKP-0002` — Servicio preventivo por kilometraje — `admin` — **Completada** hace unos 120 días.
+    - Prioridad Baja, 119 500 km (la lectura base actual de la pickup).
+    - Técnico: Jorge Mora (2,5 h). Detalle: 1 filtro de aceite y 2 galones de aceite. Total ₡56 100.
+
+Las órdenes 13 y 14 son las comparables del reporte de Costos por orden: con la 9 son tres preventivos por kilometraje de prioridad Baja. La 9 queda "Por debajo" (−16,5 %), la 13 "Por encima" y la 14 "Por debajo". Se agregaron después de las otras 12, por eso su código es mayor aunque sean más antiguas.
+
+Las órdenes Solicitadas sin prioridad en los datos de demostración nacen con prioridad Media, como cualquier solicitud nueva.
 
 Si en el Avance 1 no alcanza el tiempo, priorizamos sembrar las órdenes 1 a 7 y 12, incluidas las asignaciones de la orden 6. Las órdenes 8 a 11 se agregan al inicio del Avance 2, recreando la base con `dotnet ef database drop` y `dotnet ef database update`.
 
@@ -568,4 +606,4 @@ Si en el Avance 1 no alcanza el tiempo, priorizamos sembrar las órdenes 1 a 7 y
   - el paso de `BUS-0002` a Fuera de Servicio (`admin`, "Impacto en la suspensión delantera");
   - el de `ADM-0001` a Dado de Baja (`admin`, "Unidad vendida").
 - Los técnicos asignados tienen la especialidad que exige el tipo de cada orden. El kilometraje del último preventivo de `BUI-0001` y `PKP-0001` coincide con el de su orden preventiva completada.
-- Las órdenes completadas tienen fecha de cierre, tarifa aplicada en cada asignación y los tres costos congelados. La cancelada y la rechazada tienen fecha de cierre y no tienen costos.
+- Todas las asignaciones tienen su tarifa aplicada. Las órdenes completadas tienen fecha de cierre y los tres costos congelados. La cancelada y la rechazada tienen fecha de cierre y no tienen costos.

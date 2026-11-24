@@ -55,6 +55,7 @@ namespace SGMA.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("IdEstadoActivo")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<string>("Imagen")
@@ -65,6 +66,7 @@ namespace SGMA.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("KilometrajeActual")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<int>("KilometrajeUltimoPreventivo")
@@ -159,16 +161,21 @@ namespace SGMA.Infrastructure.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
-                    b.Property<int>("IntervaloKm")
-                        .HasColumnType("int");
+                    b.Property<int>("IdVariableControl")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
-                    b.Property<int>("MargenAvisoKm")
+                    b.Property<int>("IntervaloKm")
                         .HasColumnType("int");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<int>("PorcentajeAviso")
+                        .HasColumnType("int");
 
                     b.Property<string>("Prefijo")
                         .IsRequired()
@@ -180,6 +187,8 @@ namespace SGMA.Infrastructure.Migrations
                     b.HasKey("IdCategoria")
                         .HasName("PK_CategoriaActivo");
 
+                    b.HasIndex("IdVariableControl");
+
                     b.HasIndex(new[] { "Nombre" }, "UQ_CategoriaActivo_Nombre")
                         .IsUnique();
 
@@ -190,88 +199,98 @@ namespace SGMA.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_CategoriaActivo_IntervaloKm", "[IntervaloKm] > 0");
 
-                            t.HasCheckConstraint("CK_CategoriaActivo_MargenAvisoKm", "[MargenAvisoKm] >= 0 AND [MargenAvisoKm] < [IntervaloKm]");
+                            t.HasCheckConstraint("CK_CategoriaActivo_PorcentajeAviso", "[PorcentajeAviso] BETWEEN 1 AND 99");
                         });
 
                     b.HasData(
                         new
                         {
                             IdCategoria = 1,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
-                            MargenAvisoKm = 1000,
                             Nombre = "Pickup",
+                            PorcentajeAviso = 90,
                             Prefijo = "PKP"
                         },
                         new
                         {
                             IdCategoria = 2,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
-                            MargenAvisoKm = 1000,
                             Nombre = "Camión liviano",
+                            PorcentajeAviso = 90,
                             Prefijo = "CML"
                         },
                         new
                         {
                             IdCategoria = 3,
+                            IdVariableControl = 1,
                             IntervaloKm = 15000,
-                            MargenAvisoKm = 1500,
                             Nombre = "Camión pesado",
+                            PorcentajeAviso = 90,
                             Prefijo = "CMP"
                         },
                         new
                         {
                             IdCategoria = 4,
+                            IdVariableControl = 1,
                             IntervaloKm = 20000,
-                            MargenAvisoKm = 2000,
                             Nombre = "Tractocamión",
+                            PorcentajeAviso = 90,
                             Prefijo = "TRC"
                         },
                         new
                         {
                             IdCategoria = 5,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
-                            MargenAvisoKm = 1000,
                             Nombre = "Bus urbano",
+                            PorcentajeAviso = 90,
                             Prefijo = "BUS"
                         },
                         new
                         {
                             IdCategoria = 6,
+                            IdVariableControl = 1,
                             IntervaloKm = 15000,
-                            MargenAvisoKm = 1500,
                             Nombre = "Bus interurbano",
+                            PorcentajeAviso = 90,
                             Prefijo = "BUI"
                         },
                         new
                         {
                             IdCategoria = 7,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
-                            MargenAvisoKm = 1000,
                             Nombre = "Microbús",
+                            PorcentajeAviso = 90,
                             Prefijo = "MCB"
                         },
                         new
                         {
                             IdCategoria = 8,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
-                            MargenAvisoKm = 1000,
                             Nombre = "Van de carga",
+                            PorcentajeAviso = 90,
                             Prefijo = "VAN"
                         },
                         new
                         {
                             IdCategoria = 9,
+                            IdVariableControl = 1,
                             IntervaloKm = 10000,
-                            MargenAvisoKm = 1000,
                             Nombre = "Vehículo administrativo",
+                            PorcentajeAviso = 90,
                             Prefijo = "ADM"
                         },
                         new
                         {
                             IdCategoria = 10,
+                            IdVariableControl = 1,
                             IntervaloKm = 5000,
-                            MargenAvisoKm = 500,
                             Nombre = "Motocicleta",
+                            PorcentajeAviso = 90,
                             Prefijo = "MOT"
                         });
                 });
@@ -610,6 +629,49 @@ namespace SGMA.Infrastructure.Migrations
                     b.ToTable("HistorialEstadoOrden");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.LecturaUso", b =>
+                {
+                    b.Property<int>("IdLectura")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdLectura"));
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysdatetime())");
+
+                    b.Property<int>("IdActivo")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdOrden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdUsuario")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Kilometraje")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdLectura")
+                        .HasName("PK_LecturaUso");
+
+                    b.HasIndex("IdOrden");
+
+                    b.HasIndex("IdUsuario");
+
+                    b.HasIndex(new[] { "IdActivo", "Fecha" }, "IX_LecturaUso_Activo_Fecha");
+
+                    b.ToTable("LecturaUso", t =>
+                        {
+                            t.HasCheckConstraint("CK_LecturaUso_Kilometraje", "[Kilometraje] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.NaturalezaMantenimiento", b =>
                 {
                     b.Property<int>("IdNaturaleza")
@@ -735,6 +797,7 @@ namespace SGMA.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("IdEstadoOrden")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<int?>("IdPrioridad")
@@ -1284,6 +1347,41 @@ namespace SGMA.Infrastructure.Migrations
                     b.ToTable("Usuario");
                 });
 
+            modelBuilder.Entity("SGMA.Domain.Entities.VariableControl", b =>
+                {
+                    b.Property<int>("IdVariableControl")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdVariableControl"));
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Unidad")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("IdVariableControl")
+                        .HasName("PK_VariableControl");
+
+                    b.HasIndex(new[] { "Nombre" }, "UQ_VariableControl_Nombre")
+                        .IsUnique();
+
+                    b.ToTable("VariableControl");
+
+                    b.HasData(
+                        new
+                        {
+                            IdVariableControl = 1,
+                            Nombre = "Kilometraje",
+                            Unidad = "km"
+                        });
+                });
+
             modelBuilder.Entity("SGMA.Domain.Entities.Activo", b =>
                 {
                     b.HasOne("SGMA.Domain.Entities.CategoriaActivo", "Categoria")
@@ -1324,6 +1422,18 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("Orden");
 
                     b.Navigation("Tecnico");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.CategoriaActivo", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.VariableControl", "VariableControl")
+                        .WithMany("Categorias")
+                        .HasForeignKey("IdVariableControl")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_CategoriaActivo_VariableControl");
+
+                    b.Navigation("VariableControl");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.DetalleRepuesto", b =>
@@ -1425,6 +1535,35 @@ namespace SGMA.Infrastructure.Migrations
                     b.Navigation("EstadoAnterior");
 
                     b.Navigation("EstadoNuevo");
+
+                    b.Navigation("Orden");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.LecturaUso", b =>
+                {
+                    b.HasOne("SGMA.Domain.Entities.Activo", "Activo")
+                        .WithMany("Lecturas")
+                        .HasForeignKey("IdActivo")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_LecturaUso_Activo");
+
+                    b.HasOne("SGMA.Domain.Entities.OrdenMantenimiento", "Orden")
+                        .WithMany()
+                        .HasForeignKey("IdOrden")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_LecturaUso_OrdenMantenimiento");
+
+                    b.HasOne("SGMA.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("IdUsuario")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_LecturaUso_Usuario");
+
+                    b.Navigation("Activo");
 
                     b.Navigation("Orden");
 
@@ -1586,6 +1725,8 @@ namespace SGMA.Infrastructure.Migrations
             modelBuilder.Entity("SGMA.Domain.Entities.Activo", b =>
                 {
                     b.Navigation("HistorialEstados");
+
+                    b.Navigation("Lecturas");
                 });
 
             modelBuilder.Entity("SGMA.Domain.Entities.CategoriaActivo", b =>
@@ -1637,6 +1778,11 @@ namespace SGMA.Infrastructure.Migrations
             modelBuilder.Entity("SGMA.Domain.Entities.Tecnico", b =>
                 {
                     b.Navigation("TecnicoEspecialidades");
+                });
+
+            modelBuilder.Entity("SGMA.Domain.Entities.VariableControl", b =>
+                {
+                    b.Navigation("Categorias");
                 });
 #pragma warning restore 612, 618
         }

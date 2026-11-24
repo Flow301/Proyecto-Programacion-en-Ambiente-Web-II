@@ -40,4 +40,10 @@ public record class UsuarioDto
     /// <summary>Fecha del último inicio de sesión; null si nunca ha iniciado sesión.</summary>
     /// <example>2026-10-28T08:05:00</example>
     public DateTime? UltimoAcceso { get; set; }
+
+    /// <summary>true si el usuario tiene actividad registrada (órdenes, cambios de estado o lecturas): no se puede eliminar,
+    /// solo desactivar. Calculado, no se guarda.</summary>
+    /// <example>true</example>
+    // Lo llena el servicio con UsuarioRepository.GetConActividadAsync
+    public bool TieneActividad { get; set; }
 }

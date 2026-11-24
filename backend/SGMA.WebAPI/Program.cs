@@ -18,11 +18,15 @@ using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Implementation;
 using SGMA.Infrastructure.Interfaces;
 using SGMA.WebAPI.Handlers;
+using SGMA.Shared.Constants;
 using SGMA.WebAPI.Security;
 using Serilog;
 using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Kestrel no anuncia su nombre en el encabezado Server (como en el material, Laboratorio 13)
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
 // Serilog reemplaza al proveedor de logging por defecto (como en el material)
 builder.Services.AddSerilog((services, logConfig) => logConfig
@@ -115,6 +119,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 context.HandleResponse(); // reemplaza la respuesta vacía por defecto
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.Headers.WWWAuthenticate = "Bearer"; // indica qué credencial se espera (como en el material)
                 return context.Response.WriteAsJsonAsync(Result<object>.Failure(401, "No autorizado",
                     "Debe iniciar sesión: el token no se envió, no es válido o ya expiró."));
             },
@@ -127,10 +132,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Políticas de la matriz de permisos (como en el material, Laboratorio 9-2): los controladores usan [Authorize(Policy = ...)]
 // Todo endpoint exige token salvo los marcados con [AllowAnonymous]: ninguno queda abierto por olvido.
-// Los roles de cada acción se indican con [Authorize(Roles = ...)] en los controladores.
 builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AuthorizationPolicies.SoloAdministrador, policy => policy.RequireRole(Roles.Administrador))
+    .AddPolicy(AuthorizationPolicies.SoloCoordinador, policy => policy.RequireRole(Roles.CoordinadorTecnico))
+    .AddPolicy(AuthorizationPolicies.AdministradorOCoordinador,
+        policy => policy.RequireRole(Roles.Administrador, Roles.CoordinadorTecnico))
+    .AddPolicy(AuthorizationPolicies.AdministradorOSolicitante,
+        policy => policy.RequireRole(Roles.Administrador, Roles.SolicitanteConsulta))
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
+// Contador de intentos fallidos de login por usuario (AuthService)
+builder.Services.AddMemoryCache();
+
+// CORS: solo el frontend autorizado, leído desde appsettings.json (como en el material, Laboratorio 13)
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+builder.Services.AddCors(options =>
+    options.AddPolicy("Frontend", policy => policy
+        .WithOrigins(allowedOrigins)                        // orígenes desde la configuración, no desde el código
+        .WithMethods("GET", "POST", "PUT", "DELETE")        // solo los verbos que usa la API
+        .WithHeaders("Content-Type", "Authorization")       // Authorization lleva el token JWT
+        .WithExposedHeaders("Location")                     // React puede leer el Location de un 201
+        .SetPreflightMaxAge(TimeSpan.FromMinutes(10))));    // el navegador recuerda el permiso 10 minutos
 
 // Seeders en tiempo de ejecución, ver docs/modelo-datos.md
 // Primero el MasterSeeder (admin, con la contraseña de Seed:AdminPassword) y después,
@@ -181,6 +206,14 @@ builder.Services.AddScoped<IRepuestoRepository, RepuestoRepository>();
 builder.Services.AddScoped<IRepuestoService, RepuestoService>();
 builder.Services.AddScoped<IOrdenMantenimientoRepository, OrdenMantenimientoRepository>();
 builder.Services.AddScoped<IOrdenMantenimientoService, OrdenMantenimientoService>();
+builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
+builder.Services.AddScoped<ICatalogoService, CatalogoService>();
+builder.Services.AddScoped<IPreventivoRepository, PreventivoRepository>();
+builder.Services.AddScoped<IPreventivoService, PreventivoService>();
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IReporteRepository, ReporteRepository>();
+builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
@@ -197,8 +230,31 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 
+// Encabezados de seguridad en todas las respuestas, también en las de error (como en el material, Laboratorio 13)
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        var headers = context.Response.Headers;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["X-Frame-Options"] = "DENY";
+        headers["Referrer-Policy"] = "no-referrer";
+        headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+
+        // La API solo entrega JSON e imágenes: no necesita cargar scripts, estilos ni marcos.
+        // Scalar sí es una página con scripts, por eso queda fuera de esta política.
+        if (!context.Request.Path.StartsWithSegments("/scalar"))
+            headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
+
 app.UseSerilogRequestLogging(); // una línea de log por petición: método, ruta, código y duración
 app.UseExceptionHandler();      // todo lo que viene después queda protegido por el manejador global
+app.UseCors("Frontend");        // antes de la autenticación: la petición previa (OPTIONS) del navegador no lleva token
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

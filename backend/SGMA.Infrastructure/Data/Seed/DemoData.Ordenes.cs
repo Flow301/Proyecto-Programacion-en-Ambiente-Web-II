@@ -41,9 +41,9 @@ public static partial class DemoData
     private const string TecnicoKevinArias = "1-1532-0098";       // motores diésel
     private const string TecnicoSilviaNavarro = "3-0457-0612";    // suspensión y dirección
 
-    // ---------- Órdenes de mantenimiento (12) ----------
+    // ---------- Órdenes de mantenimiento (14) ----------
     // Las fechas de los pasos que cambian el estado del vehículo coinciden con DemoData.HistorialActivos.
-    // Los stocks de DemoData.Repuestos ya tienen descontado lo que consumen las órdenes 6, 8 y 9.
+    // Los stocks de DemoData.Repuestos ya tienen descontado lo que consumen las órdenes 6, 8, 9, 13 y 14.
     public static readonly IReadOnlyList<OrdenDemo> Ordenes =
     [
         // 1. Preventivo generado desde la evaluación: PKP-0003 superó su intervalo (vencido por 4 200 km)
@@ -51,7 +51,8 @@ public static partial class DemoData
             "Generada desde la evaluación preventiva: el vehículo superó el intervalo de 10 000 km.",
             [
                 new(SeedIds.EstadoOrdenSolicitada, MasterSeeder.LoginAdmin, 3, 9)
-            ]),
+            ],
+            IdPrioridad: SeedIds.PrioridadAlta),    // la generación preventiva sugiere Alta cuando el vehículo está Vencido
 
         // 2. Correctivo recién solicitado
         new(2, "BUS-0001", SeedIds.TipoMantenimientoReparacionAireAcondicionado, "cjimenez",
@@ -192,6 +193,44 @@ public static partial class DemoData
             "Fuga de combustible detectada durante la reparación del motor.",
             [
                 new(SeedIds.EstadoOrdenSolicitada, "jchaves", 1, 15)
-            ])
+            ]),
+
+        // 13 y 14. Preventivos anteriores, Completados, del mismo tipo y prioridad que la orden 9: son las órdenes
+        // comparables del reporte de Costos por orden (enunciado Avance 2, 5.9, B1). Se agregaron después de las otras 12,
+        // por eso su código es mayor aunque sean más antiguas. El kilometraje del diagnóstico es la lectura base actual
+        // de cada vehículo (DemoData.Activos), porque completarlas la fijó.
+        // 13. Completada (₡72 400 aprox.)
+        new(13, "BUS-0001", SeedIds.TipoMantenimientoPreventivoKilometraje, MasterSeeder.LoginAdmin,
+            "Generada desde la evaluación preventiva: el bus llegó al intervalo de 10 000 km.",
+            [
+                new(SeedIds.EstadoOrdenSolicitada, MasterSeeder.LoginAdmin, 152, 9),
+                new(SeedIds.EstadoOrdenDiagnosticada, "lvargas", 151, 10),
+                new(SeedIds.EstadoOrdenAprobada, MasterSeeder.LoginAdmin, 151, 14),
+                new(SeedIds.EstadoOrdenEnEjecucion, "lvargas", 150, 8),
+                new(SeedIds.EstadoOrdenCompletada, "lvargas", 149, 8)
+            ],
+            IdPrioridad: SeedIds.PrioridadBaja,
+            Diagnostico: "Servicio preventivo: cambio de aceite y de los filtros de aceite y aire.",
+            KilometrajeDiagnostico: 350_000,
+            DiasHastaProgramada: -150,
+            Asignaciones: [new(TecnicoJorgeMora, 3m)],
+            Detalle: [new("FIL-ACE-001", 1), new("FIL-AIR-001", 1), new("ACE-1540-GAL", 3)]),
+
+        // 14. Completada
+        new(14, "PKP-0002", SeedIds.TipoMantenimientoPreventivoKilometraje, MasterSeeder.LoginAdmin,
+            "Generada desde la evaluación preventiva: la pickup llegó al intervalo de 10 000 km.",
+            [
+                new(SeedIds.EstadoOrdenSolicitada, MasterSeeder.LoginAdmin, 122, 9),
+                new(SeedIds.EstadoOrdenDiagnosticada, "asolis", 121, 10),
+                new(SeedIds.EstadoOrdenAprobada, MasterSeeder.LoginAdmin, 121, 15),
+                new(SeedIds.EstadoOrdenEnEjecucion, "asolis", 120, 8),
+                new(SeedIds.EstadoOrdenCompletada, "asolis", 120, 15)
+            ],
+            IdPrioridad: SeedIds.PrioridadBaja,
+            Diagnostico: "Servicio preventivo: cambio de aceite y filtro.",
+            KilometrajeDiagnostico: 119_500,
+            DiasHastaProgramada: -120,
+            Asignaciones: [new(TecnicoJorgeMora, 2.5m)],
+            Detalle: [new("FIL-ACE-001", 1), new("ACE-1540-GAL", 2)])
     ];
 }

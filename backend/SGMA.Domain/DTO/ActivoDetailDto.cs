@@ -80,4 +80,9 @@ public record class ActivoDetailDto
     /// <summary>Fecha y hora en que se registró en el sistema.</summary>
     /// <example>2026-10-17T09:30:00</example>
     public DateTime FechaRegistro { get; set; }
+
+    /// <summary>Bloque "Uso y mantenimiento preventivo": última lectura, uso acumulado, umbral, porcentaje y estado. null si el
+    /// vehículo está Fuera de Servicio o Dado de Baja, porque no se evalúa.</summary>
+    // Lo llena el servicio con la misma consulta de api/Preventivo: Mapster no lo toca
+    public PreventivoEvaluacionDto? Preventivo { get; set; }
 }

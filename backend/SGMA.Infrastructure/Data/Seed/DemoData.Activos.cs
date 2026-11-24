@@ -27,6 +27,14 @@ public static partial class DemoData
         new() { Codigo = "ADM-0001", Nombre = "Vehículo de la gerencia", Descripcion = "SUV asignada a la gerencia general; vendida al renovar la flota administrativa.", IdCategoria = SeedIds.CategoriaVehiculoAdministrativo, FechaAdquisicion = new DateTime(2012, 3, 1), ValorReferencia = 6_500_000m, Placa = "BKL-482", Marca = "Toyota", Modelo = "RAV4", Anio = 2012, KilometrajeActual = 241_000, KilometrajeUltimoPreventivo = 236_000 }
     ];
 
+    // ---------- Lecturas de uso ----------
+    // Cada vehículo tiene una lectura con su kilometraje actual, registrada por el Administrador. VAN-0001 no tiene
+    // ninguna, para que la demostración muestre el estado preventivo "Sin lecturas" (enunciado Avance 2, 5.8).
+    public const string CodigoSinLecturas = "VAN-0001";
+
+    // Días antes de la siembra de la lectura; la del vehículo dado de baja es anterior a su baja (30 días)
+    public static int DiasUltimaLectura(string codigo) => codigo == "ADM-0001" ? 31 : 3;
+
     // ---------- Historial de estados de los vehículos ----------
     // Código del vehículo, login de quien hizo el cambio, estado nuevo, días antes de la siembra y observación.
     // El estado anterior y el estado actual del vehículo los deduce DevelopmentSeeder del orden de las filas.
@@ -42,6 +50,11 @@ public static partial class DemoData
     [
         .. Activos().Select(a => new HistorialActivoDemo(a.Codigo, MasterSeeder.LoginAdmin, SeedIds.EstadoActivoOperativo, DiasCargaInicial, "Registro inicial de la flota")),
 
+        // Órdenes 13 y 14 (preventivos anteriores, Completados)
+        new("BUS-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 150, "Inicio de la orden OM-2026-00013", 13),
+        new("BUS-0001", "lvargas", SeedIds.EstadoActivoOperativo, 149, "Orden OM-2026-00013 completada", 13),
+        new("PKP-0002", "asolis", SeedIds.EstadoActivoEnMantenimiento, 120, "Inicio de la orden OM-2026-00014", 14),
+        new("PKP-0002", "asolis", SeedIds.EstadoActivoOperativo, 120, "Orden OM-2026-00014 completada", 14),
         // Orden 9 (preventivo, Completada)
         new("PKP-0001", "lvargas", SeedIds.EstadoActivoEnMantenimiento, 60, "Inicio de la orden OM-2026-00009", 9),
         new("PKP-0001", "lvargas", SeedIds.EstadoActivoOperativo, 59, "Orden OM-2026-00009 completada", 9),

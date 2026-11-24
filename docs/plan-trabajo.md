@@ -160,7 +160,7 @@ El profesor pidió el módulo de usuarios y la seguridad para el Avance 1, así 
    - `OrdenMantenimientoController`: los tres roles consultan; crean el Administrador y el Solicitante/Consulta. El usuario ya sale del token.
    - Declarar el 401 en la clase y el 403 donde corresponda.
 3. **El Solicitante ve solo lo suyo.**
-   - En `GET api/OrdenMantenimiento/{pageNumber}/{pageSize}` y `GET api/OrdenMantenimiento/{id}`, el controlador pasa `User.GetIdUsuario()` y si el usuario es Solicitante (`User.IsInRole(Roles.SolicitanteConsulta)`). El servicio filtra por `IdUsuarioSolicitante`. Una orden ajena responde 404, igual que si no existiera.
+   - En `GET api/OrdenMantenimiento/{pageNumber}/{pageSize}` y `GET api/OrdenMantenimiento/{id}`, el controlador pasa `User.GetIdUsuario()` y si el usuario es Solicitante (`User.IsInRole(Roles.SolicitanteConsulta)`). El servicio filtra por `IdUsuarioSolicitante`. Una orden ajena respondía 404, igual que si no existiera; desde el Avance 2 responde 403, como pide su enunciado (5.3).
    - En `GET api/Activo/{id}/historial`, un Solicitante solo ve el historial de vehículos con alguna orden suya; si no tiene ninguna, 404.
 4. **Prueba en Scalar** con `admin`, `lvargas` (Coordinador), `cjimenez` (Solicitante) y `drojas` (inactiva). Revisar que cada endpoint responda 401 sin token y 403 con un rol sin permiso, y que no se pueda desactivar ni quitar el rol a `admin` mientras sea el único Administrador activo.
 5. Marcar en la [checklist](requerimientos.md#avance-1--semana-7) los ítems de "Usuarios y seguridad" que queden terminados.
@@ -199,6 +199,7 @@ La seguridad se adelantó a la semana 7, así que A adelanta el frontend base de
 
 - Pantalla de cambio de contraseña propia, disponible para los tres roles.
 - Plantilla general: menú según el rol con la sección activa, usuario y rol visibles, y la paleta como variables CSS.
+- Endpoints de solo lectura de los catálogos (`api/Catalogo`) para llenar los formularios: tipos de mantenimiento, prioridades, niveles de certificación y estados.
 
 **Integrante B**
 

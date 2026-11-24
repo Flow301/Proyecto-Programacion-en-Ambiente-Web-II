@@ -42,6 +42,12 @@ public class GlobalExceptionHandler : IExceptionHandler
             BadHttpRequestException badRequest =>
                 Result<object>.Failure(badRequest.StatusCode, "Solicitud inválida", "La solicitud no es válida."),
 
+            // Otra petición cambió el estado de la orden o del vehículo entre la lectura y el guardado (token de
+            // concurrencia en AppDbContext): el UPDATE no tocó ninguna fila y no se guardó nada.
+            DbUpdateConcurrencyException =>
+                Result<object>.Failure(StatusCodes.Status409Conflict, "Conflicto",
+                    "Otro usuario cambió el estado de este registro mientras se procesaba la solicitud. No se guardó nada; consulte el registro e intente de nuevo."),
+
             // SQL Server rechazó el cambio: FK (547), índice único (2601) o llave primaria (2627), como en el material.
             // Cubre dos peticiones que pasan a la vez la misma verificación de duplicado.
             DbUpdateException or SqlException { Number: 547 or 2601 or 2627 } =>

@@ -11,5 +11,6 @@ public record class ActivoBajaDto
     /// <summary>Motivo de la baja: opcional, máximo 500 caracteres.</summary>
     /// <example>Fin de su vida útil; se vende como chatarra.</example>
     [StringLength(500, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Observacion { get; set; }
 }

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
-using SGMA.Shared.Constants;
 using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
@@ -15,7 +14,7 @@ namespace SGMA.WebAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces("application/json")]
-[Authorize(Roles = Roles.Administrador)]                                         // todas las acciones
+[Authorize(Policy = AuthorizationPolicies.SoloAdministrador)] // todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]        // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]           // aplica a todas las acciones
 [ProducesResponseType<Result<object>>(StatusCodes.Status500InternalServerError)] // aplica a todas las acciones
@@ -43,16 +42,23 @@ public class UsuarioController : ControllerBase
     /// <summary>
     /// Lista los usuarios por páginas, incluidos los inactivos.
     /// </summary>
+    /// <remarks>
+    /// Filtros opcionales en la query: idRol y estado (true = activos, false = inactivos). Cada usuario trae
+    /// tieneActividad: si tiene órdenes, cambios de estado o lecturas registradas, solo se puede desactivar.
+    /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <param name="idRol" example="3">Rol (opcional).</param>
+    /// <param name="estado" example="true">Estado (opcional): true activos, false inactivos.</param>
     /// <response code="200">Página de usuarios con pageNumber, pageSize, totalRecords y totalPages.</response>
     /// <response code="400">pageNumber o pageSize fuera de rango.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<UsuarioDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10)
+    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10,
+        [FromQuery] int? idRol = null, [FromQuery] bool? estado = null)
     {
-        var result = await _service.GetPaginationAsync(pageNumber, pageSize);
+        var result = await _service.GetPaginationAsync(pageNumber, pageSize, idRol, estado);
         return StatusCode(result.Status, result);
     }
 
@@ -141,7 +147,7 @@ public class UsuarioController : ControllerBase
     /// <response code="200">Rol cambiado; data = usuario actualizado.</response>
     /// <response code="400">Datos inválidos o el rol no existe.</response>
     /// <response code="404">El usuario no existe.</response>
-    /// <response code="409">Es el último Administrador activo.</response>
+    /// <response code="409">Es el último Administrador activo, o el Administrador intenta quitarse su propio rol.</response>
     [HttpPut("{id:int}/rol")]
     [ProducesResponseType<Result<UsuarioDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
@@ -149,7 +155,7 @@ public class UsuarioController : ControllerBase
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CambiarRolAsync([FromRoute] int id, [FromBody] UsuarioRolDto rol)
     {
-        var result = await _service.CambiarRolAsync(id, rol);
+        var result = await _service.CambiarRolAsync(id, rol, User.GetIdUsuario());
         return StatusCode(result.Status, result);
     }
 
@@ -180,19 +186,19 @@ public class UsuarioController : ControllerBase
     /// </summary>
     /// <remarks>
     /// El usuario no vuelve a iniciar sesión, pero conserva sus órdenes y su historial.
-    /// No se puede desactivar al último Administrador activo.
+    /// No se puede desactivar al último Administrador activo, y nadie puede desactivarse a sí mismo.
     /// </remarks>
     /// <param name="id" example="6">Id del usuario.</param>
     /// <response code="200">Usuario desactivado; data = Id.</response>
     /// <response code="404">El usuario no existe o ya estaba inactivo.</response>
-    /// <response code="409">Es el último Administrador activo.</response>
+    /// <response code="409">Es el último Administrador activo o es el propio usuario del token.</response>
     [HttpDelete("{id:int}")]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteAsync(int id)
     {
-        var result = await _service.DeleteAsync(id);
+        var result = await _service.DeleteAsync(id, User.GetIdUsuario());
         return StatusCode(result.Status, result);
     }
 

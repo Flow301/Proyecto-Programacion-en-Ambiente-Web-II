@@ -57,7 +57,7 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
   - si se corrige el tipo y el vehículo está En Mantenimiento, el nuevo tipo debe ser de naturaleza Emergencia.
 - **Efectos:**
   - se guardan el diagnóstico, la prioridad y el kilometraje;
-  - el kilometraje actual del vehículo se actualiza con el registrado;
+  - el kilometraje actual del vehículo se actualiza con el registrado, y queda como una lectura de uso con el código de la orden;
   - si el Coordinador corrigió el tipo de mantenimiento, se guarda el nuevo;
   - se registra en el historial de la orden.
 - **Avance:** 2.
@@ -88,7 +88,9 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
   - no se repiten técnicos.
 - **Efectos:**
   - se crean las asignaciones con su fecha y 0 horas;
-  - si el vehículo estaba Operativo o Fuera de Servicio, pasa a En Mantenimiento y se registra en su historial, con la orden que provocó el cambio;
+  - cada asignación guarda la tarifa del técnico en ese momento (enunciado Avance 2, 5.4);
+  - si el vehículo estaba Operativo, pasa a En Mantenimiento y se registra en su historial, con la orden que provocó el cambio;
+  - si el vehículo está Fuera de Servicio, conserva ese estado: el sistema no sobrescribe un estado administrativo (enunciado Avance 2, 5.3);
   - si el vehículo ya estaba En Mantenimiento por otra orden, no cambia ni se registra nada en su historial;
   - se registra la transición en el historial de la orden.
 - **Avance:** 2.
@@ -126,10 +128,9 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
   - no hay repuestos pendientes;
   - al menos un técnico tiene horas registradas.
 - **Efectos:**
-  - se copia la tarifa vigente de cada técnico a su asignación;
   - se calculan y guardan el costo de repuestos, el de mano de obra y el total;
   - se registra la fecha de cierre;
-  - si el tipo es de naturaleza Preventivo, el kilometraje del último preventivo del vehículo pasa a ser el registrado en el diagnóstico;
+  - si el tipo es de naturaleza Preventivo, el kilometraje del último preventivo del vehículo pasa a ser su kilometraje actual (la última lectura de uso);
   - el vehículo vuelve a Operativo, salvo que tenga otra orden En Ejecución o En Espera de Repuesto;
   - se registra en el historial de la orden y, si el vehículo cambió, también en el suyo.
 - **Avance:** 2.
@@ -148,7 +149,7 @@ Cada transición indica el rol que la ejecuta, la acción de la API, las condici
 - **Acción:** `POST api/OrdenMantenimiento/{id}/cancelar`, con observación opcional.
 - **Condiciones:** ninguna adicional.
 - **Efectos:**
-  - se congelan la tarifa de cada asignación y los costos de lo que ya se consumió;
+  - se guardan los costos de lo que ya se consumió, con la tarifa que cada técnico tenía al asignarlo;
   - se eliminan los pendientes;
   - el stock ya descontado no se devuelve: si las piezas no se instalaron, el Administrador registra una entrada;
   - se registra la fecha de cierre;
@@ -175,6 +176,7 @@ Toda transición que no aparece arriba se rechaza. Estas son las que el enunciad
 - Aprobada no puede pasar directamente a Completada sin ejecución.
 - En Ejecución no puede completarse con repuestos pendientes.
 - En Espera de Repuesto solo puede reanudarse con stock suficiente; no puede completarse directamente.
+- A En Ejecución se llega por dos acciones distintas, y cada una exige su origen: iniciar solo desde Aprobada y reanudar solo desde En Espera de Repuesto. Reanudar una orden Aprobada o iniciar una En Espera se rechaza con `TransicionNoPermitidaException`.
 - Rechazada, Completada y Cancelada no admiten ninguna transición.
 - Ningún estado puede regresar a uno anterior, salvo En Espera de Repuesto → En Ejecución.
 
@@ -186,8 +188,8 @@ Cada método del servicio que cambia el estado sigue este orden:
 
 1. Busca la orden. Si no existe, lanza `RecursoNoEncontradoException`, que la API responde con **404**.
 2. Comprueba en la matriz que la transición esté permitida desde el estado actual y para el rol del usuario. Si no lo está, lanza `TransicionNoPermitidaException`, que se responde con **409**.
-3. Verifica las condiciones propias de la transición (técnicos, stock, horas, fechas). Si alguna falla, lanza `ReglaNegocioException`, también con **409**.
-4. Aplica todos los efectos y el historial en una sola transacción.
+3. Verifica las condiciones propias de la transición (técnicos, stock, horas, fechas). Si el cuerpo trae un id que no existe (una prioridad, un tipo), responde **400**. Si falla una regla, lanza `ReglaNegocioException`, con **409**.
+4. Aplica todos los efectos y el historial en una sola transacción. El `UPDATE` de la orden lleva en el `WHERE` el estado que se leyó (token de concurrencia): si otra petición lo cambió mientras tanto, no se guarda nada y responde **409**.
 
 Las excepciones viven en `SGMA.Shared/Exceptions`. El manejador global de excepciones de `SGMA.WebAPI` las traduce a la respuesta estándar `Result<T>` con un mensaje en español, nunca a un error genérico. Por ejemplo:
 
@@ -204,7 +206,7 @@ Las excepciones viven en `SGMA.Shared/Exceptions`. El manejador global de excepc
 Otras respuestas:
 
 - Los errores de formato en los datos enviados (campos obligatorios, longitudes) responden **400**, por la validación de los DTO.
-- Desde el Avance 1, un endpoint llamado sin token válido responde **401**, y con un rol sin permiso, **403**. Cuando llegue el ciclo de vida (Avance 2), el rol de cada transición se validará dos veces: en el atributo `[Authorize]` del controlador y en la matriz.
+- Un endpoint llamado sin token válido responde **401**, y con un rol sin permiso, **403**. El rol de cada transición se valida dos veces: en la política `[Authorize(Policy = ...)]` del controlador y en la matriz.
 
 ---
 
@@ -221,7 +223,7 @@ Otras respuestas:
 
 Ningún usuario las ejecuta directamente.
 
-- **Operativo o Fuera de Servicio → En Mantenimiento:** cuando una orden del vehículo pasa a En Ejecución.
+- **Operativo → En Mantenimiento:** cuando una orden del vehículo pasa a En Ejecución. Un vehículo Fuera de Servicio no cambia.
 - **En Mantenimiento → Operativo:** cuando una orden del vehículo se completa, o se cancela desde En Ejecución o En Espera de Repuesto, y ninguna otra orden del vehículo queda En Ejecución o En Espera de Repuesto.
 
 En el historial del vehículo, estos cambios quedan con el usuario que ejecutó la acción sobre la orden y con la orden que los provocó.
@@ -239,7 +241,7 @@ No requieren una orden.
 
 **Condiciones:**
 
-- Ninguna transición manual sale de En Mantenimiento. Así, el Administrador nunca cambia a mano un vehículo que tiene una orden En Ejecución o En Espera de Repuesto; si pudiera, el sistema pisaría su cambio al cerrar esa orden.
+- Ninguna transición manual sale de En Mantenimiento, y además el servicio rechaza cualquier cambio manual mientras el vehículo tenga una orden En Ejecución o En Espera de Repuesto (409). Esto cubre al vehículo Fuera de Servicio, que conserva ese estado durante su reparación. Si el Administrador pudiera cambiarlo, el sistema pisaría su cambio al cerrar esa orden.
 - Para dar de baja, el vehículo no puede tener órdenes abiertas.
 - Dado de Baja no admite ninguna transición posterior.
 
@@ -260,7 +262,7 @@ Una transición manual no permitida se rechaza con `TransicionNoPermitidaExcepti
 
 - **Dos órdenes en ejecución sobre el mismo vehículo** (una normal y una de emergencia). El vehículo pasa a En Mantenimiento con la primera y solo vuelve a Operativo cuando las dos terminan.
 - **Una orden de emergencia creada sobre un vehículo En Mantenimiento.** Se permite. Las órdenes normales se rechazan al crearlas, pero las que ya estaban abiertas antes de que el vehículo entrara al taller siguen su curso.
-- **Un vehículo Fuera de Servicio con una orden que se ejecuta y se cancela.** Vuelve a Operativo, como indica el enunciado. Si sigue inmovilizado, el Administrador lo devuelve a Fuera de Servicio manualmente.
+- **Un vehículo Fuera de Servicio con una orden que se ejecuta.** *Decisión del equipo:* conserva Fuera de Servicio al iniciar, al completar y al cancelar, porque el enunciado del Avance 2 (5.3) pide no sobrescribir un estado administrativo. Cuando la reparación termina, el Administrador lo devuelve a Operativo manualmente.
 - **Dos órdenes esperan el mismo repuesto y llega stock solo para una.** La primera que se reanude lo consume; la otra sigue en espera.
 - **Un Coordinador intenta completar una orden En Espera de Repuesto.** Se rechaza con `TransicionNoPermitidaException`: primero debe reanudarse.
 - **Un vehículo Dado de Baja.** No admite órdenes nuevas ni cambios de estado, y queda fuera de la evaluación preventiva.

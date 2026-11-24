@@ -35,14 +35,20 @@ public static class MapsterConfig
                 dest => dest.HistorialEstados);
 
         // CategoriaActivo
+        TypeAdapterConfig<CategoriaActivo, CategoriaActivoDto>
+            .NewConfig()
+            .Map(dest => dest.CantidadActivos, src => src.Activos.Count);
+
         TypeAdapterConfig<CategoriaActivoCreateDto, CategoriaActivo>
             .NewConfig()
             .Ignore(dest => dest.IdCategoria,       // lo asigna la base
+                dest => dest.VariableControl,       // basta con IdVariableControl
                 dest => dest.Activos);
 
         TypeAdapterConfig<CategoriaActivoUpdateDto, CategoriaActivo>
             .NewConfig()
             .Ignore(dest => dest.IdCategoria,       // viene de la ruta, no del body
+                dest => dest.VariableControl,
                 dest => dest.Activos);
 
         // Especialidad
@@ -58,6 +64,10 @@ public static class MapsterConfig
 
 
         // Tecnico
+        TypeAdapterConfig<Tecnico, TecnicoListDto>
+            .NewConfig()
+            .Map(dest => dest.CantidadEspecialidades, src => src.TecnicoEspecialidades.Count);
+
         TypeAdapterConfig<TecnicoCreateDto, Tecnico>
             .NewConfig()
             .Ignore(dest => dest.IdTecnico,         // lo asigna la base
@@ -101,7 +111,7 @@ public static class MapsterConfig
                 dest => dest.Estado,                // se cambia con DELETE (inactivar)
                 dest => dest.RepuestoProveedores);
 
-        // OrdenMantenimiento: del DTO solo salen IdActivo, IdTipoMantenimiento y Motivo
+        // OrdenMantenimiento: del DTO solo salen IdActivo, IdTipoMantenimiento, IdPrioridad y Motivo
         TypeAdapterConfig<OrdenMantenimientoCreateDto, OrdenMantenimiento>
             .NewConfig()
             .Ignore(dest => dest.IdOrden,           // lo asigna la base
@@ -117,6 +127,24 @@ public static class MapsterConfig
                 dest => dest.Detalles,
                 dest => dest.RepuestosPendientes,
                 dest => dest.HistorialEstados);     // el registro inicial lo agrega el servicio
+
+        // El PUT copia el DTO sobre la entidad rastreada: solo cambian Motivo e IdTipoMantenimiento
+        TypeAdapterConfig<OrdenMantenimientoUpdateDto, OrdenMantenimiento>
+            .NewConfig()
+            .Ignore(dest => dest.IdOrden,           // viene de la ruta, no del body
+                dest => dest.Codigo,                // inmutable
+                dest => dest.IdActivo,              // el vehículo de una orden no se cambia
+                dest => dest.IdEstadoOrden,         // cambia solo con las transiciones
+                dest => dest.IdUsuarioSolicitante,
+                dest => dest.Activo,
+                dest => dest.TipoMantenimiento,
+                dest => dest.Prioridad,
+                dest => dest.EstadoOrden,
+                dest => dest.UsuarioSolicitante,
+                dest => dest.Asignaciones,
+                dest => dest.Detalles,
+                dest => dest.RepuestosPendientes,
+                dest => dest.HistorialEstados);
 
         // Usuario (Usuario → UsuarioDto no necesita configuración: RolNombre ← Rol.Nombre)
         TypeAdapterConfig<UsuarioCreateDto, Usuario>

@@ -5,20 +5,25 @@ namespace SGMA.Infrastructure.Interfaces;
 public interface IActivoRepository
 {
     // Lectura
-    Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize);
-    Task<int> CountAsync();
+    Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null);
+    Task<int> CountAsync(int? idCategoria = null, int? idEstadoActivo = null);
     Task<Activo?> GetByIdAsync(int id);
     Task<int> GetUltimoConsecutivoAsync(string prefijo);
-    Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo);
+    Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo, int pageNumber, int pageSize);
+    Task<int> CountHistorialAsync(int idActivo);
+    Task<IEnumerable<LecturaUso>> GetLecturasAsync(int idActivo, int pageNumber, int pageSize);
+    Task<int> CountLecturasAsync(int idActivo);
+    Task<DateTime?> GetFechaUltimaLecturaAsync(int idActivo);
     Task<EstadoActivo?> GetEstadoAsync(int idEstadoActivo);
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsAsync(int id);
     Task<bool> ExistsByPlacaAsync(string placa, int? excludeId = null);
     Task<bool> HasOrdenesAbiertasAsync(int id);
+    Task<bool> HasOrdenEnCursoAsync(int id);
     Task<bool> HasOrdenesDelSolicitanteAsync(int id, int idUsuario);
     // Escritura
     Task<Activo?> GetForUpdateAsync(int id);
-    Task AddAsync(Activo activo);
+    Task<bool> AddAsync(Activo activo);
     Task UpdateAsync(Activo activo);
     Task SaveChangesAsync();
 }

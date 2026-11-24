@@ -26,9 +26,10 @@ public class UsuarioRepository : IUsuarioRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Usuario>> GetPaginationAsync(int pageNumber, int pageSize)
+    // Filtros opcionales por rol y por estado (enunciado Avance 2, 5.1), en el WHERE antes del Skip/Take
+    public async Task<IEnumerable<Usuario>> GetPaginationAsync(int pageNumber, int pageSize, int? idRol = null, bool? estado = null)
     {
-        return await _context.Usuario
+        return await Filtrar(idRol, estado)
             .AsNoTracking()
             .Include(u => u.Rol)
             .OrderBy(u => u.IdUsuario)
@@ -37,9 +38,28 @@ public class UsuarioRepository : IUsuarioRepository
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync()
+    public async Task<int> CountAsync(int? idRol = null, bool? estado = null)
     {
-        return await _context.Usuario.CountAsync();
+        return await Filtrar(idRol, estado).CountAsync();
+    }
+
+    private IQueryable<Usuario> Filtrar(int? idRol, bool? estado) =>
+        _context.Usuario.Where(u => (idRol == null || u.IdRol == idRol) && (estado == null || u.Estado == estado));
+
+    // Usuarios con actividad registrada: solicitaron órdenes, hicieron cambios de estado o registraron lecturas.
+    // Esos no se pueden eliminar, solo desactivar (enunciado Avance 2, 3.4 y 5.1).
+    public async Task<HashSet<int>> GetConActividadAsync(IReadOnlyCollection<int> idsUsuario)
+    {
+        var ids = await _context.Usuario
+            .Where(u => idsUsuario.Contains(u.IdUsuario)
+                && (_context.OrdenMantenimiento.Any(o => o.IdUsuarioSolicitante == u.IdUsuario)
+                    || _context.HistorialEstadoOrden.Any(h => h.IdUsuario == u.IdUsuario)
+                    || _context.HistorialEstadoActivo.Any(h => h.IdUsuario == u.IdUsuario)
+                    || _context.LecturaUso.Any(l => l.IdUsuario == u.IdUsuario)))
+            .Select(u => u.IdUsuario)
+            .ToListAsync();
+
+        return ids.ToHashSet();
     }
 
     // Incluye los inactivos: el servicio decide qué responder en ese caso

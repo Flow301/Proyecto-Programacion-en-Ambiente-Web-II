@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SGMA.Domain.Entities;
 using SGMA.Infrastructure.Data;
+using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Interfaces;
 
 namespace SGMA.Infrastructure.Implementation;
@@ -14,9 +15,10 @@ public class ActivoRepository : IActivoRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize)
+    // Filtros opcionales por categoría y por estado (enunciado Avance 2, 2.3), antes del Skip/Take
+    public async Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null)
     {
-        return await _context.Activo
+        return await Filtrar(idCategoria, idEstadoActivo)
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.EstadoActivo)
@@ -26,10 +28,14 @@ public class ActivoRepository : IActivoRepository
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync()
+    public async Task<int> CountAsync(int? idCategoria = null, int? idEstadoActivo = null)
     {
-        return await _context.Activo.CountAsync();
+        return await Filtrar(idCategoria, idEstadoActivo).CountAsync();
     }
+
+    private IQueryable<Activo> Filtrar(int? idCategoria, int? idEstadoActivo) =>
+        _context.Activo.Where(a => (idCategoria == null || a.IdCategoria == idCategoria)
+            && (idEstadoActivo == null || a.IdEstadoActivo == idEstadoActivo));
 
     public async Task<Activo?> GetByIdAsync(int id)
     {
@@ -51,18 +57,54 @@ public class ActivoRepository : IActivoRepository
         return ultimo is null ? 0 : int.Parse(ultimo[(prefijo.Length + 1)..]);
     }
 
-    // Del más antiguo al más reciente: es la línea de tiempo del vehículo
-    public async Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo)
+    // Del más reciente al más antiguo, paginado (enunciado Avance 2, 5.7). Trae la orden que provocó cada cambio automático.
+    public async Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo, int pageNumber, int pageSize)
     {
         return await _context.HistorialEstadoActivo
             .AsNoTracking()
             .Include(h => h.EstadoAnterior)
             .Include(h => h.EstadoNuevo)
             .Include(h => h.Usuario)
+            .Include(h => h.Orden)
             .Where(h => h.IdActivo == idActivo)
-            .OrderBy(h => h.FechaCambio)
-            .ThenBy(h => h.IdHistorial)
+            .OrderByDescending(h => h.FechaCambio)
+            .ThenByDescending(h => h.IdHistorial)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+    }
+
+    public async Task<int> CountHistorialAsync(int idActivo)
+    {
+        return await _context.HistorialEstadoActivo.CountAsync(h => h.IdActivo == idActivo);
+    }
+
+    // De la más reciente a la más antigua (enunciado Avance 2, 5.8: "consultar lecturas de un activo")
+    public async Task<IEnumerable<LecturaUso>> GetLecturasAsync(int idActivo, int pageNumber, int pageSize)
+    {
+        return await _context.LecturaUso
+            .AsNoTracking()
+            .Include(l => l.Usuario)
+            .Include(l => l.Orden)
+            .Where(l => l.IdActivo == idActivo)
+            .OrderByDescending(l => l.Fecha)
+            .ThenByDescending(l => l.IdLectura)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountLecturasAsync(int idActivo)
+    {
+        return await _context.LecturaUso.CountAsync(l => l.IdActivo == idActivo);
+    }
+
+    // null si el vehículo todavía no tiene lecturas
+    public async Task<DateTime?> GetFechaUltimaLecturaAsync(int idActivo)
+    {
+        return await _context.LecturaUso
+            .Where(l => l.IdActivo == idActivo)
+            .MaxAsync(l => (DateTime?)l.Fecha);
     }
 
     public async Task<EstadoActivo?> GetEstadoAsync(int idEstadoActivo)
@@ -90,6 +132,14 @@ public class ActivoRepository : IActivoRepository
             .AnyAsync(o => o.IdActivo == id && !o.EstadoOrden.EsFinal);
     }
 
+    // ¿Alguna orden del vehículo está En Ejecución o En Espera de Repuesto? Mientras la tenga, no admite cambios manuales
+    public async Task<bool> HasOrdenEnCursoAsync(int id)
+    {
+        return await _context.OrdenMantenimiento
+            .AnyAsync(o => o.IdActivo == id
+                && (o.IdEstadoOrden == SeedIds.EstadoOrdenEnEjecucion || o.IdEstadoOrden == SeedIds.EstadoOrdenEnEsperaDeRepuesto));
+    }
+
     // Historial para el Solicitante/Consulta: el vehículo tiene alguna orden suya, abierta o cerrada
     public async Task<bool> HasOrdenesDelSolicitanteAsync(int id, int idUsuario)
     {
@@ -105,11 +155,21 @@ public class ActivoRepository : IActivoRepository
             .FirstOrDefaultAsync(a => a.IdActivo == id);
     }
 
-    // Inserta el vehículo y su registro inicial de historial con un solo SaveChangesAsync
-    public async Task AddAsync(Activo activo)
+    // Inserta el vehículo y su registro inicial de historial con un solo SaveChangesAsync.
+    // Devuelve false si SQL Server lo rechaza por un índice único (otro registro simultáneo tomó el mismo código):
+    // el vehículo sigue en el ChangeTracker como Added, así que el servicio puede reintentar con otro código.
+    public async Task<bool> AddAsync(Activo activo)
     {
         _context.Activo.Add(activo);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            return false;
+        }
     }
 
     public async Task UpdateAsync(Activo activo)

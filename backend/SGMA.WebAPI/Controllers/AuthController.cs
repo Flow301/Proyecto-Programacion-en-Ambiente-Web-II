@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SGMA.Application.Interfaces;
 using SGMA.Domain.DTO;
 using SGMA.Domain.DTO.PatternResult;
+using SGMA.Shared.Constants;
 using SGMA.WebAPI.Security;
 
 namespace SGMA.WebAPI.Controllers;
@@ -31,19 +32,27 @@ public class AuthController : ControllerBase
     /// El token dura 60 minutos y lleva el id, el login y el rol del usuario. Se envía en cada petición
     /// en el encabezado Authorization: Bearer {token}. Actualiza la fecha del último acceso.
     /// Un usuario inactivo no puede iniciar sesión.
+    /// Tras 5 intentos fallidos seguidos, ese usuario queda bloqueado 5 minutos desde el último intento (429),
+    /// aunque luego envíe la contraseña correcta. Los demás usuarios no se ven afectados.
     /// </remarks>
     /// <param name="login">Nombre de usuario y contraseña.</param>
     /// <response code="200">Sesión iniciada; data = token, expiración y datos del usuario.</response>
     /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
     /// <response code="401">El usuario no existe, está inactivo o la contraseña es incorrecta.</response>
+    /// <response code="429">El usuario superó los intentos fallidos; el encabezado Retry-After indica los segundos de espera.</response>
     [HttpPost("login")]
     [AllowAnonymous]
     [ProducesResponseType<Result<LoginRespuestaDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> LoginAsync([FromBody] LoginDto login)
     {
         var result = await _service.LoginAsync(login);
+
+        if (result.Status == StatusCodes.Status429TooManyRequests)
+            Response.Headers.RetryAfter = (IntentosLogin.MinutosBloqueo * 60).ToString();
+
         return StatusCode(result.Status, result);
     }
 

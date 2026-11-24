@@ -32,16 +32,23 @@ public class ActivoController : ControllerBase
     /// <summary>
     /// Lista los vehículos por páginas.
     /// </summary>
+    /// <remarks>
+    /// Filtros opcionales en la query: idCategoria e idEstadoActivo. Cada vehículo trae su estado preventivo
+    /// (Vencido, Próximo, Al día o Sin lecturas; null si está Fuera de Servicio o Dado de Baja).
+    /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <param name="idCategoria" example="1">Categoría (opcional).</param>
+    /// <param name="idEstadoActivo" example="1">Estado del vehículo (opcional).</param>
     /// <response code="200">Página de vehículos con pageNumber, pageSize, totalRecords y totalPages.</response>
     /// <response code="400">pageNumber o pageSize fuera de rango.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<ActivoListDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10)
+    public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10,
+        [FromQuery] int? idCategoria = null, [FromQuery] int? idEstadoActivo = null)
     {
-        var result = await _service.GetPaginationAsync(pageNumber, pageSize);
+        var result = await _service.GetPaginationAsync(pageNumber, pageSize, idCategoria, idEstadoActivo);
         return StatusCode(result.Status, result);
     }
 
@@ -67,15 +74,77 @@ public class ActivoController : ControllerBase
     /// El Solicitante/Consulta solo ve el historial de los vehículos con alguna orden suya.
     /// </remarks>
     /// <param name="id" example="1">Id del vehículo.</param>
-    /// <response code="200">Cambios de estado del vehículo, con fecha, usuario y observación.</response>
+    /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
+    /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <response code="200">Cambios de estado del vehículo, del más reciente al más antiguo, con fecha, usuario, observación
+    /// y el código de la orden que provocó cada cambio automático.</response>
+    /// <response code="400">pageNumber o pageSize fuera de rango.</response>
     /// <response code="404">El vehículo no existe, o el usuario es Solicitante/Consulta y no tiene órdenes de ese vehículo.</response>
-    [HttpGet("{id:int}/historial")]
+    [HttpGet("{id:int}/historial/{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<HistorialEstadoActivoDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetHistorialAsync(int id)
+    public async Task<IActionResult> GetHistorialAsync(int id, int pageNumber = 1, int pageSize = 10)
     {
-        var result = await _service.GetHistorialAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta));
+        var result = await _service.GetHistorialAsync(id, User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta),
+            pageNumber, pageSize);
         return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Consulta las lecturas de uso (kilometraje) de un vehículo.
+    /// </summary>
+    /// <remarks>
+    /// De la más reciente a la más antigua, paginadas. Cada lectura trae la fecha, el kilometraje, quién la registró y,
+    /// si la tomó el diagnóstico de una orden, el código de esa orden.
+    /// </remarks>
+    /// <param name="id" example="2">Id del vehículo.</param>
+    /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
+    /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
+    /// <response code="200">Lecturas de la página, con los datos de paginación.</response>
+    /// <response code="400">Página o tamaño de página fuera de rango.</response>
+    /// <response code="404">El vehículo no existe.</response>
+    [HttpGet("{id:int}/lecturas/{pageNumber:int}/{pageSize:int}")]
+    [ProducesResponseType<Result<IEnumerable<LecturaUsoDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLecturasAsync(int id, int pageNumber = 1, int pageSize = 10)
+    {
+        var result = await _service.GetLecturasAsync(id, pageNumber, pageSize);
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Registra una lectura de uso (kilometraje) de un vehículo.
+    /// </summary>
+    /// <remarks>
+    /// Solo el Administrador. Es la única forma de cambiar el kilometraje fuera del diagnóstico de una orden, porque
+    /// alimenta el mantenimiento preventivo. La lectura no puede ser menor que la anterior (el kilometraje es acumulativo),
+    /// ni tener una fecha futura o anterior a la última lectura. No se registran lecturas de vehículos dados de baja.
+    /// La respuesta trae el detalle del vehículo con el bloque preventivo ya recalculado.
+    /// </remarks>
+    /// <param name="id" example="2">Id del vehículo.</param>
+    /// <param name="lectura">Kilometraje y fecha (si se omite, hoy). El usuario responsable es el del token.</param>
+    /// <response code="201">Lectura registrada; data = detalle del vehículo con el nuevo porcentaje y estado preventivo.</response>
+    /// <response code="400">Datos inválidos, lectura menor que la anterior o fecha fuera de rango.</response>
+    /// <response code="403">El rol no es Administrador.</response>
+    /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">El vehículo está dado de baja u otra lectura se registró al mismo tiempo.</response>
+    [HttpPost("{id:int}/lecturas")]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
+    [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RegistrarLecturaAsync([FromRoute] int id, [FromBody] LecturaUsoCreateDto lectura)
+    {
+        var result = await _service.RegistrarLecturaAsync(id, lectura, User.GetIdUsuario());
+
+        if (!result.IsSuccess)
+            return StatusCode(result.Status, result);
+
+        return CreatedAtRoute("GetActivoById", new { id }, result);
     }
 
     /// <summary>
@@ -88,12 +157,12 @@ public class ActivoController : ControllerBase
     /// </remarks>
     /// <param name="activo">Datos del vehículo. El usuario responsable es el del token.</param>
     /// <response code="201">Vehículo creado; el encabezado Location apunta a GET api/Activo/{id}.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos o la categoría no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">La categoría no existe.</response>
+    /// <response code="404">El usuario del token fue desactivado.</response>
     /// <response code="409">La placa ya existe o la categoría alcanzó el máximo de códigos.</response>
     [HttpPost]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status201Created)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -112,18 +181,18 @@ public class ActivoController : ControllerBase
     /// Actualiza los datos de un vehículo.
     /// </summary>
     /// <remarks>
-    /// No cambia el código, el estado (tiene sus acciones), la imagen ni la fecha de registro.
-    /// El kilometraje no puede disminuir.
+    /// No cambia el código, el estado (tiene sus acciones), la imagen, la fecha de registro ni los kilometrajes: el actual
+    /// cambia con POST api/Activo/{id}/lecturas y el del último preventivo, al completar una orden preventiva.
     /// </remarks>
     /// <param name="id" example="1">Id del vehículo (de la ruta, nunca del cuerpo).</param>
     /// <param name="activo">Datos nuevos del vehículo.</param>
     /// <response code="200">Vehículo actualizado.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos o la categoría no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">El vehículo o la categoría no existen.</response>
-    /// <response code="409">La placa pertenece a otro vehículo o el kilometraje disminuye.</response>
+    /// <response code="404">El vehículo no existe.</response>
+    /// <response code="409">La placa pertenece a otro vehículo, u otro usuario cambió su estado o su kilometraje al mismo tiempo.</response>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -149,7 +218,7 @@ public class ActivoController : ControllerBase
     /// <response code="403">El rol no es Administrador.</response>
     /// <response code="404">El vehículo no existe.</response>
     [HttpPut("{id:int}/imagen")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -173,12 +242,12 @@ public class ActivoController : ControllerBase
     /// <param name="id" example="1">Id del vehículo.</param>
     /// <param name="estado">Estado destino y observación. El usuario responsable es el del token.</param>
     /// <response code="200">Estado cambiado; data = detalle del vehículo.</response>
-    /// <response code="400">Datos inválidos; data indica el error de cada campo.</response>
+    /// <response code="400">Datos inválidos o el estado no existe; data indica el error de cada campo.</response>
     /// <response code="403">El rol no es Administrador.</response>
-    /// <response code="404">El vehículo o el estado no existen.</response>
-    /// <response code="409">La transición no está permitida o el vehículo tiene órdenes abiertas (al dar de baja).</response>
+    /// <response code="404">El vehículo no existe o el usuario del token fue desactivado.</response>
+    /// <response code="409">La transición no está permitida, el vehículo tiene una orden En Ejecución o En Espera de Repuesto, tiene órdenes abiertas (al dar de baja) u otro usuario cambió su estado al mismo tiempo.</response>
     [HttpPost("{id:int}/estado")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]
@@ -205,7 +274,7 @@ public class ActivoController : ControllerBase
     /// <response code="404">El vehículo no existe.</response>
     /// <response code="409">El vehículo ya está dado de baja o en mantenimiento, o tiene órdenes abiertas.</response>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<ActivoDetailDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<Dictionary<string, string[]>>>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status403Forbidden)]

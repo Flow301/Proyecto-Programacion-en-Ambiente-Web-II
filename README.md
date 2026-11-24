@@ -31,15 +31,34 @@ Además:
 
 ## Proceso principal
 
-Una orden nace **Solicitada**. El taller la **diagnostica** y el Administrador la **aprueba** o la **rechaza**. Al pasar a **En Ejecución**, el vehículo cambia solo a *En Mantenimiento*; cuando la orden se **completa**, vuelve a *Operativo*. Si durante la ejecución falta stock de un repuesto, la orden pasa sola a **En Espera de Repuesto** hasta que haya disponibilidad. Antes del cierre, la orden puede **cancelarse**.
+Una orden nace **Solicitada**. El taller la **diagnostica** y el Administrador la **aprueba** o la **rechaza**. Al pasar a **En Ejecución**, el vehículo cambia solo a *En Mantenimiento* (si estaba *Fuera de Servicio*, conserva ese estado); cuando la orden se **completa**, vuelve a *Operativo*. Si durante la ejecución falta stock de un repuesto, la orden pasa sola a **En Espera de Repuesto** hasta que haya disponibilidad. Antes del cierre, la orden puede **cancelarse**.
 
-Las transiciones permitidas, quién puede ejecutar cada una y sus efectos automáticos están en la [matriz de estados](docs/matriz-estados.md).
+### Matriz de transiciones final
+
+Es la que aplica la API (`MatrizTransicionesOrden`). Cualquier transición que no esté aquí, o pedida por otro rol, se rechaza con una excepción de negocio propia (409) o con 403. El detalle de cada condición y efecto está en la [matriz de estados](docs/matriz-estados.md).
+
+| Estado actual | Transición | Rol autorizado | Condición / efecto automático |
+|---|---|---|---|
+| — | Solicitada | Administrador, Solicitante/Consulta | Vehículo existente y no Dado de Baja; si está En Mantenimiento, solo tipo Emergencia. Prioridad Media si no se indica. |
+| Solicitada | Diagnosticada | Coordinador/Técnico | Diagnóstico, prioridad y kilometraje (no menor que el actual; queda como lectura de uso). |
+| Diagnosticada | Aprobada | Administrador | Fecha programada obligatoria, no anterior a hoy. |
+| Diagnosticada | Rechazada | Administrador | Estado final, con fecha de cierre; observación opcional. |
+| Aprobada | En Ejecución (iniciar) | Coordinador/Técnico | Al menos un técnico con la especialidad requerida, activo y disponible; cada asignación guarda la tarifa del técnico. El vehículo Operativo pasa a En Mantenimiento; uno Fuera de Servicio conserva su estado. |
+| En Ejecución | En Espera de Repuesto | Automática | Al registrar un repuesto sin stock suficiente: la línea queda pendiente y no se descuenta nada. |
+| En Espera de Repuesto | En Ejecución (reanudar) | Coordinador/Técnico | Solo si ya hay stock para todos los pendientes; se descuentan en ese momento. |
+| En Ejecución | Completada | Coordinador/Técnico | Sin repuestos pendientes y con al menos un técnico con horas. Fija los costos y la fecha de cierre; el vehículo vuelve a Operativo si no tiene otra orden en curso. Si es preventiva, la lectura actual pasa a ser la base. |
+| Solicitada, Diagnosticada o Aprobada | Cancelada | Administrador, Coordinador/Técnico | Fecha de cierre; observación opcional. El vehículo conserva su estado. |
+| En Ejecución o En Espera de Repuesto | Cancelada | Administrador, Coordinador/Técnico | Se congelan los costos de lo consumido, se eliminan los pendientes y el stock consumido no se devuelve. El vehículo vuelve a Operativo si no tiene otra orden en curso. |
+
+Es más restrictiva que la mínima del enunciado en un punto: crear la orden queda para el Administrador y el Solicitante/Consulta. Agrega cancelar desde En Espera de Repuesto, que el enunciado general permite "en cualquier punto previo al cierre". Cada cambio deja su registro en el historial, con el usuario del token, en la misma transacción.
 
 ## Entregas
 
-**Avance 1 (semana 7) — en desarrollo.** API sin frontend con el CRUD de activos, categorías, técnicos, especialidades, repuestos y proveedores; relaciones 1:N y N:N; migraciones y seeders; validaciones; manejo global de excepciones; creación y consulta de órdenes de mantenimiento; y gestión de usuarios con login JWT, cambio y reseteo de contraseña y autorización por rol en todos los endpoints.
+**Avance 1 (semana 7) — entregado.** API sin frontend con el CRUD de activos, categorías, técnicos, especialidades, repuestos y proveedores; relaciones 1:N y N:N; migraciones y seeders; validaciones; manejo global de excepciones; creación y consulta de órdenes de mantenimiento; y gestión de usuarios con login JWT, cambio y reseteo de contraseña y autorización por rol en todos los endpoints.
 
-**Avance 2 (semana 13, entrega final) — pendiente.** Ciclo de vida completo de la orden, frontend en React, historial visible, reportes y dashboard.
+**Avance 2 (semana 13, entrega final) — en desarrollo.** Ciclo de vida completo de la orden, frontend en React, historial visible, reportes y dashboard. El avance de cada punto está en la checklist de los [requerimientos](docs/requerimientos.md#avance-2--semana-13).
+
+**Reportes escogidos para el Avance 2:** Dashboard general (familia A) + Costos por orden (familia B). La justificación está en las [decisiones técnicas](docs/decisiones-tecnicas.md#5-reportes-escogidos).
 
 ## Stack
 
@@ -50,7 +69,7 @@ Las transiciones permitidas, quién puede ejecutar cada una y sus efectos autom�
 - **Documentación de la API:** OpenAPI y Scalar.
 - **Contraseñas:** `PasswordHasher` de ASP.NET Core Identity (hash PBKDF2 con *salt*).
 - **Autenticación:** JWT con roles (`Microsoft.AspNetCore.Authentication.JwtBearer`).
-- **Frontend:** React con JavaScript, sin TypeScript. **Pendiente (Avance 2).**
+- **Frontend:** React 19 con JavaScript, sin TypeScript, creado con Vite, React Router para las rutas, Tailwind CSS con componentes de shadcn/ui, íconos de lucide y formularios con React Hook Form y Zod (las mismas herramientas del proyecto base del curso, con nuestra paleta).
 - **Control de versiones:** Git y GitHub.
 
 Las versiones exactas y las reglas sobre dependencias están en [convenciones](docs/convenciones.md).
@@ -66,14 +85,14 @@ Seguimos la organización de capas y los patrones vistos en clase (Clean Archite
 ├── README.md
 ├── .gitignore
 ├── docs/                         Documentación del proyecto
-├── backend/                      En construcción (Avance 1)
+├── backend/                      API en ASP.NET Core
 │   ├── SGMA.slnx
 │   ├── SGMA.Domain/              Entities/ y DTO/
 │   ├── SGMA.Infrastructure/      Data/ (AppDbContext y Seed/), Interfaces/, Implementation/ y Migrations/
 │   ├── SGMA.Application/         Interfaces/, Implementation/ y Mapper/
 │   ├── SGMA.Shared/              Excepciones de negocio y constantes compartidas
 │   └── SGMA.WebAPI/              Controllers/, Handlers/, Security/, Program.cs, appsettings.json y wwwroot/imagenes/
-└── frontend/                     Pendiente (Avance 2)
+└── frontend/                     React con Vite: src/api (único módulo de llamadas), context/ (sesión), components/ (ui/ de shadcn), schemas/ (Zod) y pages/
 ```
 
 Qué hace cada proyecto y a cuáles referencia:
@@ -85,8 +104,6 @@ Qué hace cada proyecto y a cuáles referencia:
 - **`SGMA.WebAPI`:** controladores, manejo global de excepciones, generación y validación del JWT, configuración e imágenes de los activos. Referencia a Application, Domain, Infrastructure y Shared.
 
 ## Cómo levantar el proyecto
-
-> Los comandos del backend aplican desde que exista la solución en `backend/` (Avance 1).
 
 ### Requisitos
 
@@ -102,7 +119,7 @@ Qué hace cada proyecto y a cuáles referencia:
   dotnet tool update --global dotnet-ef --version 10.0.*
   ```
 
-- Node.js. **Pendiente (Avance 2):** la versión se fija al crear el frontend.
+- Node.js 26.4 o superior, con npm.
 
 ### 1. Clonar el repositorio
 
@@ -166,7 +183,17 @@ El token dura 60 minutos. Sin token, la API responde 401; con un rol sin permiso
 
 ### 5. Ejecutar el frontend
 
-> **Pendiente (Avance 2):** versión de Node.js, instalación de dependencias, URL de la API y comando para levantar la aplicación.
+Con la API corriendo en el perfil `https` (paso 4):
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+La aplicación queda en `http://localhost:5173`. La URL de la API está en `frontend/.env.development` (`VITE_API_URL`); si se cambia el puerto de Vite, hay que agregar el origen nuevo en `Cors:AllowedOrigins` de `appsettings.json`.
+
+El token del login se guarda en el navegador. Cuando vence (60 minutos) o la API responde 401, la aplicación cierra la sesión y vuelve al login.
 
 ### Usuarios de prueba
 

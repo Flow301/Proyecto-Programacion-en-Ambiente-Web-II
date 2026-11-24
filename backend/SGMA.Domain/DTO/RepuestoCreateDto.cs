@@ -11,16 +11,19 @@ public record class RepuestoCreateDto
     /// <summary>Código: obligatorio, máximo 20 caracteres y no se repite. Se guarda en mayúscula.</summary>
     /// <example>BAT-12V-001</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(20, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Codigo { get; set; }
 
     /// <summary>Nombre: obligatorio, máximo 100 caracteres.</summary>
     /// <example>Batería 12 V 100 Ah</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(100, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Nombre { get; set; }
 
     /// <summary>Unidad de medida: obligatoria, máximo 20 caracteres (unidad, juego, galón...).</summary>
     /// <example>unidad</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(20, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? UnidadMedida { get; set; }
 
     /// <summary>Stock inicial: 0 o más.</summary>

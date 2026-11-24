@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Prioridad> Prioridad { get; set; }
     public DbSet<NaturalezaMantenimiento> NaturalezaMantenimiento { get; set; }
     public DbSet<NivelCertificacion> NivelCertificacion { get; set; }
+    public DbSet<VariableControl> VariableControl { get; set; }
     public DbSet<CategoriaActivo> CategoriaActivo { get; set; }
     public DbSet<Activo> Activo { get; set; }
     public DbSet<Especialidad> Especialidad { get; set; }
@@ -23,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<TecnicoEspecialidad> TecnicoEspecialidad { get; set; }
     public DbSet<Usuario> Usuario { get; set; }
     public DbSet<HistorialEstadoActivo> HistorialEstadoActivo { get; set; }
+    public DbSet<LecturaUso> LecturaUso { get; set; }
     public DbSet<Proveedor> Proveedor { get; set; }
     public DbSet<Repuesto> Repuesto { get; set; }
     public DbSet<RepuestoProveedor> RepuestoProveedor { get; set; }
@@ -118,17 +120,43 @@ public class AppDbContext : DbContext
                 .HasMaxLength(20);
         });
 
+        // VariableControl
+        modelBuilder.Entity<VariableControl>(entity =>
+        {
+            entity.HasKey(e => e.IdVariableControl)
+                .HasName("PK_VariableControl");
+
+            entity.HasIndex(e => e.Nombre, "UQ_VariableControl_Nombre")
+                .IsUnique();
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(40);
+
+            entity.Property(e => e.Unidad)
+                .HasMaxLength(10);
+        });
+
         // CategoriaActivo
         modelBuilder.Entity<CategoriaActivo>(entity =>
         {
+            // Las categorías que ya existían toman el kilometraje, la única variable del contexto
+            entity.Property(e => e.IdVariableControl)
+                .HasDefaultValue(1);
+
+            entity.HasOne(d => d.VariableControl)
+                .WithMany(p => p.Categorias)
+                .HasForeignKey(d => d.IdVariableControl)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_CategoriaActivo_VariableControl");
+
             entity.HasKey(e => e.IdCategoria)
                 .HasName("PK_CategoriaActivo");
 
             entity.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_CategoriaActivo_IntervaloKm", "[IntervaloKm] > 0");
-                t.HasCheckConstraint("CK_CategoriaActivo_MargenAvisoKm",
-                    "[MargenAvisoKm] >= 0 AND [MargenAvisoKm] < [IntervaloKm]");
+                t.HasCheckConstraint("CK_CategoriaActivo_PorcentajeAviso",
+                    "[PorcentajeAviso] BETWEEN 1 AND 99");
             });
 
             entity.HasIndex(e => e.Nombre, "UQ_CategoriaActivo_Nombre")
@@ -154,6 +182,15 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.IdActivo)
                 .HasName("PK_Activo");
+
+            // Control de concurrencia: el UPDATE lleva "AND IdEstadoActivo = <el estado leído>" en el WHERE.
+            // Si otra petición cambió el estado mientras tanto, no se actualiza ninguna fila y no se guarda nada.
+            entity.Property(e => e.IdEstadoActivo)
+                .IsConcurrencyToken();
+
+            // Lo mismo con el kilometraje: dos lecturas simultáneas no pueden dejar guardada la menor
+            entity.Property(e => e.KilometrajeActual)
+                .IsConcurrencyToken();
 
             entity.ToTable(t =>
             {
@@ -369,6 +406,42 @@ public class AppDbContext : DbContext
                 .HasConstraintName("FK_HistorialEstadoActivo_OrdenMantenimiento");
         });
 
+        // LecturaUso
+        modelBuilder.Entity<LecturaUso>(entity =>
+        {
+            entity.HasKey(e => e.IdLectura)
+                .HasName("PK_LecturaUso");
+
+            entity.ToTable(t => t.HasCheckConstraint("CK_LecturaUso_Kilometraje", "[Kilometraje] >= 0"));
+
+            // Las consultas siempre son "las lecturas de un vehículo, de la más reciente a la más antigua"
+            entity.HasIndex(e => new { e.IdActivo, e.Fecha }, "IX_LecturaUso_Activo_Fecha");
+
+            entity.Property(e => e.Fecha)
+                .HasColumnType("date");
+
+            entity.Property(e => e.FechaRegistro)
+                .HasDefaultValueSql("(sysdatetime())");
+
+            entity.HasOne(d => d.Activo)
+                .WithMany(p => p.Lecturas)
+                .HasForeignKey(d => d.IdActivo)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_LecturaUso_Activo");
+
+            entity.HasOne(d => d.Usuario)
+                .WithMany()
+                .HasForeignKey(d => d.IdUsuario)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_LecturaUso_Usuario");
+
+            entity.HasOne(d => d.Orden)
+                .WithMany()
+                .HasForeignKey(d => d.IdOrden)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_LecturaUso_OrdenMantenimiento");
+        });
+
         // Proveedor
         modelBuilder.Entity<Proveedor>(entity =>
         {
@@ -496,6 +569,12 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.IdOrden)
                 .HasName("PK_OrdenMantenimiento");
+
+            // Control de concurrencia, como la condición del UPDATE en la anulación de facturas del material:
+            // el UPDATE lleva "AND IdEstadoOrden = <el estado leído>" en el WHERE. Si dos usuarios hacen una transición
+            // de la misma orden a la vez, solo una se guarda; la otra no toca ninguna fila y no guarda nada.
+            entity.Property(e => e.IdEstadoOrden)
+                .IsConcurrencyToken();
 
             entity.HasIndex(e => e.Codigo, "UQ_OrdenMantenimiento_Codigo")
                 .IsUnique();

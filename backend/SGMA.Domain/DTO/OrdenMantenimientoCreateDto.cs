@@ -18,8 +18,14 @@ public record class OrdenMantenimientoCreateDto
     [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
     public int IdTipoMantenimiento { get; set; }
 
+    /// <summary>Id de una prioridad existente; si se omite, Media. El diagnóstico puede cambiarla.</summary>
+    /// <example>2</example>
+    [Range(1, int.MaxValue, ErrorMessage = "El campo {0} debe ser mayor o igual a {1}.")]
+    public int? IdPrioridad { get; set; }
+
     /// <summary>Motivo de la solicitud: obligatorio, máximo 500 caracteres.</summary>
     /// <example>Ruido metálico al frenar en las ruedas traseras.</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(500, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
+    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Motivo { get; set; }
 }

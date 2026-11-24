@@ -14,10 +14,13 @@ public class CategoriaActivoRepository : ICategoriaActivoRepository
         _context = context;
     }
 
+    // Con los vehículos para CantidadActivos (el listado de categorías la muestra, enunciado Avance 2, 5.2)
     public async Task<IEnumerable<CategoriaActivo>> GetAllAsync()
     {
         return await _context.CategoriaActivo
             .AsNoTracking()
+            .Include(c => c.Activos)
+            .Include(c => c.VariableControl)
             .OrderBy(c => c.IdCategoria)
             .ToListAsync();
     }
@@ -26,6 +29,8 @@ public class CategoriaActivoRepository : ICategoriaActivoRepository
     {
         return await _context.CategoriaActivo
             .AsNoTracking()
+            .Include(c => c.Activos)
+            .Include(c => c.VariableControl)
             .OrderBy(c => c.IdCategoria)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
@@ -41,7 +46,14 @@ public class CategoriaActivoRepository : ICategoriaActivoRepository
     {
         return await _context.CategoriaActivo
             .AsNoTracking()
+            .Include(c => c.Activos)
+            .Include(c => c.VariableControl)
             .FirstOrDefaultAsync(c => c.IdCategoria == id);
+    }
+
+    public async Task<bool> VariableControlExistsAsync(int idVariableControl)
+    {
+        return await _context.VariableControl.AnyAsync(v => v.IdVariableControl == idVariableControl);
     }
 
     public async Task<bool> ExistsAsync(int id)

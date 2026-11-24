@@ -37,4 +37,12 @@ public record class RepuestoDto
     /// <summary>true = activo; false = inactivado.</summary>
     /// <example>true</example>
     public bool Estado { get; set; }
+
+    /// <summary>true si el stock actual está por debajo del mínimo (calculado).</summary>
+    /// <example>false</example>
+    public bool StockBajo => StockActual < StockMinimo;
+
+    /// <summary>Unidades que faltan para llegar al mínimo; 0 si no está bajo el mínimo (calculado).</summary>
+    /// <example>0</example>
+    public int Faltante => Math.Max(0, StockMinimo - StockActual);
 }

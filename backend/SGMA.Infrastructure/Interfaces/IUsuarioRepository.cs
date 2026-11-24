@@ -6,8 +6,9 @@ public interface IUsuarioRepository
 {
     // Lectura (incluye los inactivos: el Administrador los ve para reactivarlos)
     Task<IEnumerable<Usuario>> GetAllAsync();
-    Task<IEnumerable<Usuario>> GetPaginationAsync(int pageNumber, int pageSize);
-    Task<int> CountAsync();
+    Task<IEnumerable<Usuario>> GetPaginationAsync(int pageNumber, int pageSize, int? idRol = null, bool? estado = null);
+    Task<int> CountAsync(int? idRol = null, bool? estado = null);
+    Task<HashSet<int>> GetConActividadAsync(IReadOnlyCollection<int> idsUsuario);
     Task<Usuario?> GetByIdAsync(int id);
     Task<IEnumerable<Rol>> GetRolesAsync();
 
