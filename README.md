@@ -31,7 +31,7 @@ Además:
 
 ## Proceso principal
 
-Una orden nace **Solicitada**. El taller la **diagnostica** y el Administrador la **aprueba** o la **rechaza**. Al pasar a **En Ejecución**, el vehículo cambia solo a *En Mantenimiento*; cuando la orden se **completa**, vuelve a *Operativo*. Si durante la ejecución falta stock de un repuesto, la orden pasa sola a **En Espera de Repuesto** hasta que haya disponibilidad. Antes del cierre, la orden puede **cancelarse**.
+Una orden nace **Solicitada**. El taller la **diagnostica** y el Administrador la **aprueba** o la **rechaza**. Al pasar a **En Ejecución**,el vehículo cambia solo a *En Mantenimiento* (si estaba *Fuera de Servicio*, conserva ese estado); cuando la orden se **completa**, vuelve a *Operativo*. Si durante la ejecución falta stock de un repuesto, la orden pasa sola a **En Espera de Repuesto** hasta que haya disponibilidad. Antes del cierre, la orden puede **cancelarse**.
 
 ### Matriz de transiciones final
 
@@ -43,7 +43,7 @@ Es la que aplica la API (`MatrizTransicionesOrden`). Cualquier transición que n
 | Solicitada | Diagnosticada | Coordinador/Técnico | Diagnóstico, prioridad y kilometraje (no menor que el actual; queda como lectura de uso). |
 | Diagnosticada | Aprobada | Administrador | Fecha programada obligatoria, no anterior a hoy. |
 | Diagnosticada | Rechazada | Administrador | Estado final, con fecha de cierre; observación opcional. |
-| Aprobada | En Ejecución (iniciar) | Coordinador/Técnico | Al menos un técnico con la especialidad requerida, activo y disponible. El vehículo pasa a En Mantenimiento. |
+| Aprobada | En Ejecución (iniciar) | Coordinador/Técnico | Al menos un técnico con la especialidad requerida, activo y disponible; cada asignación guarda la tarifa del técnico. El vehículo Operativo pasa a En Mantenimiento; uno Fuera de Servicio conserva su estado. |
 | En Ejecución | En Espera de Repuesto | Automática | Al registrar un repuesto sin stock suficiente: la línea queda pendiente y no se descuenta nada. |
 | En Espera de Repuesto | En Ejecución (reanudar) | Coordinador/Técnico | Solo si ya hay stock para todos los pendientes; se descuentan en ese momento. |
 | En Ejecución | Completada | Coordinador/Técnico | Sin repuestos pendientes y con al menos un técnico con horas. Fija los costos y la fecha de cierre; el vehículo vuelve a Operativo si no tiene otra orden en curso. Si es preventiva, la lectura actual pasa a ser la base. |
