@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { Ban, ChevronLeft, ChevronRight, CircleCheckBig, OctagonX } from 'lucide-react'
+import { Ban, ChevronLeft, ChevronRight, CircleCheckBig, Gauge, OctagonX } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraPreventivo, { LeyendaPreventivo } from '@/components/shared/BarraPreventivo'
 import BloqueSeccion from '@/components/shared/BloqueSeccion'
@@ -21,6 +21,7 @@ import { cambiarEstadoActivo, darDeBajaActivo, historialActivo, lecturasActivo, 
 import { estadosActivo } from '@/services/catalogoService'
 import { listarOrdenes } from '@/services/ordenService'
 import { avisarError, avisarExito } from '@/utils/avisos'
+import DialogoLectura from './DialogoLectura'
 import { formatAntiguedad, formatColones, formatFecha, formatFechaHora, formatKm, formatNumero } from '@/utils/format'
 
 // Detalle del vehículo (enunciado Avance 2, 5.2): encabezado con la foto, datos generales y del contexto,
@@ -61,6 +62,7 @@ export default function VehiculoDetalle() {
   const carga = useCarga(cargar)
   const estados = useCarga(esAdmin ? estadosActivo : sinEstados)
   const [cambio, setCambio] = useState(null) // clave de CAMBIOS
+  const [lectura, setLectura] = useState(false)
   const [procesando, setProcesando] = useState(false)
   // Después de un cambio se vuelven a pedir el detalle y sus secciones (historial, lecturas, órdenes)
   const [version, setVersion] = useState(0)
@@ -73,6 +75,8 @@ export default function VehiculoDetalle() {
   const v = carga.datos.data
   const cambios = esAdmin ? (CAMBIOS_POR_ESTADO[v.estadoActivoNombre] ?? []) : []
   const elegido = cambio && CAMBIOS[cambio]
+  const puedeLeer = esAdmin && v.estadoActivoNombre !== 'Dado de Baja' // la API no registra lecturas de un vehículo de baja
+  const actualizar = () => { carga.recargar(); setVersion((n) => n + 1) }
 
   const confirmar = async (observacion) => {
     setProcesando(true)
@@ -85,8 +89,7 @@ export default function VehiculoDetalle() {
       }
       avisarExito(`${v.codigo} pasó a ${elegido.destino}`)
       setCambio(null)
-      carga.recargar()
-      setVersion((n) => n + 1)
+      actualizar()
     } catch (err) {
       avisarError(err)
     } finally {
@@ -103,10 +106,15 @@ export default function VehiculoDetalle() {
         imagen={<ImagenVehiculo ruta={v.imagen} alt={`${v.codigo} · ${v.nombre}`} className="h-28 w-40" />}
         estado={<BadgeEstado estado={v.estadoActivoNombre} />}
         detalle={<>{v.nombre} <Separador /> {v.categoriaNombre}</>}
-        acciones={cambios.length > 0 && cambios.map((c) => {
-          const { texto, Icono, variante } = CAMBIOS[c]
-          return <Button key={c} variant={variante} onClick={() => setCambio(c)}><Icono aria-hidden="true" />{texto}</Button>
-        })}
+        acciones={(cambios.length > 0 || puedeLeer) && (
+          <>
+            {cambios.map((c) => {
+              const { texto, Icono, variante } = CAMBIOS[c]
+              return <Button key={c} variant={variante} onClick={() => setCambio(c)}><Icono aria-hidden="true" />{texto}</Button>
+            })}
+            {puedeLeer && <Button onClick={() => setLectura(true)}><Gauge aria-hidden="true" />Registrar lectura</Button>}
+          </>
+        )}
       />
 
       <div className="grid items-start gap-5 xl:grid-cols-2">
@@ -135,6 +143,7 @@ export default function VehiculoDetalle() {
         <LecturasVehiculo key={`l${version}`} v={v} />
       </div>
 
+      {lectura && <DialogoLectura vehiculo={v} onCerrar={() => setLectura(false)} onRegistrada={() => { setLectura(false); actualizar() }} />}
       <DialogoConfirmacion
         abierto={Boolean(elegido)}
         titulo={elegido ? elegido.pregunta(v) : ''}
