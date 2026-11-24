@@ -10,6 +10,7 @@ import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import PaginaError from '@/components/shared/PaginaError'
 import Separador from '@/components/shared/Separador'
 import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import useCarga from '@/hooks/useCarga'
 import { cn } from '@/lib/utils'
 import { obtenerCostosOrden } from '@/services/reporteService'
@@ -63,6 +64,15 @@ export default function ReporteCostos() {
       </div>
 
       <Comparacion r={r} />
+
+      <BloqueSeccion
+        titulo="Repuestos"
+        detalle={`${formatNumero(r.repuestos.length)} ${r.repuestos.length === 1 ? 'línea consumida' : 'líneas consumidas'}, con el costo unitario al momento del uso.`}
+        sinRelleno
+      >
+        <TablaRepuestos r={r} />
+        {r.repuestosPendientes.length > 0 && <RepuestosPendientes r={r} />}
+      </BloqueSeccion>
 
     </>
   )
@@ -171,6 +181,68 @@ function conSigno(valor, formato) {
   if (valor > 0) return `+${formato(valor)}`
   if (valor < 0) return `−${formato(Math.abs(valor))}`
   return formato(valor)
+}
+
+// Encabezados y celdas con el mismo estilo que las tablas del dashboard
+const TH = 'h-10 px-4 text-sm font-semibold text-muted-foreground'
+const TD = 'px-4 py-2.5'
+
+function TablaRepuestos({ r }) {
+  if (r.repuestos.length === 0) {
+    return <EstadoVacio titulo="No se han consumido repuestos" mensaje="El subtotal de repuestos es ₡0." className="mx-6 mb-5" />
+  }
+  return (
+    <Table className="text-[0.9375rem] tabular-nums">
+      <TableCaption className="sr-only">Repuestos consumidos en la orden {r.codigo}</TableCaption>
+      <TableHeader className="[&_tr]:border-border">
+        <TableRow className="hover:bg-transparent">
+          <TableHead scope="col" className={TH}>Código</TableHead>
+          <TableHead scope="col" className={TH}>Repuesto</TableHead>
+          <TableHead scope="col" className={cn(TH, 'text-right')}>Cantidad</TableHead>
+          <TableHead scope="col" className={cn(TH, 'text-right')}>Costo unitario</TableHead>
+          <TableHead scope="col" className={cn(TH, 'text-right')}>Subtotal</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {r.repuestos.map((d, i) => (
+          <TableRow key={`${d.codigo}-${i}`} className="border-border-suave hover:bg-muted/40">
+            <TableCell className={cn(TD, 'font-bold')}>{d.codigo}</TableCell>
+            <TableCell className={cn(TD, 'whitespace-normal')}>{d.nombre}</TableCell>
+            <TableCell className={cn(TD, 'text-right')}>{formatNumero(d.cantidad)}</TableCell>
+            <TableCell className={cn(TD, 'text-right')}>{formatColones(d.costoUnitario)}</TableCell>
+            <TableCell className={cn(TD, 'text-right')}>{formatColones(d.subtotal)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+      <TableFooter className="bg-muted/40">
+        <TableRow className="hover:bg-transparent">
+          <TableHead scope="row" colSpan={4} className={cn(TD, 'h-auto font-semibold text-foreground')}>Subtotal de repuestos</TableHead>
+          <TableCell className={cn(TD, 'text-right font-bold')}>{formatColones(r.subtotalRepuestos)}</TableCell>
+        </TableRow>
+      </TableFooter>
+    </Table>
+  )
+}
+
+// Los pendientes van aparte y no suman: todavía no salieron del inventario, así que no tienen costo
+function RepuestosPendientes({ r }) {
+  return (
+    <div className="border-t px-6 pt-4 pb-5">
+      <h3 className="text-[0.9375rem] font-semibold">Repuestos pendientes</h3>
+      <p className="text-sm text-muted-foreground">Esperan stock. No suman al costo hasta que se consuman.</p>
+      <ul className="mt-3 flex flex-col divide-y divide-border-suave rounded-sm border text-[0.9375rem] tabular-nums">
+        {r.repuestosPendientes.map((p, i) => (
+          <li key={`${p.codigo}-${i}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
+            <span><strong>{p.codigo}</strong> <Separador /> {p.nombre}</span>
+            <span className="flex items-center gap-3">
+              <span>{formatNumero(p.cantidad)} {p.cantidad === 1 ? 'unidad' : 'unidades'}</span>
+              <BadgeEstado estado="Pendiente" />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 function Datos({ filas }) {
