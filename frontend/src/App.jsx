@@ -25,6 +25,7 @@ const TecnicoDetalle = lazy(() => import('./pages/tecnicos/TecnicoDetalle'))
 const TecnicoFormulario = lazy(() => import('./pages/tecnicos/TecnicoFormulario'))
 const Usuarios = lazy(() => import('./pages/usuarios/Usuarios'))
 const VehiculoDetalle = lazy(() => import('./pages/vehiculos/VehiculoDetalle'))
+const VehiculoFormulario = lazy(() => import('./pages/vehiculos/VehiculoFormulario'))
 const Vehiculos = lazy(() => import('./pages/vehiculos/Vehiculos'))
 const Tecnicos = lazy(() => import('./pages/tecnicos/Tecnicos'))
 
@@ -75,6 +76,8 @@ export default function App() {
             <Route path="tecnicos/:id/editar" element={<TecnicoFormulario />} />
             <Route path="repuestos/nuevo" element={<RepuestoFormulario />} />
             <Route path="repuestos/:id/editar" element={<RepuestoFormulario />} />
+            <Route path="vehiculos/nuevo" element={<VehiculoFormulario />} />
+            <Route path="vehiculos/:id/editar" element={<VehiculoFormulario />} />
             <Route path="usuarios" element={<Usuarios />} />
           </Route>
 

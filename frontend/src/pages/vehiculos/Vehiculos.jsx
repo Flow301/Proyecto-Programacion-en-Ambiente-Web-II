@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { Link, useLocation } from 'react-router'
-import { Eye } from 'lucide-react'
+import { Eye, Plus } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
@@ -19,11 +19,11 @@ const TAMANO = 10
 // El Solicitante/Consulta no consulta categorías (la API le responde 403): no se le pide la lista
 const sinCategorias = () => Promise.resolve({ data: [] })
 
-// Vehículos (enunciado Avance 2, 5.2): los tres roles consultan.
+// Vehículos (enunciado Avance 2, 5.2): los tres roles consultan; solo el Administrador registra.
 // Filtros por categoría y estado guardados en la URL. El estado preventivo lo calcula la API con la misma
 // consulta de la pantalla Preventivo; los vehículos Fuera de Servicio o Dados de Baja no se evalúan.
 export default function Vehiculos() {
-  const { esSolicitante } = useRol()
+  const { esAdmin, esSolicitante } = useRol()
   const { search } = useLocation()
   const filtros = useFiltrosUrl()
   const idCategoria = filtros.valor('idCategoria')
@@ -43,6 +43,7 @@ export default function Vehiculos() {
       <EncabezadoPagina
         titulo="Vehículos"
         detalle="La flota de la empresa, con su estado y cómo va su mantenimiento preventivo."
+        acciones={esAdmin && <Button asChild><Link to="/vehiculos/nuevo" state={desde}><Plus aria-hidden="true" />Nuevo vehículo</Link></Button>}
       />
       <BarraFiltros onLimpiar={filtros.limpiar} hayFiltros={filtros.hayFiltros}>
         {!esSolicitante && (
@@ -68,7 +69,7 @@ export default function Vehiculos() {
         onReintentar={lista.recargar}
         vacio={filtros.hayFiltros
           ? { titulo: 'Ningún vehículo coincide con el filtro', tipo: 'sinResultados', accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button> }
-          : { titulo: 'No hay vehículos registrados' }}
+          : { titulo: 'No hay vehículos registrados', accion: esAdmin && <Button asChild><Link to="/vehiculos/nuevo" state={desde}>Nuevo vehículo</Link></Button> }}
         columnas={[
           { clave: 'imagen', titulo: <span className="sr-only">Foto</span>, render: (v) => <ImagenVehiculo ruta={v.imagen} alt="" className="h-9 w-12" /> },
           { clave: 'codigo', titulo: 'Código', fija: true, render: (v) => <Link to={enlace(v)} state={desde} className="font-bold text-primary underline-offset-4 hover:underline">{v.codigo}</Link> },

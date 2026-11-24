@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { Ban, ChevronLeft, ChevronRight, CircleCheckBig, Gauge, OctagonX } from 'lucide-react'
+import { Ban, ChevronLeft, ChevronRight, CircleCheckBig, Gauge, OctagonX, Pencil } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraPreventivo, { LeyendaPreventivo } from '@/components/shared/BarraPreventivo'
 import BloqueSeccion from '@/components/shared/BloqueSeccion'
@@ -106,12 +106,13 @@ export default function VehiculoDetalle() {
         imagen={<ImagenVehiculo ruta={v.imagen} alt={`${v.codigo} · ${v.nombre}`} className="h-28 w-40" />}
         estado={<BadgeEstado estado={v.estadoActivoNombre} />}
         detalle={<>{v.nombre} <Separador /> {v.categoriaNombre}</>}
-        acciones={(cambios.length > 0 || puedeLeer) && (
+        acciones={esAdmin && (
           <>
             {cambios.map((c) => {
               const { texto, Icono, variante } = CAMBIOS[c]
               return <Button key={c} variant={variante} onClick={() => setCambio(c)}><Icono aria-hidden="true" />{texto}</Button>
             })}
+            <Button asChild variant="outline"><Link to={`/vehiculos/${v.idActivo}/editar`} state={state}><Pencil aria-hidden="true" />Editar</Link></Button>
             {puedeLeer && <Button onClick={() => setLectura(true)}><Gauge aria-hidden="true" />Registrar lectura</Button>}
           </>
         )}
