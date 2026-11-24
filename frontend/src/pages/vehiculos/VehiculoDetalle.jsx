@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraPreventivo, { LeyendaPreventivo } from '@/components/shared/BarraPreventivo'
@@ -9,12 +9,14 @@ import ImagenVehiculo from '@/components/shared/ImagenVehiculo'
 import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import PaginaError from '@/components/shared/PaginaError'
 import Separador from '@/components/shared/Separador'
+import TablaPaginada from '@/components/shared/TablaPaginada'
 import useCarga from '@/hooks/useCarga'
 import { obtenerActivo } from '@/services/activoService'
+import { listarOrdenes } from '@/services/ordenService'
 import { formatAntiguedad, formatColones, formatFecha, formatFechaHora, formatKm, formatNumero } from '@/utils/format'
 
 // Detalle del vehículo (enunciado Avance 2, 5.2): encabezado con la foto, datos generales y del contexto,
-// y el bloque de uso y mantenimiento preventivo (5.8). La evaluación preventiva la calcula la API.
+// el bloque de uso y mantenimiento preventivo (5.8) y sus órdenes. La evaluación preventiva la calcula la API.
 export default function VehiculoDetalle() {
   const { id } = useParams()
   const { state } = useLocation()
@@ -57,6 +59,8 @@ export default function VehiculoDetalle() {
 
         <UsoPreventivo v={v} />
       </div>
+
+      <OrdenesVehiculo v={v} />
     </>
   )
 }
@@ -106,6 +110,44 @@ function UsoPreventivo({ v }) {
         ['Aviso desde', `${formatNumero(p.porcentajeAviso)} % del umbral`],
         [p.kmRestantes < 0 ? 'Se pasó del umbral por' : 'Faltan para el umbral', formatKm(Math.abs(p.kmRestantes), unidad)],
       ]} />
+    </BloqueSeccion>
+  )
+}
+
+const TAMANO = 5
+
+// Órdenes del vehículo, de la más reciente a la más antigua, con su enlace. Es el listado de órdenes filtrado por
+// vehículo: al Solicitante/Consulta la API le devuelve solo las suyas.
+function OrdenesVehiculo({ v }) {
+  const { pathname } = useLocation()
+  const [pagina, setPagina] = useState(1)
+  const cargar = useCallback(() => listarOrdenes(pagina, TAMANO, { idActivo: v.idActivo }), [pagina, v.idActivo])
+  const lista = useCarga(cargar)
+  return (
+    <BloqueSeccion titulo="Órdenes" detalle={`Órdenes de mantenimiento de ${v.codigo}.`} sinRelleno>
+      <TablaPaginada
+        titulo={`Órdenes del vehículo ${v.codigo}`}
+        nombre="órdenes"
+        className="rounded-none border-0 border-t"
+        filas={lista.datos?.data ?? []}
+        claveFila={(o) => o.idOrden}
+        cargando={lista.cargando}
+        error={lista.error}
+        onReintentar={lista.recargar}
+        vacio={{ titulo: 'Este vehículo no tiene órdenes', mensaje: 'Las solicitudes de mantenimiento aparecen aquí.' }}
+        columnas={[
+          { clave: 'codigo', titulo: 'Código', render: (o) => <Link to={`/ordenes/${o.idOrden}`} state={{ desde: pathname }} className="font-bold text-primary underline-offset-4 hover:underline">{o.codigo}</Link> },
+          { clave: 'fechaSolicitud', titulo: 'Solicitud', render: (o) => formatFecha(o.fechaSolicitud) },
+          { clave: 'tipoMantenimientoNombre', titulo: 'Tipo', recortar: true },
+          { clave: 'prioridadNombre', titulo: 'Prioridad', render: (o) => o.prioridadNombre ?? 'Sin asignar' },
+          { clave: 'estado', titulo: 'Estado', render: (o) => <BadgeEstado estado={o.estadoOrdenNombre} /> },
+        ]}
+        pagina={pagina}
+        tamano={TAMANO}
+        totalRegistros={lista.datos?.totalRecords}
+        totalPaginas={lista.datos?.totalPages}
+        onCambiarPagina={setPagina}
+      />
     </BloqueSeccion>
   )
 }
