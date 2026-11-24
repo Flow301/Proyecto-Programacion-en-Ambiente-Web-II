@@ -216,7 +216,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Validaciones y reglas de negocio.**
 
-- Toda orden queda vinculada a un único vehículo existente. *Decisión del equipo:* no se crean órdenes para vehículos Dado de Baja; para vehículos Fuera de Servicio sí, porque así vuelve a operar una unidad dañada.
+- Toda orden queda vinculada a un único vehículo existente. *Decisión del equipo:* no se crean órdenes para vehículos Dado de Baja; para vehículos Fuera de Servicio sí, porque así se repara una unidad dañada. El vehículo sigue Fuera de Servicio durante y después de la orden, porque el sistema no sobrescribe un estado administrativo (enunciado Avance 2, 5.3); el Administrador lo devuelve a Operativo cuando corresponda.
 - Si el vehículo está En Mantenimiento, solo se puede crear una orden cuyo tipo sea de naturaleza Emergencia.
   - *Decisión del equipo:* el enunciado habla de una "nueva" orden, así que se valida al crear; las órdenes que ya estaban abiertas siguen su curso.
   - La misma regla se vuelve a validar cada vez que cambia el tipo de una orden (al editar la solicitud o al corregirlo en el diagnóstico). Si no, una orden creada como emergencia sobre un vehículo En Mantenimiento podría pasar a ser correctiva y saltarse el bloqueo.
@@ -233,7 +233,8 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
   - Costo de repuestos: suma de los subtotales del detalle.
   - Costo de mano de obra: horas por tarifa de cada técnico.
   - Mientras la orden está abierta, los costos se calculan en vivo.
-  - Al completar, o al cancelar una orden que tuvo ejecución, se congela la tarifa en cada asignación y se guardan los tres costos.
+  - La tarifa de cada técnico se toma al asignarlo y queda guardada en la asignación (enunciado Avance 2, 5.4), así un cambio posterior de su tarifa no altera la orden.
+  - Al completar, o al cancelar una orden que tuvo ejecución, se guardan los tres costos.
 - La fecha de cierre se registra en cualquier estado final: Completada, Cancelada o Rechazada.
 - Al completar una orden de naturaleza Preventivo, el kilometraje del último preventivo del vehículo (la lectura base) pasa a ser su kilometraje actual (la última lectura).
 - Una orden nunca se elimina físicamente; para eso existe Cancelar, disponible desde cualquier estado no final.
@@ -298,7 +299,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 
 **Objetivo.** Registrar qué técnicos participaron en una orden y cuántas horas dedicó cada uno, como base del costo de mano de obra y de la carga técnica.
 
-**Campos.** Técnico, fecha de asignación, horas trabajadas y tarifa aplicada (se congela al cerrar la orden).
+**Campos.** Técnico, fecha de asignación, horas trabajadas y tarifa aplicada (la del técnico al momento de asignarlo).
 
 **Acciones.**
 
@@ -498,7 +499,7 @@ La orden recorre este camino:
 1. **Solicitada:** la crea un Solicitante o el Administrador.
 2. **Diagnosticada:** el Coordinador la revisa y define alcance, prioridad y kilometraje.
 3. **Aprobada** con fecha programada, o **Rechazada:** lo decide el Administrador.
-4. **En Ejecución:** el Coordinador asigna técnicos e inicia el trabajo, y el vehículo pasa a En Mantenimiento.
+4. **En Ejecución:** el Coordinador asigna técnicos e inicia el trabajo, y el vehículo Operativo pasa a En Mantenimiento. Uno Fuera de Servicio conserva ese estado.
 5. **En Espera de Repuesto:** pasa sola si falta stock; vuelve a En Ejecución cuando el Coordinador la reanuda con stock suficiente.
 6. **Completada:** el Coordinador la cierra, se congelan los costos y el vehículo vuelve a Operativo.
 
@@ -672,7 +673,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 
 - [x] Asignación con validación de especialidad, actividad y disponibilidad.
 - [x] Registro de horas solo En Ejecución.
-- [x] Costo de mano de obra con la tarifa congelada al cierre.
+- [x] Costo de mano de obra con la tarifa tomada al asignar el técnico.
 
 **Historial**
 
