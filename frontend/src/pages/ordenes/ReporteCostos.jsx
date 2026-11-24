@@ -10,8 +10,9 @@ import PaginaError from '@/components/shared/PaginaError'
 import Separador from '@/components/shared/Separador'
 import { Button } from '@/components/ui/button'
 import useCarga from '@/hooks/useCarga'
+import { cn } from '@/lib/utils'
 import { obtenerCostosOrden } from '@/services/reporteService'
-import { formatFechaHora } from '@/utils/format'
+import { formatColones, formatFechaHora, formatHoras, formatPorcentaje } from '@/utils/format'
 
 // Reporte de costos por orden (reporte B1). Se abre con el botón "Reporte de costos" del detalle de la orden.
 // Una sola petición (GET api/Reporte/costos-orden/{id}): subtotales, porcentajes, promedio e indicador los calcula
@@ -56,9 +57,53 @@ export default function ReporteCostos() {
             ['Fecha de cierre', r.fechaCierre ? formatFechaHora(r.fechaCierre) : 'Sigue abierta'],
           ]} />
         </BloqueSeccion>
+
+        <ResumenCostos r={r} />
       </div>
 
     </>
+  )
+}
+
+// Recuadro de totales destacado: el costo total con su etiqueta ("Costo final" o "Costo acumulado a la fecha")
+// y la proporción de repuestos y de mano de obra. Los porcentajes vienen de la API y suman 100.
+function ResumenCostos({ r }) {
+  const partes = [
+    { nombre: 'Repuestos', monto: r.subtotalRepuestos, porcentaje: r.porcentajeRepuestos, color: 'bg-primary' },
+    { nombre: 'Mano de obra', monto: r.costoManoObra, porcentaje: r.porcentajeManoObra, color: 'bg-autorizado', extra: formatHoras(r.totalHoras) },
+  ]
+  return (
+    <section aria-labelledby="titulo-total" className="flex flex-col gap-4 rounded-sm border-2 border-primary bg-card px-6 py-5 tabular-nums">
+      <div className="flex flex-col gap-1">
+        <h2 id="titulo-total" className="text-sm font-semibold text-muted-foreground">{r.etiquetaCosto}</h2>
+        <p className="text-4xl font-bold">{formatColones(r.costoTotal)}</p>
+        <p className="text-sm text-muted-foreground">Subtotal de repuestos + costo de mano de obra.</p>
+      </div>
+
+      {r.costoTotal > 0 ? (
+        <div className="flex h-3 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+          {partes.map((p) => <div key={p.nombre} className={p.color} style={{ width: `${p.porcentaje}%` }} />)}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">La orden todavía no tiene repuestos consumidos ni horas registradas.</p>
+      )}
+
+      <dl className="flex flex-col gap-2.5 text-[0.9375rem]">
+        {partes.map((p) => (
+          <div key={p.nombre} className="flex items-baseline justify-between gap-4">
+            <dt className="flex items-center gap-2">
+              <span className={cn('size-3 shrink-0 rounded-[3px]', p.color)} aria-hidden="true" />
+              {p.nombre}
+              {p.extra && <span className="text-sm text-muted-foreground">({p.extra})</span>}
+            </dt>
+            <dd className="flex items-baseline gap-3">
+              <span className="text-sm text-muted-foreground">{formatPorcentaje(p.porcentaje)}</span>
+              <strong>{formatColones(p.monto)}</strong>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }
 
