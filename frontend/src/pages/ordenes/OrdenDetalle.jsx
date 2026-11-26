@@ -47,7 +47,9 @@ export default function OrdenDetalle() {
   const { id } = useParams()
   const { state } = useLocation()
   const { esSolicitante } = useRol()
-  const textoVolver = esSolicitante ? 'Volver a Mis solicitudes' : 'Volver a Órdenes'
+  // Si se llegó desde el detalle de un vehículo, el enlace de regreso vuelve a él y lo dice
+  const textoVolver = state?.desde?.startsWith('/vehiculos/') ? 'Volver al vehículo'
+    : esSolicitante ? 'Volver a Mis solicitudes' : 'Volver a Órdenes'
   const cargar = useCallback(() => cargarOrden(id), [id])
   const carga = useCarga(cargar)
   const [dialogo, setDialogo] = useState(null) // { accion, tecnico? }

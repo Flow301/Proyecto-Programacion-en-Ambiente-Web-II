@@ -37,7 +37,9 @@ export default function OrdenNueva() {
   // "Nueva solicitud" desde el detalle del vehículo llega con ?idActivo= y precarga el vehículo
   const [params] = useSearchParams()
   const { esSolicitante } = useRol()
-  const textoVolver = esSolicitante ? 'Volver a Mis solicitudes' : 'Volver a Órdenes'
+  // Si se llegó desde el detalle de un vehículo, el enlace de regreso vuelve a él y lo dice
+  const textoVolver = state?.desde?.startsWith('/vehiculos/') ? 'Volver al vehículo'
+    : esSolicitante ? 'Volver a Mis solicitudes' : 'Volver a Órdenes'
   const regreso = state?.desde ?? '/ordenes'
   const catalogos = useCarga(cargarCatalogos)
   const [activos, tipos, niveles] = catalogos.datos?.map((r) => r.data) ?? [[], [], []]
