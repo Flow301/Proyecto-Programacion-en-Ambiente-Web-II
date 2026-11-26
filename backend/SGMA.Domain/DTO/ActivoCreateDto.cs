@@ -54,7 +54,7 @@ public record class ActivoCreateDto : IValidatableObject
     [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
     public string? Modelo { get; set; }
 
-    /// <summary>Año del vehículo: entre 1950 y 2100.</summary>
+    /// <summary>Año de fabricación: entre 1950 y 2100, y no posterior al año de adquisición.</summary>
     /// <example>2023</example>
     [Range(1950, 2100, ErrorMessage = "El campo {0} debe estar entre {1} y {2}.")]
     public short Anio { get; set; }
@@ -86,5 +86,11 @@ public record class ActivoCreateDto : IValidatableObject
 
         if (FechaAdquisicion?.Date > DateTime.Today)
             yield return new ValidationResult("La fecha de adquisición no puede ser futura.", [nameof(FechaAdquisicion)]);
+
+        // La empresa no puede comprar un vehículo antes de que se fabrique
+        if (FechaAdquisicion?.Year < Anio)
+            yield return new ValidationResult(
+                $"La fecha de adquisición no puede ser anterior al año de fabricación ({Anio}).",
+                [nameof(FechaAdquisicion)]);
     }
 }
