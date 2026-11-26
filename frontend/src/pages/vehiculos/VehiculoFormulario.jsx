@@ -41,7 +41,10 @@ const base = {
   descripcion: textoOpcional(250),
   fechaAdquisicion: z.string().min(1, 'Ingrese la fecha de adquisición.').refine((f) => f <= hoy(), 'La fecha no puede ser futura.'),
   valorReferencia: numero('el valor de referencia', { min: 0, entero: false }),
-  placa: texto('la placa', 10).transform((v) => v.toUpperCase()),
+  // Letras y números con guiones simples entre grupos (CL-284731, C-158327, BKL-482)
+  placa: texto('la placa', 10)
+    .regex(/^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/, 'Use solo letras, números y guiones, por ejemplo CL-284731.')
+    .transform((v) => v.toUpperCase()),
   marca: texto('la marca', 40),
   modelo: texto('el modelo', 40),
   anio: numero('el año de fabricación', { min: 1950, max: 2100 }),
