@@ -172,7 +172,7 @@ function Contenido({ vehiculo, categorias, titulo }) {
 
         <BloqueFormulario titulo="Datos del vehículo" detalle="Los datos propios de una unidad de la flota.">
           {campo('placa', 'Placa', { codigo: true, ayuda: 'No se repite entre vehículos.' })}
-          {campo('anio', 'Año de fabricación', { inputMode: 'numeric', ayuda: 'El del modelo, como en la tarjeta de circulación.' })}
+          {campo('anio', 'Año de fabricación', { inputMode: 'numeric', ayuda: 'El año en que se fabricó el vehículo.' })}
           {campo('marca', 'Marca')}
           {campo('modelo', 'Modelo')}
           {!vehiculo && campo('kilometrajeActual', 'Kilometraje actual', { inputMode: 'numeric', unidad: 'km', ayuda: 'Después cambia con "Registrar lectura de uso".' })}
