@@ -36,10 +36,12 @@ public record class ActivoCreateDto : IValidatableObject
     [Range(typeof(decimal), "0", "9999999999999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "El campo {0} debe estar entre {1} y {2}.")]
     public decimal ValorReferencia { get; set; }
 
-    /// <summary>Placa: obligatoria, máximo 10 caracteres y no se repite. Se guarda en mayúscula.</summary>
+    /// <summary>Placa: obligatoria, máximo 10 caracteres, solo letras, números y guiones, y no se repite. Se guarda en mayúscula.</summary>
     /// <example>CL-345120</example>
     [Required(ErrorMessage = "El campo {0} es obligatorio."), StringLength(10, ErrorMessage = "El campo {0} no puede tener más de {1} caracteres.")]
-    [RegularExpression(@"^[^<>]*$", ErrorMessage = "No se permiten los caracteres < y >.")]
+    // Formatos de Costa Rica: CL-284731, C-158327, AB-6214, BKL-482 o solo números. Letras y números, con guiones
+    // simples entre grupos; los espacios de los extremos y las minúsculas los corrige el servicio al guardar.
+    [RegularExpression(@"^\s*[A-Za-z0-9]+(-[A-Za-z0-9]+)*\s*$", ErrorMessage = "La placa solo admite letras, números y guiones, por ejemplo CL-284731.")]
     public string? Placa { get; set; }
 
     /// <summary>Marca: obligatoria, máximo 40 caracteres.</summary>
