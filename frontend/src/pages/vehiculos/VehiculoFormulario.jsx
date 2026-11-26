@@ -44,8 +44,14 @@ const base = {
   placa: texto('la placa', 10).transform((v) => v.toUpperCase()),
   marca: texto('la marca', 40),
   modelo: texto('el modelo', 40),
-  anio: numero('el año', { min: 1950, max: 2100 }),
+  anio: numero('el año de fabricación', { min: 1950, max: 2100 }),
   intervaloKmPropio: enteroOpcional(1),
+}
+// La empresa no puede comprar un vehículo antes de que se fabrique (la API valida lo mismo en el DTO)
+const fechaDespuesDeFabricacion = (d, ctx) => {
+  if (Number(d.fechaAdquisicion.slice(0, 4)) < d.anio) {
+    ctx.addIssue({ code: 'custom', path: ['fechaAdquisicion'], message: `La fecha de adquisición no puede ser anterior al año de fabricación (${d.anio}).` })
+  }
 }
 const esquemaNuevo = z.object({
   ...base,
@@ -54,8 +60,8 @@ const esquemaNuevo = z.object({
 }).refine((d) => d.kilometrajeUltimoPreventivo <= d.kilometrajeActual, {
   path: ['kilometrajeUltimoPreventivo'],
   message: 'No puede ser mayor que el kilometraje actual.',
-})
-const esquemaEdicion = z.object(base)
+}).superRefine(fechaDespuesDeFabricacion)
+const esquemaEdicion = z.object(base).superRefine(fechaDespuesDeFabricacion)
 const CAMPOS = [...Object.keys(base), 'kilometrajeActual', 'kilometrajeUltimoPreventivo']
 
 const sinVehiculo = () => Promise.resolve(null)
@@ -166,7 +172,7 @@ function Contenido({ vehiculo, categorias, titulo }) {
 
         <BloqueFormulario titulo="Datos del vehículo" detalle="Los datos propios de una unidad de la flota.">
           {campo('placa', 'Placa', { codigo: true, ayuda: 'No se repite entre vehículos.' })}
-          {campo('anio', 'Año', { inputMode: 'numeric' })}
+          {campo('anio', 'Año de fabricación', { inputMode: 'numeric', ayuda: 'El del modelo, como en la tarjeta de circulación.' })}
           {campo('marca', 'Marca')}
           {campo('modelo', 'Modelo')}
           {!vehiculo && campo('kilometrajeActual', 'Kilometraje actual', { inputMode: 'numeric', unidad: 'km', ayuda: 'Después cambia con "Registrar lectura de uso".' })}

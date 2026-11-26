@@ -131,7 +131,7 @@ export default function VehiculoDetalle() {
             ['Descripción', v.descripcion || <span key="sin" className="text-muted-foreground">Sin descripción</span>],
             ['Placa', <strong key="placa">{v.placa}</strong>],
             ['Marca y modelo', `${v.marca} ${v.modelo}`],
-            ['Año', v.anio],
+            ['Año de fabricación', v.anio],
             ['Kilometraje actual', formatKm(v.kilometrajeActual)],
             ['Fecha de adquisición', formatFecha(v.fechaAdquisicion)],
             ['Antigüedad', formatAntiguedad(v.fechaAdquisicion)],
