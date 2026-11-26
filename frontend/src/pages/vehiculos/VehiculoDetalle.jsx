@@ -195,7 +195,12 @@ function UsoPreventivo({ v }) {
         </span>
       )}
     >
-      {!sinLecturas && (
+      {sinLecturas ? (
+        // Sin lecturas no se evalúa: no se muestran uso acumulado ni lo que falta, aunque exista el kilometraje inicial
+        <p className="mb-4 text-[0.9375rem] text-muted-foreground">
+          Todavía no tiene lecturas de uso. Se evaluará cuando se registre la primera.
+        </p>
+      ) : (
         <>
           <BarraPreventivo porcentaje={p.porcentajeConsumido} porcentajeAviso={p.porcentajeAviso} estado={p.estado}
             recorrido={p.kmRecorridos} umbral={p.intervaloKm} unidad={unidad} />
@@ -207,10 +212,10 @@ function UsoPreventivo({ v }) {
           ? <span key="sin" className="text-muted-foreground">Sin lecturas registradas</span>
           : <>{formatKm(p.kilometrajeActual, unidad)} <Separador /> {formatFecha(p.fechaUltimaLectura)}</>],
         ['Lectura del último preventivo', formatKm(p.kilometrajeUltimoPreventivo, unidad)],
-        ['Uso acumulado', formatKm(p.kmRecorridos, unidad)],
+        ...(sinLecturas ? [] : [['Uso acumulado', formatKm(p.kmRecorridos, unidad)]]),
         ['Umbral', <>{formatKm(p.intervaloKm, unidad)} <span className="text-sm text-muted-foreground">({p.intervaloPropio ? 'propio del vehículo' : 'de la categoría'})</span></>],
         ['Aviso desde', `${formatNumero(p.porcentajeAviso)} % del umbral`],
-        [p.kmRestantes < 0 ? 'Se pasó del umbral por' : 'Faltan para el umbral', formatKm(Math.abs(p.kmRestantes), unidad)],
+        ...(sinLecturas ? [] : [[p.kmRestantes < 0 ? 'Se pasó del umbral por' : 'Faltan para el umbral', formatKm(Math.abs(p.kmRestantes), unidad)]]),
       ]} />
     </BloqueSeccion>
   )
