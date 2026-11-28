@@ -168,7 +168,7 @@ public class ActivoService : IActivoService
 
         if (esSolicitante && !await _repository.HasOrdenesDelSolicitanteAsync(id, idUsuario))
             return Result<IEnumerable<HistorialEstadoActivoDto>>.Failure(404, "Recurso no encontrado",
-                $"El vehículo {id} no tiene órdenes de mantenimiento suyas.");
+                "Solo puede consultar el historial de los vehículos de sus solicitudes.");
 
         var historial = await _repository.GetHistorialAsync(id, pageNumber, pageSize);
         var totalRecords = await _repository.CountHistorialAsync(id);

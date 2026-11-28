@@ -481,7 +481,7 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
         await ValidarCoordinadorEnEjecucionAsync(orden, idUsuario, "registrar horas");
 
         if ((await _repository.GetAsignacionesAsync(id)).All(a => a.IdTecnico != idTecnico))
-            throw new RecursoNoEncontradoException($"El técnico {idTecnico} no está asignado a la orden {orden.Codigo}.");
+            throw new RecursoNoEncontradoException($"Ese técnico no está asignado a la orden {orden.Codigo}.");
 
         // La suma va en un solo UPDATE con la condición "sigue En Ejecución": 0 filas = la orden cambió mientras tanto
         if (await _repository.SumarHorasAsync(id, idTecnico, horas) == 0)

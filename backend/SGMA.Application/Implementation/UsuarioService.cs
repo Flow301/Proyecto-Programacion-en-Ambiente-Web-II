@@ -200,7 +200,7 @@ public class UsuarioService : IUsuarioService
         if (entity.Estado)
         {
             _logger.LogWarning("Intento de reactivar el usuario {IdUsuario}, que ya está activo", id);
-            return Result<UsuarioDto>.Failure(409, "Conflicto", $"El usuario {id} ya está activo.");
+            return Result<UsuarioDto>.Failure(409, "Conflicto", $"El usuario {entity.Login} ya está activo.");
         }
 
         entity.Estado = true;

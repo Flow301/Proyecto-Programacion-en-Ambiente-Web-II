@@ -111,14 +111,15 @@ public class CategoriaActivoService : ICategoriaActivoService
 
     public async Task<Result<int>> DeleteAsync(int id)
     {
-        if (!await _repository.ExistsAsync(id))
+        var categoria = await _repository.GetByIdAsync(id);
+        if (categoria is null)
             return NoExiste<int>(id);
 
         if (await _repository.HasActivosAsync(id))
         {
             _logger.LogWarning("Intento de eliminar la categoría {IdCategoria}, que tiene vehículos", id);
             return Result<int>.Failure(409, "Conflicto",
-                $"La categoría {id} tiene vehículos asociados y no se puede eliminar.");
+                $"La categoría {categoria.Nombre} tiene vehículos asociados y no se puede eliminar.");
         }
 
         await _repository.DeleteAsync(id);

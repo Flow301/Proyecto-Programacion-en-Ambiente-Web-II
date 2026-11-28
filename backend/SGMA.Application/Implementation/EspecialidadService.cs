@@ -100,21 +100,22 @@ public class EspecialidadService : IEspecialidadService
     // Borrado físico: solo si la especialidad no tiene relaciones
     public async Task<Result<int>> DeleteAsync(int id)
     {
-        if (!await _repository.ExistsAsync(id))
+        var especialidad = await _repository.GetByIdAsync(id);
+        if (especialidad is null)
             return NoExiste<int>(id);
 
         if (await _repository.HasTecnicosAsync(id))
         {
             _logger.LogWarning("Intento de eliminar la especialidad {IdEspecialidad}, que tiene técnicos", id);
             return Result<int>.Failure(409, "Conflicto",
-                $"La especialidad {id} tiene técnicos asociados y no se puede eliminar.");
+                $"La especialidad {especialidad.Nombre} tiene técnicos asociados y no se puede eliminar.");
         }
 
         if (await _repository.HasTiposMantenimientoAsync(id))
         {
             _logger.LogWarning("Intento de eliminar la especialidad {IdEspecialidad}, requerida por tipos de mantenimiento", id);
             return Result<int>.Failure(409, "Conflicto",
-                $"La especialidad {id} es requerida por tipos de mantenimiento y no se puede eliminar.");
+                $"La especialidad {especialidad.Nombre} es requerida por tipos de mantenimiento y no se puede eliminar.");
         }
 
         await _repository.DeleteAsync(id);
