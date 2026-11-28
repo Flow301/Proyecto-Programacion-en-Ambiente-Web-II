@@ -1,4 +1,4 @@
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Navigate, useLocation } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Check, CircleAlert, Clock, Loader2, LogIn, Wrench } from 'lucide-react'
@@ -18,22 +18,22 @@ const campos = [
 
 export default function Login() {
   const { sesion, expirada, iniciarSesion } = useAuth()
-  const navigate = useNavigate()
   const location = useLocation()
-  const { control, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
+  const { control, handleSubmit, setError, setFocus, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: { usuario: '', clave: '' },
   })
 
-  if (sesion) return <Navigate to="/" replace />
+  // Con sesión (también justo después de ingresar) se va a la pantalla que se pidió antes del login
+  if (sesion) return <Navigate to={location.state?.desde ?? '/'} replace />
 
   // Solo se ejecuta si Zod aprobó los datos. Un error no borra lo escrito (enunciado Avance 2, 5.1)
   const enviar = async ({ usuario, clave }) => {
     try {
       await iniciarSesion(usuario, clave)
-      navigate(location.state?.desde ?? '/', { replace: true })
     } catch (err) {
       setError('root', { message: err.status ? err.message : 'No fue posible conectar con el servidor. Intente de nuevo.' })
+      setFocus('clave', { shouldSelect: true }) // listo para corregir la contraseña sin buscar el campo
     }
   }
 
