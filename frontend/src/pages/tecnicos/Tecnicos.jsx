@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router'
 import { Pencil, Plus, RotateCcw, UserX } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
+import CampoBusqueda from '@/components/shared/CampoBusqueda'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import EstadoError from '@/components/shared/EstadoError'
 import EstadoVacio from '@/components/shared/EstadoVacio'
@@ -28,11 +29,12 @@ export default function Tecnicos() {
   const filtros = useFiltrosUrl()
   const idEspecialidad = filtros.valor('idEspecialidad')
   const disponible = filtros.valor('disponible')
+  const buscar = filtros.valor('buscar')
   const pagina = filtros.pagina
 
   const cargar = useCallback(
-    () => listarTecnicosPagina(pagina, TAMANO, { idEspecialidad, disponible }),
-    [pagina, idEspecialidad, disponible],
+    () => listarTecnicosPagina(pagina, TAMANO, { idEspecialidad, disponible, buscar }),
+    [pagina, idEspecialidad, disponible, buscar],
   )
   const lista = useCarga(cargar)
   const especialidades = useCarga(listarEspecialidades)
@@ -70,6 +72,7 @@ export default function Tecnicos() {
         )}
       />
       <BarraFiltros onLimpiar={filtros.limpiar} hayFiltros={filtros.hayFiltros}>
+        <CampoBusqueda valor={buscar} onCambiar={(texto) => filtros.cambiar('buscar', texto)} ayuda="Nombre o identificación." />
         <div className="flex w-64 flex-col gap-1.5">
           <label htmlFor="filtro-especialidad" className="text-sm font-semibold">Especialidad</label>
           <ListaOpciones id="filtro-especialidad" value={idEspecialidad} onChange={(v) => filtros.cambiar('idEspecialidad', v)} todas="Todas las especialidades"
@@ -91,7 +94,7 @@ export default function Tecnicos() {
         error={lista.error}
         onReintentar={lista.recargar}
         vacio={filtros.hayFiltros
-          ? { titulo: 'Ningún técnico coincide con el filtro', tipo: 'sinResultados', mensaje: 'Cambie la especialidad o la disponibilidad.', accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button> }
+          ? { titulo: buscar ? `Ningún técnico coincide con «${buscar}»` : 'Ningún técnico coincide con el filtro', tipo: 'sinResultados', mensaje: buscar ? 'Revise lo escrito o cambie los filtros.' : 'Cambie la especialidad o la disponibilidad.', accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button> }
           : { titulo: 'No hay técnicos registrados' }}
         pagina={pagina}
         tamano={TAMANO}

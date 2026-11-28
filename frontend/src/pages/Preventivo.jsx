@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { ClipboardPlus, Gauge, Loader2 } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
+import CampoBusqueda from '@/components/shared/CampoBusqueda'
 import BarraPreventivo, { LeyendaPreventivo } from '@/components/shared/BarraPreventivo'
 import CampoFormulario from '@/components/shared/CampoFormulario'
 import DialogoFormulario from '@/components/shared/DialogoFormulario'
@@ -26,6 +27,9 @@ import { avisarError, avisarExito } from '@/utils/avisos'
 import { aplicarErroresApi } from '@/utils/errores'
 import { formatFechaHora, formatKm, formatNumero } from '@/utils/format'
 
+// Sin mayúsculas ni tildes, igual que la búsqueda de la API: "limon" encuentra "Limón"
+const sinTildes = (texto) => (texto ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+
 const ESTADOS = ['Vencido', 'Próximo', 'Al día', 'Sin lecturas']
 
 // Cada evaluación recuerda cuándo se hizo, para mostrar "Última evaluación"
@@ -41,11 +45,15 @@ export default function Preventivo() {
   const { search } = useLocation()
   const filtros = useFiltrosUrl()
   const elegidos = filtros.valores('estado')
+  const buscar = filtros.valor('buscar')
   const evaluacion = useCarga(esAdmin ? evaluarFlota : evaluarAlertas)
   const [generando, setGenerando] = useState(null)
 
   const todos = evaluacion.datos?.data ?? []
-  const filas = elegidos.length ? todos.filter((v) => elegidos.includes(v.estado)) : todos
+  // La evaluación llega completa (sin paginar): la búsqueda filtra lo que ya está en pantalla, sin volver a consultar
+  const texto = sinTildes(buscar)
+  const filas = todos.filter((v) => (!elegidos.length || elegidos.includes(v.estado))
+    && (!texto || [v.codigo, v.nombre, v.placa, v.categoriaNombre].some((campo) => sinTildes(campo).includes(texto))))
   const visibles = esAdmin ? ESTADOS : ESTADOS.slice(0, 2)
   const cantidad = (e) => todos.filter((v) => v.estado === e).length
   const todoAlDia = Boolean(evaluacion.datos) && cantidad('Vencido') + cantidad('Próximo') === 0
@@ -89,6 +97,7 @@ export default function Preventivo() {
       {todoAlDia && esAdmin && <EstadoVacio tipo="positivo" titulo="Todos los activos están al día según su uso registrado" className="bg-card" />}
 
       <BarraFiltros onLimpiar={filtros.limpiar} hayFiltros={filtros.hayFiltros}>
+        <CampoBusqueda valor={buscar} onCambiar={(t) => filtros.cambiar('buscar', t)} ayuda="Código, nombre, placa o categoría." />
         <LeyendaPreventivo className="self-center" />
       </BarraFiltros>
       <TablaPaginada
@@ -99,7 +108,9 @@ export default function Preventivo() {
         cargando={evaluacion.cargando}
         error={evaluacion.error}
         onReintentar={evaluacion.recargar}
-        vacio={elegidos.length
+        vacio={buscar
+          ? { titulo: `Ningún vehículo coincide con «${buscar}»`, tipo: 'sinResultados', accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button> }
+          : elegidos.length
           ? { titulo: `No hay vehículos ${elegidos.length === 1 ? 'en estado' : 'en los estados'} ${elegidos.join(', ')}`, tipo: 'sinResultados', accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button> }
           : { titulo: 'Todos los activos están al día según su uso registrado', tipo: 'positivo' }}
         columnas={[

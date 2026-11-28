@@ -3,6 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 import { Plus } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
+import CampoBusqueda from '@/components/shared/CampoBusqueda'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import ListaOpciones from '@/components/shared/ListaOpciones'
 import TablaPaginada from '@/components/shared/TablaPaginada'
@@ -29,6 +30,7 @@ export default function Ordenes() {
   const filtros = useFiltrosUrl()
   const estadosElegidos = filtros.valores('idEstadoOrden')
   const idActivo = filtros.valor('idActivo')
+  const buscar = filtros.valor('buscar')
   const bandeja = filtros.valor('bandeja')
   const pagina = filtros.pagina
 
@@ -44,8 +46,8 @@ export default function Ordenes() {
 
   const claveEstados = filtros.valores('idEstadoOrden').join(',')
   const cargar = useCallback(
-    () => listarOrdenes(pagina, TAMANO, { idEstadoOrden: claveEstados ? claveEstados.split(',') : [], idActivo }),
-    [pagina, claveEstados, idActivo],
+    () => listarOrdenes(pagina, TAMANO, { idEstadoOrden: claveEstados ? claveEstados.split(',') : [], idActivo, buscar }),
+    [pagina, claveEstados, idActivo, buscar],
   )
   const lista = useCarga(cargar)
 
@@ -66,6 +68,7 @@ export default function Ordenes() {
         acciones={(esAdmin || esSolicitante) && <Button asChild><Link to="/ordenes/nueva"><Plus aria-hidden="true" />Nueva solicitud</Link></Button>}
       />
       <BarraFiltros onLimpiar={filtros.limpiar} hayFiltros={filtros.hayFiltros}>
+        <CampoBusqueda valor={buscar} onCambiar={(texto) => filtros.cambiar('buscar', texto)} ayuda="Código de la orden, vehículo, placa o tipo." />
         <fieldset className="flex min-w-0 flex-col gap-1.5">
           <legend className="mb-1.5 text-sm font-semibold">Estado</legend>
           <div className="flex flex-wrap gap-1.5">
@@ -104,7 +107,7 @@ export default function Ordenes() {
         onReintentar={lista.recargar}
         vacio={filtros.hayFiltros
           ? {
-            titulo: nombresElegidos.length ? `No hay órdenes ${nombresElegidos.length === 1 ? 'en estado' : 'en los estados'} ${nombresElegidos.join(', ')}` : 'Ninguna orden coincide con el filtro',
+            titulo: buscar ? `Ninguna orden coincide con «${buscar}»` : nombresElegidos.length ? `No hay órdenes ${nombresElegidos.length === 1 ? 'en estado' : 'en los estados'} ${nombresElegidos.join(', ')}` : 'Ninguna orden coincide con el filtro',
             tipo: 'sinResultados',
             accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button>,
           }

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router'
 import { Pencil, Plus } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
+import CampoBusqueda from '@/components/shared/CampoBusqueda'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import TablaPaginada from '@/components/shared/TablaPaginada'
 import { Button } from '@/components/ui/button'
@@ -22,9 +23,10 @@ export default function Repuestos() {
   const { search } = useLocation()
   const filtros = useFiltrosUrl()
   const bajoMinimo = filtros.valor('bajoMinimo') === 'true'
+  const buscar = filtros.valor('buscar')
   const pagina = filtros.pagina
 
-  const cargar = useCallback(() => listarRepuestosPagina(pagina, TAMANO, { bajoMinimo: bajoMinimo || '' }), [pagina, bajoMinimo])
+  const cargar = useCallback(() => listarRepuestosPagina(pagina, TAMANO, { bajoMinimo: bajoMinimo || '', buscar }), [pagina, bajoMinimo, buscar])
   const lista = useCarga(cargar)
   const desde = { desde: `/repuestos${search}` }
 
@@ -52,6 +54,7 @@ export default function Repuestos() {
         acciones={esAdmin && <Button asChild><Link to="/repuestos/nuevo"><Plus aria-hidden="true" />Nuevo repuesto</Link></Button>}
       />
       <BarraFiltros onLimpiar={filtros.limpiar} hayFiltros={filtros.hayFiltros}>
+        <CampoBusqueda valor={buscar} onCambiar={(texto) => filtros.cambiar('buscar', texto)} ayuda="Código o nombre del repuesto." />
         <label className="flex min-h-10 items-center gap-3 text-[0.9375rem] font-semibold">
           <Checkbox checked={bajoMinimo} onCheckedChange={(v) => filtros.cambiar('bajoMinimo', v === true ? 'true' : '')} />
           Solo stock bajo el mínimo
@@ -66,7 +69,9 @@ export default function Repuestos() {
         cargando={lista.cargando}
         error={lista.error}
         onReintentar={lista.recargar}
-        vacio={bajoMinimo
+        vacio={buscar
+          ? { titulo: `Ningún repuesto${bajoMinimo ? ' bajo el mínimo' : ''} coincide con «${buscar}»`, tipo: 'sinResultados', accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button> }
+          : bajoMinimo
           ? { titulo: 'No hay repuestos bajo el mínimo', tipo: 'positivo', mensaje: 'Todo el inventario está sobre su stock mínimo.' }
           : { titulo: 'No hay repuestos registrados' }}
         pagina={pagina}

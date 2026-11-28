@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router'
 import { Eye, Plus } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
+import CampoBusqueda from '@/components/shared/CampoBusqueda'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import ImagenVehiculo from '@/components/shared/ImagenVehiculo'
 import ListaOpciones from '@/components/shared/ListaOpciones'
@@ -28,11 +29,12 @@ export default function Vehiculos() {
   const filtros = useFiltrosUrl()
   const idCategoria = filtros.valor('idCategoria')
   const idEstadoActivo = filtros.valor('idEstadoActivo')
+  const buscar = filtros.valor('buscar')
   const pagina = filtros.pagina
 
   const categorias = useCarga(esSolicitante ? sinCategorias : listarCategorias)
   const estados = useCarga(estadosActivo)
-  const cargar = useCallback(() => listarActivos(pagina, TAMANO, { idCategoria, idEstadoActivo }), [pagina, idCategoria, idEstadoActivo])
+  const cargar = useCallback(() => listarActivos(pagina, TAMANO, { idCategoria, idEstadoActivo, buscar }), [pagina, idCategoria, idEstadoActivo, buscar])
   const lista = useCarga(cargar)
 
   const desde = { desde: `/vehiculos${search}` }
@@ -46,6 +48,7 @@ export default function Vehiculos() {
         acciones={esAdmin && <Button asChild><Link to="/vehiculos/nuevo" state={desde}><Plus aria-hidden="true" />Nuevo vehículo</Link></Button>}
       />
       <BarraFiltros onLimpiar={filtros.limpiar} hayFiltros={filtros.hayFiltros}>
+        <CampoBusqueda valor={buscar} onCambiar={(texto) => filtros.cambiar('buscar', texto)} ayuda="Código, nombre, placa, marca o modelo." />
         {!esSolicitante && (
           <div className="flex w-64 flex-col gap-1.5">
             <label htmlFor="filtro-categoria" className="text-sm font-semibold">Categoría</label>
@@ -68,7 +71,7 @@ export default function Vehiculos() {
         error={lista.error}
         onReintentar={lista.recargar}
         vacio={filtros.hayFiltros
-          ? { titulo: 'Ningún vehículo coincide con el filtro', tipo: 'sinResultados', accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button> }
+          ? { titulo: buscar ? `Ningún vehículo coincide con «${buscar}»` : 'Ningún vehículo coincide con el filtro', tipo: 'sinResultados', accion: <Button variant="outline" onClick={filtros.limpiar}>Limpiar filtros</Button> }
           : { titulo: 'No hay vehículos registrados', accion: esAdmin && <Button asChild><Link to="/vehiculos/nuevo" state={desde}>Nuevo vehículo</Link></Button> }}
         columnas={[
           { clave: 'imagen', titulo: <span className="sr-only">Foto</span>, render: (v) => <ImagenVehiculo ruta={v.imagen} alt="" className="h-9 w-12" /> },
