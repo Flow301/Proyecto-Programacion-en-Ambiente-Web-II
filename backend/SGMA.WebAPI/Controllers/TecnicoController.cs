@@ -146,13 +146,44 @@ public class TecnicoController : ControllerBase
     /// <param name="id" example="8">Id del técnico.</param>
     /// <response code="200">Técnico inactivado; data = Id.</response>
     /// <response code="404">El técnico no existe o ya estaba inactivo.</response>
+    /// <response code="409">El técnico está asignado a una orden En Ejecución o En Espera de Repuesto.</response>
     [HttpDelete("{id:int}")]
     [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
     [ProducesResponseType<Result<int>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteAsync(int id)
     {
         var result = await _service.DeleteAsync(id);
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Lista los técnicos inactivos, para reactivarlos.
+    /// </summary>
+    /// <response code="200">Técnicos inactivos, por nombre; vacía si no hay.</response>
+    [HttpGet("inactivos")]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
+    [ProducesResponseType<Result<IEnumerable<TecnicoListDto>>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetInactivosAsync()
+    {
+        var result = await _service.GetInactivosAsync();
+        return StatusCode(result.Status, result);
+    }
+
+    /// <summary>
+    /// Reactiva un técnico inactivo, con sus datos y especialidades.
+    /// </summary>
+    /// <param name="id" example="8">Id del técnico.</param>
+    /// <response code="200">Técnico reactivado; data = detalle del técnico.</response>
+    /// <response code="404">El técnico no existe o ya está activo.</response>
+    [HttpPost("{id:int}/reactivar")]
+    [Authorize(Policy = AuthorizationPolicies.SoloAdministrador)]
+    [ProducesResponseType<Result<TecnicoDetailDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Result<object>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReactivarAsync(int id)
+    {
+        var result = await _service.ReactivarAsync(id);
         return StatusCode(result.Status, result);
     }
 

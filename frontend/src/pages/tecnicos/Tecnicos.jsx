@@ -1,17 +1,22 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useLocation } from 'react-router'
-import { Pencil, Plus } from 'lucide-react'
+import { Pencil, Plus, RotateCcw, UserX } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
+import EstadoError from '@/components/shared/EstadoError'
+import EstadoVacio from '@/components/shared/EstadoVacio'
+import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import ListaOpciones from '@/components/shared/ListaOpciones'
 import TablaPaginada from '@/components/shared/TablaPaginada'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import useCarga from '@/hooks/useCarga'
 import useFiltrosUrl from '@/hooks/useFiltrosUrl'
 import useRol from '@/hooks/useRol'
 import { listarEspecialidades } from '@/services/especialidadService'
-import { listarTecnicosPagina } from '@/services/tecnicoService'
+import { listarTecnicosInactivos, listarTecnicosPagina, reactivarTecnico } from '@/services/tecnicoService'
+import { avisarError, avisarExito } from '@/utils/avisos'
 import { formatColones } from '@/utils/format'
 
 const TAMANO = 10
@@ -57,7 +62,12 @@ export default function Tecnicos() {
       <EncabezadoPagina
         titulo="Técnicos"
         detalle="El personal del taller, su disponibilidad y su tarifa."
-        acciones={esAdmin && <Button asChild><Link to="/tecnicos/nuevo"><Plus aria-hidden="true" />Nuevo técnico</Link></Button>}
+        acciones={esAdmin && (
+          <>
+            <TecnicosInactivos onReactivado={lista.recargar} />
+            <Button asChild><Link to="/tecnicos/nuevo"><Plus aria-hidden="true" />Nuevo técnico</Link></Button>
+          </>
+        )}
       />
       <BarraFiltros onLimpiar={filtros.limpiar} hayFiltros={filtros.hayFiltros}>
         <div className="flex w-64 flex-col gap-1.5">
@@ -90,5 +100,66 @@ export default function Tecnicos() {
         onCambiarPagina={filtros.irAPagina}
       />
     </>
+  )
+}
+
+// Los técnicos inactivos no aparecen en el taller; aquí el Administrador los ve y los devuelve con sus datos y especialidades
+function TecnicosInactivos({ onReactivado }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <Dialog open={abierto} onOpenChange={setAbierto}>
+      <DialogTrigger asChild>
+        <Button variant="outline"><UserX aria-hidden="true" />Técnicos inactivos</Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90svh] gap-5 overflow-y-auto p-6 shadow-lg sm:max-w-lg" showCloseButton={false}>
+        <DialogHeader className="gap-2 text-left">
+          <DialogTitle className="text-lg font-semibold">Técnicos inactivos</DialogTitle>
+          <DialogDescription className="text-base text-muted-foreground">Al reactivarlo, vuelve al taller con sus datos y especialidades.</DialogDescription>
+        </DialogHeader>
+        {abierto && <ListaInactivos onReactivado={onReactivado} />}
+        <DialogFooter className="-mx-6 -mb-6 rounded-b-xl bg-muted/40 px-6 py-4">
+          <Button variant="outline" onClick={() => setAbierto(false)}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ListaInactivos({ onReactivado }) {
+  const inactivos = useCarga(listarTecnicosInactivos)
+  const [procesando, setProcesando] = useState(null)
+
+  const reactivar = async (t) => {
+    setProcesando(t.idTecnico)
+    try {
+      await reactivarTecnico(t.idTecnico)
+      avisarExito(`${t.nombreCompleto} volvió al taller`)
+      inactivos.recargar()
+      onReactivado()
+    } catch (err) {
+      avisarError(err)
+    } finally {
+      setProcesando(null)
+    }
+  }
+
+  if (inactivos.cargando && !inactivos.datos) return <IndicadorCarga forma="bloque" texto="Cargando técnicos inactivos…" />
+  if (inactivos.error) return <EstadoError error={inactivos.error} onReintentar={inactivos.recargar} />
+  const lista = inactivos.datos?.data ?? []
+  if (lista.length === 0) return <EstadoVacio tipo="positivo" titulo="No hay técnicos inactivos" />
+  return (
+    <ul className="flex flex-col divide-y divide-border-suave rounded-sm border">
+      {lista.map((t) => (
+        <li key={t.idTecnico} className="flex items-center gap-3 px-4 py-3">
+          <span className="flex min-w-0 flex-1 flex-col">
+            <strong className="truncate">{t.nombreCompleto}</strong>
+            <span className="text-sm text-muted-foreground tabular-nums">{t.identificacion}</span>
+          </span>
+          <Button variant="outline" size="sm" disabled={procesando !== null} onClick={() => reactivar(t)}>
+            <RotateCcw aria-hidden="true" />{procesando === t.idTecnico ? 'Reactivando…' : 'Reactivar'}
+          </Button>
+        </li>
+      ))}
+    </ul>
   )
 }

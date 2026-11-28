@@ -129,6 +129,17 @@ public class TecnicoService : ITecnicoService
         if (entity is null)
             return NoExiste<int>(id);
 
+        // Decisión del equipo: un técnico en una orden en curso no se inactiva; la orden quedaría con un técnico
+        // que ya no está en el taller y que aún puede recibir horas
+        var enCurso = await _repository.GetOrdenesEnCursoAsync(id);
+        if (enCurso.Count > 0)
+        {
+            _logger.LogWarning("Intento de inactivar al técnico {IdTecnico}, asignado a órdenes en curso: {Ordenes}", id, enCurso);
+            return Result<int>.Failure(409, "Conflicto",
+                $"{entity.NombreCompleto} está asignado a {(enCurso.Count == 1 ? "la orden en curso" : "las órdenes en curso")} " +
+                $"{string.Join(", ", enCurso)} y no se puede inactivar hasta que termine{(enCurso.Count == 1 ? "" : "n")}.");
+        }
+
         entity.Estado = false;                 // UPDATE Tecnico SET Estado = 0, no DELETE
 
         await _repository.SaveChangesAsync();
@@ -136,6 +147,31 @@ public class TecnicoService : ITecnicoService
         _logger.LogInformation("Técnico {IdTecnico} inactivado", id);
 
         return Result<int>.Success(id, 200, "OK", "Técnico inactivado.");
+    }
+
+    public async Task<Result<IEnumerable<TecnicoListDto>>> GetInactivosAsync()
+    {
+        var tecnicos = await _repository.GetInactivosAsync();
+
+        return Result<IEnumerable<TecnicoListDto>>.Success(_mapper.Map<IEnumerable<TecnicoListDto>>(tecnicos));
+    }
+
+    // Devuelve al técnico al taller con sus datos y especialidades tal como estaban
+    public async Task<Result<TecnicoDetailDto>> ReactivarAsync(int id)
+    {
+        var entity = await _repository.GetInactivoForUpdateAsync(id);
+
+        if (entity is null)
+            return Result<TecnicoDetailDto>.Failure(404, "Recurso no encontrado", $"El técnico {id} no existe o ya está activo.");
+
+        entity.Estado = true;
+
+        await _repository.SaveChangesAsync();
+
+        _logger.LogInformation("Técnico {IdTecnico} reactivado", id);
+
+        var detalle = await GetByIdAsync(id);
+        return Result<TecnicoDetailDto>.Success(detalle.Data!, 200, "OK", $"{entity.NombreCompleto} reactivado.");
     }
 
     // Agrega una fila a TecnicoEspecialidad sobre el técnico rastreado.

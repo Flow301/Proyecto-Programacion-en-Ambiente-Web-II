@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SGMA.Domain.Entities;
 using SGMA.Infrastructure.Data;
+using SGMA.Infrastructure.Data.Seed;
 using SGMA.Infrastructure.Interfaces;
 
 namespace SGMA.Infrastructure.Implementation;
@@ -95,11 +96,38 @@ public class TecnicoRepository : ITecnicoRepository
         return await _context.NivelCertificacion.AnyAsync(n => n.IdNivelCertificacion == idNivelCertificacion);
     }
 
+    // Los inactivos solo se listan para poder reactivarlos
+    public async Task<IEnumerable<Tecnico>> GetInactivosAsync()
+    {
+        return await _context.Tecnico
+            .AsNoTracking()
+            .Include(t => t.TecnicoEspecialidades)
+            .Where(t => !t.Estado)
+            .OrderBy(t => t.NombreCompleto)
+            .ToListAsync();
+    }
+
+    // Códigos de las órdenes En Ejecución o En Espera de Repuesto donde está asignado: mientras las tenga, no se inactiva
+    public async Task<List<string>> GetOrdenesEnCursoAsync(int id)
+    {
+        return await _context.AsignacionTecnico
+            .Where(a => a.IdTecnico == id
+                && (a.Orden.IdEstadoOrden == SeedIds.EstadoOrdenEnEjecucion || a.Orden.IdEstadoOrden == SeedIds.EstadoOrdenEnEsperaDeRepuesto))
+            .Select(a => a.Orden.Codigo)
+            .ToListAsync();
+    }
+
     // Escritura (sin AsNoTracking: el ChangeTracker detecta qué cambió)
     public async Task<Tecnico?> GetForUpdateAsync(int id)
     {
         return await _context.Tecnico
             .FirstOrDefaultAsync(t => t.IdTecnico == id && t.Estado);
+    }
+
+    public async Task<Tecnico?> GetInactivoForUpdateAsync(int id)
+    {
+        return await _context.Tecnico
+            .FirstOrDefaultAsync(t => t.IdTecnico == id && !t.Estado);
     }
 
     // Asociar y desasociar: incluye solo la colección que se va a modificar

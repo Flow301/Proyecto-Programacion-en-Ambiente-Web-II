@@ -10,6 +10,8 @@ public interface ITecnicoRepository
     Task<int> CountAsync(int? idEspecialidad = null, bool? disponible = null);
     Task<Tecnico?> GetByIdAsync(int id);
     Task<IEnumerable<TecnicoEspecialidad>> GetDisponiblesPorEspecialidadAsync(int idEspecialidad);
+    Task<IEnumerable<Tecnico>> GetInactivosAsync();
+    Task<List<string>> GetOrdenesEnCursoAsync(int id);
 
     // Verificaciones para las reglas de negocio
     Task<bool> ExistsByIdentificacionAsync(string identificacion, int? excludeId = null);
@@ -18,6 +20,7 @@ public interface ITecnicoRepository
 
     // Escritura
     Task<Tecnico?> GetForUpdateAsync(int id);
+    Task<Tecnico?> GetInactivoForUpdateAsync(int id);
     Task<Tecnico?> GetWithEspecialidadesForUpdateAsync(int id);
     void RemoveEspecialidad(TecnicoEspecialidad tecnicoEspecialidad);
     Task AddAsync(Tecnico tecnico);

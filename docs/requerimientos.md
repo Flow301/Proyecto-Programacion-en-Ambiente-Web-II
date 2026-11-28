@@ -124,6 +124,7 @@ Los permisos no son solo visuales: la API valida el rol en cada endpoint protegi
 - *Decisión del equipo:* el enunciado pide CRUD completo (secciones 3 y 11), pero en 7.3 solo lista registrar, consultar y actualizar. Para técnicos, eliminar es inactivar, porque sus horas y asignaciones deben conservarse. Una especialidad se elimina físicamente solo si no tiene técnicos ni tipos de mantenimiento asociados; si los tiene, la operación se rechaza.
 - *Decisión del equipo:* el técnico y el usuario del sistema son entidades separadas. Los técnicos no inician sesión; el Coordinador registra sus horas.
 - *Decisión del equipo:* la disponibilidad la marca el Administrador (vacaciones, incapacidad). Solo se asignan técnicos activos y disponibles.
+- *Decisión del equipo:* un técnico asignado a una orden En Ejecución o En Espera de Repuesto no se puede inactivar (409, con los códigos de esas órdenes): la orden quedaría con alguien que ya no está en el taller. Un técnico inactivo se puede reactivar con sus datos y especialidades (`GET api/Tecnico/inactivos` y `POST api/Tecnico/{id}/reactivar`, solo Administrador).
 - Un técnico solo puede asignarse a una orden si posee la especialidad que requiere el tipo de mantenimiento (ver 7.7). El nivel de certificación se muestra para ayudar a elegir, pero no bloquea la asignación: el enunciado solo exige poseer la especialidad.
 
 **Permisos.**

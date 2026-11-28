@@ -9,5 +9,7 @@ export const tecnicosDisponibles = (idEspecialidad) => api(`Tecnico/disponibles/
 export const crearTecnico = (datos) => api('Tecnico', { method: 'POST', body: datos })
 export const actualizarTecnico = (id, datos) => api(`Tecnico/${id}`, { method: 'PUT', body: datos })
 export const inactivarTecnico = (id) => api(`Tecnico/${id}`, { method: 'DELETE' })
+export const listarTecnicosInactivos = () => api('Tecnico/inactivos')
+export const reactivarTecnico = (id) => api(`Tecnico/${id}/reactivar`, { method: 'POST' })
 export const asociarEspecialidad = (id, datos) => api(`Tecnico/${id}/especialidades`, { method: 'POST', body: datos })
 export const quitarEspecialidad = (id, idEspecialidad) => api(`Tecnico/${id}/especialidades/${idEspecialidad}`, { method: 'DELETE' })
