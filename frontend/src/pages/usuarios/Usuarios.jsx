@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Ellipsis, KeyRound, Pencil, Plus, RotateCcw, UserCog, UserX } from 'lucide-react'
+import { Pencil, Plus, RotateCcw, UserX } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
 import CampoFormulario from '@/components/shared/CampoFormulario'
@@ -12,7 +12,6 @@ import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import ListaOpciones from '@/components/shared/ListaOpciones'
 import TablaPaginada from '@/components/shared/TablaPaginada'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
 import useCarga from '@/hooks/useCarga'
@@ -27,19 +26,25 @@ import { formatFecha, formatFechaHora } from '@/utils/format'
 
 const TAMANO = 10
 
-// Contraseña inicial o reseteada: 8 a 100 caracteres (UsuarioCreateDto, UsuarioClaveDto), escrita dos veces
-const clave = z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.').max(100, 'Máximo 100 caracteres.')
+// Mismas reglas que UsuarioCreateDto, UsuarioUpdateDto, UsuarioRolDto y UsuarioClaveDto (contraseña de 8 a 100)
+const datos = { nombreCompleto: texto('el nombre completo', 100), login: texto('el usuario', 50), correo, idRol: eleccion('el rol') }
 const coincide = (d) => d.clave === d.confirmacion
 const errorCoincide = { path: ['confirmacion'], message: 'No coincide con la contraseña.' }
-
-const datos = { nombreCompleto: texto('el nombre completo', 100), login: texto('el usuario', 50), correo }
-const esquemaNuevo = z.object({ ...datos, idRol: eleccion('el rol'), clave, confirmacion: z.string().min(1, 'Repita la contraseña.') }).refine(coincide, errorCoincide)
-const esquemaEdicion = z.object(datos)
-const esquemaRol = z.object({ idRol: eleccion('el rol') })
-const esquemaClave = z.object({ clave, confirmacion: z.string().min(1, 'Repita la contraseña.') }).refine(coincide, errorCoincide)
+const esquemaNuevo = z.object({
+  ...datos,
+  clave: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.').max(100, 'Máximo 100 caracteres.'),
+  confirmacion: z.string().min(1, 'Repita la contraseña.'),
+}).refine(coincide, errorCoincide)
+// En edición la contraseña es opcional: vacía conserva la actual (enunciado Avance 2, 5.1)
+const esquemaEdicion = z.object({
+  ...datos,
+  clave: z.string().refine((v) => v === '' || (v.length >= 8 && v.length <= 100), 'Si escribe una contraseña, debe tener entre 8 y 100 caracteres.'),
+  confirmacion: z.string(),
+}).refine(coincide, errorCoincide)
 
 // Usuarios y roles (enunciado Avance 2, 5.1; requerimientos 7.10). Solo Administrador.
-// Las reglas (no desactivarse a sí mismo, no dejar el sistema sin Administrador, login y correo únicos) las valida la API.
+// Las reglas (no desactivarse a sí mismo, no dejar el sistema sin Administrador, login y correo únicos) las valida la API;
+// la interfaz además no ofrece al Administrador desactivarse ni cambiarse el rol a sí mismo.
 export default function Usuarios() {
   const { usuario: yo } = useAuth()
   const filtros = useFiltrosUrl()
@@ -49,10 +54,11 @@ export default function Usuarios() {
   const roles = useCarga(listarRoles)
   const cargar = useCallback(() => listarUsuariosPagina(pagina, TAMANO, { idRol, estado }), [pagina, idRol, estado])
   const lista = useCarga(cargar)
-  const [dialogo, setDialogo] = useState(null) // { tipo: 'nuevo' | 'editar' | 'rol' | 'clave' | 'estado', usuario? }
+  const [dialogo, setDialogo] = useState(null) // { tipo: 'nuevo' | 'editar' | 'estado', usuario? }
   const [procesando, setProcesando] = useState(false)
 
   const opcionesRol = (roles.datos?.data ?? []).map((r) => ({ valor: r.idRol, texto: r.nombre }))
+  const esYo = (x) => x.login === yo?.login
   const cerrar = () => setDialogo(null)
   const hecho = () => { setDialogo(null); lista.recargar() }
   const u = dialogo?.usuario
@@ -62,7 +68,7 @@ export default function Usuarios() {
     try {
       if (u.estado) await desactivarUsuario(u.idUsuario)
       else await reactivarUsuario(u.idUsuario)
-      avisarExito(`Usuario ${u.login} ${u.estado ? 'desactivado' : 'reactivado'}`)
+      avisarExito(`Usuario ${u.login} ${u.estado ? 'desactivado' : 'activado'}`)
       hecho()
     } catch (err) {
       avisarError(err)
@@ -106,7 +112,7 @@ export default function Usuarios() {
             clave: 'nombreCompleto', titulo: 'Nombre',
             render: (x) => (
               <span className="flex flex-col">
-                <span><strong>{x.nombreCompleto}</strong>{x.login === yo?.login && <span className="text-muted-foreground"> (usted)</span>}</span>
+                <span><strong>{x.nombreCompleto}</strong>{esYo(x) && <span className="text-muted-foreground"> (usted)</span>}</span>
                 <span className="text-sm text-muted-foreground">{x.correo}</span>
               </span>
             ),
@@ -116,23 +122,14 @@ export default function Usuarios() {
           { clave: 'estado', titulo: 'Estado', render: (x) => <BadgeEstado estado={x.estado ? 'Activo' : 'Inactivo'} /> },
           { clave: 'ultimoAcceso', titulo: 'Último acceso', render: (x) => (x.ultimoAcceso ? <span title={formatFechaHora(x.ultimoAcceso)}>{formatFecha(x.ultimoAcceso)}</span> : <span className="text-muted-foreground">Nunca</span>) },
           {
+            // Acciones por fila: editar y activar/desactivar (enunciado Avance 2, 5.1). Nadie se desactiva a sí mismo.
             clave: 'acciones', titulo: <span className="sr-only">Acciones</span>, derecha: true,
             render: (x) => (
               <span className="inline-flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => setDialogo({ tipo: 'editar', usuario: x })}><Pencil aria-hidden="true" />Editar</Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" aria-label={`Más acciones para ${x.login}`}><Ellipsis aria-hidden="true" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setDialogo({ tipo: 'rol', usuario: x })}><UserCog aria-hidden="true" />Cambiar rol</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setDialogo({ tipo: 'clave', usuario: x })}><KeyRound aria-hidden="true" />Resetear contraseña</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {x.estado
-                      ? <DropdownMenuItem variant="destructive" onSelect={() => setDialogo({ tipo: 'estado', usuario: x })}><UserX aria-hidden="true" />Desactivar</DropdownMenuItem>
-                      : <DropdownMenuItem onSelect={() => setDialogo({ tipo: 'estado', usuario: x })}><RotateCcw aria-hidden="true" />Reactivar</DropdownMenuItem>}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {!x.estado
+                  ? <Button variant="ghost" size="sm" onClick={() => setDialogo({ tipo: 'estado', usuario: x })}><RotateCcw aria-hidden="true" />Activar</Button>
+                  : !esYo(x) && <Button variant="ghost" size="sm" className="text-alto-texto hover:bg-alto-tinte" onClick={() => setDialogo({ tipo: 'estado', usuario: x })}><UserX aria-hidden="true" />Desactivar</Button>}
               </span>
             ),
           },
@@ -144,16 +141,16 @@ export default function Usuarios() {
         onCambiarPagina={filtros.irAPagina}
       />
 
-      {(dialogo?.tipo === 'nuevo' || dialogo?.tipo === 'editar') && <FormularioUsuario usuario={u} roles={opcionesRol} onCerrar={cerrar} onGuardado={hecho} />}
-      {dialogo?.tipo === 'rol' && <FormularioRol usuario={u} roles={opcionesRol} onCerrar={cerrar} onGuardado={hecho} />}
-      {dialogo?.tipo === 'clave' && <FormularioClave usuario={u} onCerrar={cerrar} onGuardado={cerrar} />}
+      {(dialogo?.tipo === 'nuevo' || dialogo?.tipo === 'editar') && (
+        <FormularioUsuario usuario={u} propio={u ? esYo(u) : false} roles={opcionesRol} onCerrar={cerrar} onGuardado={hecho} />
+      )}
       <DialogoConfirmacion
         abierto={dialogo?.tipo === 'estado'}
-        titulo={u ? `¿${u.estado ? 'Desactivar' : 'Reactivar'} al usuario ${u.login} (${u.nombreCompleto})?` : ''}
+        titulo={u ? `¿${u.estado ? 'Desactivar' : 'Activar'} al usuario ${u.login} (${u.nombreCompleto})?` : ''}
         mensaje={u?.estado
-          ? `No podrá iniciar sesión. ${u.tieneActividad ? 'Su actividad (órdenes, cambios de estado y lecturas) se conserva.' : 'Puede reactivarse después.'}`
+          ? `No podrá iniciar sesión. ${u.tieneActividad ? 'Su actividad (órdenes, cambios de estado y lecturas) se conserva.' : 'Puede activarse después.'}`
           : 'Podrá volver a iniciar sesión con su contraseña actual.'}
-        textoConfirmar={u?.estado ? 'Desactivar' : 'Reactivar'}
+        textoConfirmar={u?.estado ? 'Desactivar' : 'Activar'}
         peligro={u?.estado}
         procesando={procesando}
         onCancelar={cerrar}
@@ -163,10 +160,10 @@ export default function Usuarios() {
   )
 }
 
-// 409: login o correo repetidos, o una regla del Administrador; se pone junto al campo que corresponde
+// 409 de login o correo repetidos: va junto al campo que corresponde
 function errorConflicto(err, setError) {
   if (err.status !== 409) return false
-  const campo = /correo/i.test(err.message) ? 'correo' : /login/i.test(err.message) ? 'login' : null
+  const campo = /correo/i.test(err.message) ? 'correo' : /login|usuario/i.test(err.message) ? 'login' : null
   if (!campo) return false
   setError(campo, { message: err.message }, { shouldFocus: true })
   return true
@@ -175,110 +172,70 @@ function errorConflicto(err, setError) {
 function campoTexto(control, name, etiqueta, props = {}) {
   return (
     <Controller name={name} control={control} render={({ field, fieldState }) => (
-      <CampoFormulario id={name} etiqueta={etiqueta} requerido ayuda={props.ayuda} error={fieldState.error?.message}>
+      <CampoFormulario id={name} etiqueta={etiqueta} requerido={props.requerido ?? true} ayuda={props.ayuda} error={fieldState.error?.message}>
         {(p) => <Input {...field} {...p} type={props.type} autoComplete={props.autoComplete ?? 'off'} spellCheck={false} />}
       </CampoFormulario>
     )} />
   )
 }
 
-function campoRol(control, roles) {
-  return (
-    <Controller name="idRol" control={control} render={({ field, fieldState }) => (
-      <CampoFormulario id="idRol" etiqueta="Rol" requerido error={fieldState.error?.message}>
-        {(p) => <ListaOpciones {...p} ref={field.ref} value={field.value} onChange={field.onChange} opciones={roles} />}
-      </CampoFormulario>
-    )} />
-  )
-}
-
-function FormularioUsuario({ usuario, roles, onCerrar, onGuardado }) {
-  const esquema = usuario ? esquemaEdicion : esquemaNuevo
+// Nuevo usuario o edición: nombre, login, correo, rol y contraseña (opcional al editar). Al editar se llama solo a lo
+// que cambió: los datos (PUT), el rol si es otro (PUT rol) y la contraseña si se escribió una (PUT clave).
+function FormularioUsuario({ usuario, propio, roles, onCerrar, onGuardado }) {
   const { control, handleSubmit, setError, formState: { isSubmitting } } = useForm({
-    resolver: zodResolver(esquema),
-    defaultValues: usuario
-      ? { nombreCompleto: usuario.nombreCompleto, login: usuario.login, correo: usuario.correo }
-      : { nombreCompleto: '', login: '', correo: '', idRol: '', clave: '', confirmacion: '' },
+    resolver: zodResolver(usuario ? esquemaEdicion : esquemaNuevo),
+    defaultValues: {
+      nombreCompleto: usuario?.nombreCompleto ?? '',
+      login: usuario?.login ?? '',
+      correo: usuario?.correo ?? '',
+      idRol: usuario ? String(usuario.idRol) : '',
+      clave: '',
+      confirmacion: '',
+    },
   })
-  const enviar = async (formulario) => {
-    const d = { ...formulario }
-    delete d.confirmacion
+
+  const enviar = async ({ nombreCompleto, login, correo: email, idRol, clave }) => {
+    let paso = 'datos'
     try {
-      if (usuario) await actualizarUsuario(usuario.idUsuario, d)
-      else await crearUsuario(d)
-      avisarExito(`Usuario ${d.login} ${usuario ? 'actualizado' : 'registrado'}`)
+      if (!usuario) {
+        await crearUsuario({ nombreCompleto, login, correo: email, idRol, clave })
+        avisarExito(`Usuario ${login} registrado`)
+      } else {
+        await actualizarUsuario(usuario.idUsuario, { nombreCompleto, login, correo: email })
+        if (idRol !== usuario.idRol) { paso = 'rol'; await cambiarRol(usuario.idUsuario, idRol) }
+        if (clave) { paso = 'clave'; await resetearClave(usuario.idUsuario, clave) }
+        avisarExito(`Usuario ${login} actualizado${clave ? ', con contraseña nueva' : ''}`)
+      }
       onGuardado()
     } catch (err) {
-      if (!errorConflicto(err, setError) && !aplicarErroresApi(err, setError, ['nombreCompleto', 'login', 'correo', 'idRol', 'clave'])) avisarError(err)
+      if (paso === 'rol' && err.status === 409) setError('idRol', { message: err.message }, { shouldFocus: true })
+      else if (!errorConflicto(err, setError) && !aplicarErroresApi(err, setError, ['nombreCompleto', 'login', 'correo', 'idRol', 'clave'])) avisarError(err)
     }
   }
+
   return (
     <DialogoFormulario abierto titulo={usuario ? `Editar a ${usuario.login}` : 'Nuevo usuario'}
-      descripcion={usuario ? 'El rol y la contraseña se cambian con sus propias acciones.' : 'Entregue la contraseña inicial al usuario; podrá cambiarla al ingresar.'}
+      descripcion={usuario
+        ? 'Si cambia el rol de alguien con la sesión abierta, el nuevo rol aplica desde su siguiente inicio de sesión.'
+        : 'Entregue la contraseña inicial al usuario.'}
       textoEnviar={usuario ? 'Guardar cambios' : 'Registrar usuario'} procesando={isSubmitting} onEnviar={handleSubmit(enviar)} onCerrar={onCerrar}>
       {campoTexto(control, 'nombreCompleto', 'Nombre completo')}
       <div className="grid gap-4 sm:grid-cols-2">
         {campoTexto(control, 'login', 'Usuario', { ayuda: 'Con el que inicia sesión.' })}
         {campoTexto(control, 'correo', 'Correo', { type: 'email' })}
       </div>
-      {!usuario && (
-        <>
-          {campoRol(control, roles)}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {campoTexto(control, 'clave', 'Contraseña inicial', { type: 'password', autoComplete: 'new-password', ayuda: 'De 8 a 100 caracteres.' })}
-            {campoTexto(control, 'confirmacion', 'Repita la contraseña', { type: 'password', autoComplete: 'new-password' })}
-          </div>
-        </>
-      )}
-    </DialogoFormulario>
-  )
-}
-
-function FormularioRol({ usuario, roles, onCerrar, onGuardado }) {
-  const { control, handleSubmit, setError, formState: { isSubmitting } } = useForm({
-    resolver: zodResolver(esquemaRol),
-    defaultValues: { idRol: String(usuario.idRol) },
-  })
-  const enviar = async ({ idRol }) => {
-    try {
-      await cambiarRol(usuario.idUsuario, idRol)
-      avisarExito(`${usuario.login} ahora es ${roles.find((r) => r.valor === idRol)?.texto}`)
-      onGuardado()
-    } catch (err) {
-      if (err.status === 409) setError('idRol', { message: err.message }, { shouldFocus: true })
-      else if (!aplicarErroresApi(err, setError, ['idRol'])) avisarError(err)
-    }
-  }
-  return (
-    <DialogoFormulario abierto titulo={`Cambiar el rol de ${usuario.login}`}
-      descripcion={`Rol actual: ${usuario.rolNombre}. Si tiene la sesión abierta, el nuevo rol aplica desde su siguiente inicio de sesión.`}
-      textoEnviar="Cambiar rol" procesando={isSubmitting} onEnviar={handleSubmit(enviar)} onCerrar={onCerrar}>
-      {campoRol(control, roles)}
-    </DialogoFormulario>
-  )
-}
-
-function FormularioClave({ usuario, onCerrar, onGuardado }) {
-  const { control, handleSubmit, setError, formState: { isSubmitting } } = useForm({
-    resolver: zodResolver(esquemaClave),
-    defaultValues: { clave: '', confirmacion: '' },
-  })
-  const enviar = async (d) => {
-    try {
-      await resetearClave(usuario.idUsuario, d.clave)
-      avisarExito(`Contraseña de ${usuario.login} restablecida`)
-      onGuardado()
-    } catch (err) {
-      if (!aplicarErroresApi(err, setError, ['clave'])) avisarError(err)
-    }
-  }
-  return (
-    <DialogoFormulario abierto titulo={`Resetear la contraseña de ${usuario.login}`}
-      descripcion={`No pide la contraseña actual. Entregue la nueva a ${usuario.nombreCompleto}.${usuario.estado ? '' : ' La cuenta sigue inactiva hasta que la reactive.'}`}
-      textoEnviar="Resetear contraseña" procesando={isSubmitting} onEnviar={handleSubmit(enviar)} onCerrar={onCerrar}>
+      <Controller name="idRol" control={control} render={({ field, fieldState }) => (
+        <CampoFormulario id="idRol" etiqueta="Rol" requerido error={fieldState.error?.message}
+          ayuda={propio ? 'No puede cambiarse su propio rol de Administrador.' : undefined}>
+          {(p) => <ListaOpciones {...p} ref={field.ref} value={field.value} onChange={field.onChange} opciones={roles} disabled={propio} />}
+        </CampoFormulario>
+      )} />
       <div className="grid gap-4 sm:grid-cols-2">
-        {campoTexto(control, 'clave', 'Contraseña nueva', { type: 'password', autoComplete: 'new-password', ayuda: 'De 8 a 100 caracteres.' })}
-        {campoTexto(control, 'confirmacion', 'Repita la contraseña', { type: 'password', autoComplete: 'new-password' })}
+        {campoTexto(control, 'clave', usuario ? 'Contraseña nueva' : 'Contraseña inicial', {
+          type: 'password', autoComplete: 'new-password', requerido: !usuario,
+          ayuda: usuario ? 'Déjela vacía para conservar la actual.' : 'De 8 a 100 caracteres.',
+        })}
+        {campoTexto(control, 'confirmacion', 'Repita la contraseña', { type: 'password', autoComplete: 'new-password', requerido: !usuario })}
       </div>
     </DialogoFormulario>
   )
