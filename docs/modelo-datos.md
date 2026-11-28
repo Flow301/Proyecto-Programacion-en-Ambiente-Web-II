@@ -376,6 +376,7 @@ Seguimos los tres niveles del material:
 3. **`DevelopmentSeeder` (solo en Development):** usuarios de demostración, vehículos, técnicos, proveedores, repuestos, asociaciones y órdenes.
    - Corre dentro de una transacción.
    - Cada bloque revisa su propia tabla y solo siembra si está vacía (por ejemplo, los técnicos si no hay ningún `Tecnico`). Así se puede volver a ejecutar mientras el seeder crece semana a semana, sin duplicar ni chocar con los índices únicos.
+   - Al final llama a `AmpliacionSeeder`, que agrega el volumen de datos descrito en [Ampliación de volumen](#ampliación-de-volumen-ampliacionseeder).
 
 Igual que en el material, `MasterSeeder` y `DevelopmentSeeder` tienen una versión síncrona (`Seed`) y una asíncrona (`SeedAsync`), y `Program.cs` registra las dos: `UseSeeding` la usa `dotnet ef database update`, y `UseAsyncSeeding` la usa la aplicación con `Database.MigrateAsync`. En ambas corre primero el `MasterSeeder`.
    - Como las llaves son IDENTITY, resuelve las relaciones por clave natural: código, placa, identificación o login.
@@ -607,3 +608,26 @@ Si en el Avance 1 no alcanza el tiempo, priorizamos sembrar las órdenes 1 a 7 y
   - el de `ADM-0001` a Dado de Baja (`admin`, "Unidad vendida").
 - Los técnicos asignados tienen la especialidad que exige el tipo de cada orden. El kilometraje del último preventivo de `BUI-0001` y `PKP-0001` coincide con el de su orden preventiva completada.
 - Todas las asignaciones tienen su tarifa aplicada. Las órdenes completadas tienen fecha de cierre y los tres costos congelados. La cancelada y la rechazada tienen fecha de cierre y no tienen costos.
+
+### Ampliación de volumen (AmpliacionSeeder)
+
+Los datos anteriores muestran cada caso del sistema, pero con una decena de registros por tabla los listados, la paginación, los filtros, el dashboard y la comparación del reporte de costos casi no se ejercitan. `AmpliacionSeeder` agrega volumen generado con una semilla fija, así que siempre produce los mismos datos:
+
+| Qué | Cantidad aproximada | Detalle |
+|-----|---------------------|---------|
+| Técnicos | 8 | Identificaciones `7-0101-0001` a `7-0101-0008`, para repartir todas las especialidades. |
+| Repuestos | 40 | Filtros, lubricantes, frenos, suspensión, eléctricos, transmisión, aire acondicionado, llantas, motor diésel y carrocería. Cada uno con uno a tres proveedores de su rubro. Varios quedan bajo el mínimo y cuatro en cero (`RES-HOJ-001`, `COM-AC-001`, `KIT-EMB-001`, `INY-DIE-001`). |
+| Vehículos | 60 | De todas las categorías salvo vehículo administrativo, registrados entre 10 y 18 meses atrás. Tres con intervalo propio, tres Fuera de Servicio y dos Dados de Baja. |
+| Órdenes | unas 640 | Preventivos cuando el uso llega al umbral, correctivos cada uno a cinco meses y alguna emergencia. La mayoría cerradas (completadas, rechazadas o canceladas) y, en el último mes, órdenes abiertas en todos los estados. |
+| Lecturas de uso | unas 1 200 | Una por diagnóstico y una del Administrador cada uno o dos meses. |
+
+Respeta las mismas reglas que la API, y se verifican con consultas sobre la base:
+
+- El vehículo está En Mantenimiento solo mientras tiene una orden En Ejecución o En Espera de Repuesto; cada ida y vuelta queda en su historial con la orden que la provocó.
+- El estado actual de cada vehículo y de cada orden es el último de su historial, y ningún paso tiene fecha futura.
+- Las lecturas nunca bajan; el kilometraje actual es la lectura mayor y el del último preventivo nunca la supera. Completar un preventivo fija la lectura base en el kilometraje de su diagnóstico.
+- Los técnicos asignados tienen la especialidad que exige el tipo, están activos y disponibles, y su tarifa queda congelada en la asignación.
+- Las órdenes completadas tienen al menos un técnico con horas, ningún pendiente y los costos congelados (repuestos + mano de obra). Las canceladas durante la ejecución congelan lo consumido.
+- Cada orden En Espera de Repuesto tiene un pendiente de un repuesto sin stock suficiente.
+
+Corre una sola vez: si ya existe el técnico `7-0101-0001`, no hace nada. Funciona también sobre una base en uso, porque los códigos de los vehículos y de las órdenes siguen desde el mayor que ya existe. Las órdenes nuevas se numeran por año en orden cronológico; como las 14 de los datos anteriores ya ocupan los primeros números de 2026, las de 2026 generadas antes que ellas tienen códigos mayores aunque sean más antiguas.

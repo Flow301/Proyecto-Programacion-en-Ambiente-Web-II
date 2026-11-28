@@ -31,6 +31,7 @@ public static class DevelopmentSeeder
         await SeedProveedoresAsync(context, ct);
         await SeedRepuestosAsync(context, ct);
         await SeedOrdenesAsync(context, ct);   // al final: usa vehículos, usuarios, técnicos y repuestos
+        await AmpliacionSeeder.SeedAsync(context, ct);   // volumen de datos para listados, paginación y reportes
 
         if (transaction is not null)
             await transaction.CommitAsync(ct);
