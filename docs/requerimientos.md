@@ -679,7 +679,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 **Historial**
 
 - [x] Historial automático de órdenes y de los cambios automáticos del vehículo.
-- [ ] Solo lectura para todos los roles y visible desde el detalle en el frontend.
+- [x] Solo lectura para todos los roles y visible desde el detalle en el frontend.
 
 **Mantenimiento preventivo**
 
@@ -690,8 +690,8 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 **Reportes y dashboard**
 
 - [x] Combinación declarada: Dashboard general + Costos por orden.
-- [ ] Dashboard del Administrador. El endpoint está (`api/Dashboard`); falta la pantalla.
-- [ ] Reporte de costos por orden. El endpoint está (`api/Reporte/costos-orden/{idOrden}`); falta la pantalla.
+- [x] Dashboard del Administrador (`api/Dashboard`).
+- [x] Reporte de costos por orden (`api/Reporte/costos-orden/{idOrden}`), con el botón "Reporte de costos" del detalle de la orden.
 
 **API del Avance 2 (enunciado del Avance 2, 3.4 y 5)**
 
@@ -706,7 +706,7 @@ Los ítems marcados *(adelanto)* el enunciado los evalúa en el Avance 2, porque
 **Frontend**
 
 - [x] Catálogos de consulta en la API para llenar los formularios.
-- [ ] React consumiendo la API en todos los módulos, sin datos fijos.
-- [ ] Menú y pantallas según el rol, y manejo de token expirado.
-- [ ] Requerimientos de interfaz de la sección 12.
-- [ ] Paleta de colores aplicada de forma consistente.
+- [x] React consumiendo la API en todos los módulos, sin datos fijos.
+- [x] Menú y pantallas según el rol, y manejo de token expirado.
+- [x] Requerimientos de interfaz de la sección 12.
+- [x] Paleta de colores aplicada de forma consistente.
