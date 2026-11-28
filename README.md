@@ -2,7 +2,7 @@
 
 **Contexto: flota vehicular.** Proyecto del curso ISW-621 Programación en Ambiente Web II, carrera de Ingeniería del Software, UTN Sede Central.
 
-> Las partes marcadas como **Pendiente** se completan en el avance indicado. El avance real de cada módulo se registra en la [checklist de cobertura](docs/requerimientos.md#checklist-de-cobertura-por-avance).
+> El avance de cada módulo se registra en la [checklist de cobertura](docs/requerimientos.md#checklist-de-cobertura-por-avance).
 
 ## Equipo
 
@@ -56,7 +56,7 @@ Es más restrictiva que la mínima del enunciado en un punto: crear la orden que
 
 **Avance 1 (semana 7) — entregado.** API sin frontend con el CRUD de activos, categorías, técnicos, especialidades, repuestos y proveedores; relaciones 1:N y N:N; migraciones y seeders; validaciones; manejo global de excepciones; creación y consulta de órdenes de mantenimiento; y gestión de usuarios con login JWT, cambio y reseteo de contraseña y autorización por rol en todos los endpoints.
 
-**Avance 2 (semana 13, entrega final) — en desarrollo.** Ciclo de vida completo de la orden, frontend en React, historial visible, reportes y dashboard. El avance de cada punto está en la checklist de los [requerimientos](docs/requerimientos.md#avance-2--semana-13).
+**Avance 2 (semana 13, entrega final) — completo.** Ciclo de vida completo de la orden, frontend en React para los tres roles, historial visible, mantenimiento preventivo, reportes y dashboard. Cada punto está marcado en la checklist de los [requerimientos](docs/requerimientos.md#avance-2--semana-13).
 
 **Reportes escogidos para el Avance 2:** Dashboard general (familia A) + Costos por orden (familia B). La justificación está en las [decisiones técnicas](docs/decisiones-tecnicas.md#5-reportes-escogidos).
 
@@ -92,7 +92,7 @@ Seguimos la organización de capas y los patrones vistos en clase (Clean Archite
 │   ├── SGMA.Application/         Interfaces/, Implementation/ y Mapper/
 │   ├── SGMA.Shared/              Excepciones de negocio y constantes compartidas
 │   └── SGMA.WebAPI/              Controllers/, Handlers/, Security/, Program.cs, appsettings.json y wwwroot/imagenes/
-└── frontend/                     React con Vite: src/api (único módulo de llamadas), context/ (sesión), components/ (ui/ de shadcn), schemas/ (Zod) y pages/
+└── frontend/                     React con Vite (detalle en la sección Frontend)
 ```
 
 Qué hace cada proyecto y a cuáles referencia:
@@ -102,6 +102,54 @@ Qué hace cada proyecto y a cuáles referencia:
 - **`SGMA.Application`:** servicios con las reglas de negocio y configuración de Mapster. Referencia a Domain, Infrastructure y Shared.
 - **`SGMA.Shared`:** excepciones de negocio y constantes que usan Application y WebAPI. No referencia a ningún otro proyecto.
 - **`SGMA.WebAPI`:** controladores, manejo global de excepciones, generación y validación del JWT, configuración e imágenes de los activos. Referencia a Application, Domain, Infrastructure y Shared.
+
+## Frontend
+
+Una aplicación de una sola página (SPA) en React que consume la API; no tiene datos fijos: todo, incluidos los catálogos de las listas, viene de la API. La paleta, los colores e íconos de cada estado y las decisiones de usabilidad están en las [decisiones técnicas](docs/decisiones-tecnicas.md).
+
+### Pantallas por rol
+
+Cada rol ve en el menú solo lo suyo, y una pantalla de otro rol escrita a mano en la barra de direcciones muestra "Acceso no autorizado". La API valida el rol de todos modos en cada endpoint.
+
+| Rol | Al ingresar | Pantallas |
+|-----|-------------|-----------|
+| Administrador | Dashboard | Órdenes (con todas sus acciones de aprobación), Preventivo, Vehículos, Repuestos, Categorías, Técnicos, Especialidades, Proveedores, Usuarios y Reporte de costos de cada orden. Es el único que registra, edita, inactiva y da de baja. |
+| Coordinador/Técnico | Bandeja del taller (órdenes Solicitadas, Aprobadas, En Ejecución y En Espera) | Órdenes (diagnosticar, iniciar, técnicos, horas, repuestos, reanudar, completar), alertas de Preventivo, Reporte de costos y consulta de Vehículos, Repuestos y catálogos. |
+| Solicitante/Consulta | Mis solicitudes | Sus solicitudes (registrar y seguir su avance) y consulta de Vehículos. |
+
+Los tres roles cambian su propia contraseña desde el enlace "Cambiar contraseña" de la barra superior.
+
+### Organización de `frontend/src`
+
+```
+src/
+├── api/api.js          Único módulo que llama a la API (fetch, token, errores y sesión vencida)
+├── context/            AuthProvider: la sesión y el usuario conectado
+├── services/           Una función por endpoint, agrupadas por módulo (ordenService, activoService…)
+├── pages/              Una carpeta por módulo: listado, detalle y formulario de cada uno
+├── components/
+│   ├── layout/         Barra superior, menú lateral por rol (menu.js) e inicio de cada rol
+│   ├── shared/         Piezas propias reutilizables: TablaPaginada, BadgeEstado, ProgresoOrden, diálogos, formularios…
+│   └── ui/             Componentes base de shadcn/ui
+├── hooks/              useCarga (carga, error y reintento), useFiltrosUrl (filtros y página en la URL) y useRol
+├── schemas/            Validaciones con Zod, las mismas reglas que los DTO de la API
+└── utils/              Formatos (fechas dd/mm/aaaa, colones, km), avisos y errores de la API en los formularios
+```
+
+Convenciones que siguen todas las pantallas:
+
+- Los formularios validan con Zod antes de enviar y muestran junto a cada campo los errores que devuelve la API (400 con errores por campo, 409 de datos repetidos).
+- Lo irreversible (eliminar, inactivar, dar de baja, rechazar, cancelar) pide confirmación. Mientras la API responde, el botón queda deshabilitado con su indicador de progreso.
+- Las acciones de una orden son exactamente las que la API devuelve en `accionesDisponibles` para el rol y el estado: el frontend no decide ninguna transición.
+- Los filtros y la página de cada listado quedan en la URL, así que "Volver" regresa al listado tal como estaba.
+
+### Cómo se inicia sesión desde React
+
+1. La pantalla de login (`pages/Login.jsx`) valida el usuario y la contraseña con Zod y llama a `iniciarSesion` del `AuthProvider`.
+2. `iniciarSesion` envía `POST api/Auth/login`. Si la API responde con éxito, guarda en `localStorage` (clave `sgma.sesion`) el token, su fecha de expiración y el usuario con su rol.
+3. La aplicación lleva al usuario a la pantalla que había pedido antes del login o, si no pidió ninguna, al inicio de su rol. Si el login falla, muestra el mensaje de la API sin borrar lo escrito y deja el cursor en la contraseña.
+4. Desde ahí, `api/api.js` agrega `Authorization: Bearer <token>` a cada petición.
+5. La sesión se cierra sola cuando el token vence (60 minutos) o cuando la API responde 401: la aplicación vuelve al login con el aviso "Su sesión expiró, ingrese nuevamente". "Cerrar sesión" borra la sesión y los avisos de la pantalla; no hay endpoint de cierre porque el token no se guarda en el servidor.
 
 ## Cómo levantar el proyecto
 
@@ -211,6 +259,7 @@ En ambiente Development, el `DevelopmentSeeder` crea además estos usuarios, tod
 - **`Falta la configuración Jwt:Key` al ejecutar la API o un comando de EF:** falta el secreto del paso 2, o la clave tiene menos de 32 caracteres.
 - **401 en todos los endpoints de Scalar:** falta pegar el token del login, o ya pasaron sus 60 minutos.
 - **Error de certificado al conectar con SQL Server:** la cadena de conexión debe incluir `TrustServerCertificate=True`.
+- **La API se cierra al arrancar con un error de conexión (`Error Number:2`):** el servicio de SQL Server está detenido, algo común después de reiniciar si su inicio es manual. Se inicia desde *Servicios* de Windows (`SQL Server (MSSQLSERVER)`) o con `Start-Service MSSQLSERVER` en un PowerShell como administrador.
 - **`Unable to create a 'DbContext'` al usar `dotnet ef`:** el comando debe ejecutarse desde `backend/` con `--project` y `--startup-project`, como en el paso 3.
 - **Advertencia `NETSDK1233` al compilar:** la solución debe abrirse con Visual Studio 2026.
 
