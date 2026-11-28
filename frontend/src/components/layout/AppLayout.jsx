@@ -57,13 +57,14 @@ export default function AppLayout() {
       {/* La barra queda fija arriba: usuario, rol y "Cerrar sesión" siempre a la vista (enunciado 5.1) */}
       <header className="sobre-azul sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 bg-primary px-6 text-primary-foreground">
         <span className="text-xl font-bold tracking-[0.06em]">SGMA</span>
-        <span className="border-l border-primary-foreground/40 pl-4 text-[0.9375rem]">Mantenimiento de flota</span>
+        {/* En tablet el subtítulo cede su espacio al usuario y a las acciones, que no se parten en dos líneas */}
+        <span className="hidden border-l border-primary-foreground/40 pl-4 text-[0.9375rem] whitespace-nowrap lg:inline">Mantenimiento de flota</span>
         <span className="flex-1" />
         <span className="text-right text-[0.9375rem] leading-tight">
           <strong className="block font-semibold">{usuario?.nombreCompleto}</strong>
           <span>{usuario?.rolNombre}</span>
         </span>
-        <Link to="/cuenta/clave" className="rounded-sm px-2 py-1.5 text-[0.9375rem] underline underline-offset-4 hover:no-underline">
+        <Link to="/cuenta/clave" className="rounded-sm px-2 py-1.5 text-[0.9375rem] whitespace-nowrap underline underline-offset-4 hover:no-underline">
           Cambiar contraseña
         </Link>
         <Button

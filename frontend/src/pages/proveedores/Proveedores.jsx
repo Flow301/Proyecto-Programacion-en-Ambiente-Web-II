@@ -16,7 +16,7 @@ import useFiltrosUrl from '@/hooks/useFiltrosUrl'
 import useRol from '@/hooks/useRol'
 import { correo, telefono, texto, textoOpcional } from '@/schemas/comunes'
 import { actualizarProveedor, crearProveedor, inactivarProveedor, listarProveedoresPagina } from '@/services/proveedorService'
-import { avisarError, avisarExito } from '@/utils/avisos'
+import { avisarError, avisarExito, rechazoDefinitivo } from '@/utils/avisos'
 import { aplicarErroresApi } from '@/utils/errores'
 
 const TAMANO = 10
@@ -53,6 +53,7 @@ export default function Proveedores() {
       lista.recargar()
     } catch (err) {
       avisarError(err)
+      if (rechazoDefinitivo(err)) setInactivando(null)
     } finally {
       setProcesando(false)
     }

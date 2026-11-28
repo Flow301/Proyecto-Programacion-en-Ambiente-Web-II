@@ -20,7 +20,7 @@ import useRol from '@/hooks/useRol'
 import { cambiarEstadoActivo, darDeBajaActivo, historialActivo, lecturasActivo, obtenerActivo } from '@/services/activoService'
 import { estadosActivo } from '@/services/catalogoService'
 import { listarOrdenes } from '@/services/ordenService'
-import { avisarError, avisarExito } from '@/utils/avisos'
+import { avisarError, avisarExito, rechazoDefinitivo } from '@/utils/avisos'
 import DialogoLectura from './DialogoLectura'
 import { formatAntiguedad, formatColones, formatFecha, formatFechaHora, formatKm, formatNumero } from '@/utils/format'
 
@@ -97,6 +97,7 @@ export default function VehiculoDetalle() {
       actualizar()
     } catch (err) {
       avisarError(err)
+      if (rechazoDefinitivo(err)) setCambio(null)
     } finally {
       setProcesando(false)
     }
@@ -227,11 +228,16 @@ const TAMANO = 5
 // vehículo: al Solicitante/Consulta la API le devuelve solo las suyas.
 function OrdenesVehiculo({ v }) {
   const { pathname } = useLocation()
+  const { esSolicitante } = useRol()
   const [pagina, setPagina] = useState(1)
   const cargar = useCallback(() => listarOrdenes(pagina, TAMANO, { idActivo: v.idActivo }), [pagina, v.idActivo])
   const lista = useCarga(cargar)
   return (
-    <BloqueSeccion titulo="Órdenes" detalle={`Órdenes de mantenimiento de ${v.codigo}.`} sinRelleno>
+    <BloqueSeccion
+      titulo={esSolicitante ? 'Mis solicitudes' : 'Órdenes'}
+      detalle={esSolicitante ? `Las solicitudes que usted registró para ${v.codigo}.` : `Órdenes de mantenimiento de ${v.codigo}.`}
+      sinRelleno
+    >
       <TablaPaginada
         titulo={`Órdenes del vehículo ${v.codigo}`}
         nombre="órdenes"
@@ -241,7 +247,9 @@ function OrdenesVehiculo({ v }) {
         cargando={lista.cargando}
         error={lista.error}
         onReintentar={lista.recargar}
-        vacio={{ titulo: 'Este vehículo no tiene órdenes', mensaje: 'Las solicitudes de mantenimiento aparecen aquí.' }}
+        vacio={esSolicitante
+          ? { titulo: 'No ha registrado solicitudes para este vehículo', mensaje: 'Las que registre aparecerán aquí.' }
+          : { titulo: 'Este vehículo no tiene órdenes', mensaje: 'Las solicitudes de mantenimiento aparecen aquí.' }}
         columnas={[
           { clave: 'codigo', titulo: 'Código', render: (o) => <Link to={`/ordenes/${o.idOrden}`} state={{ desde: pathname }} className="font-bold text-primary underline-offset-4 hover:underline">{o.codigo}</Link> },
           { clave: 'fechaSolicitud', titulo: 'Solicitud', render: (o) => formatFecha(o.fechaSolicitud) },
@@ -294,6 +302,7 @@ function HistorialVehiculo({ v }) {
 
 // Lecturas de uso: las registra el Administrador con su acción o las toma el diagnóstico de una orden
 function LecturasVehiculo({ v }) {
+  const { esSolicitante } = useRol()
   const [pagina, setPagina] = useState(1)
   const cargar = useCallback(() => lecturasActivo(v.idActivo, pagina, TAMANO), [pagina, v.idActivo])
   const lista = useCarga(cargar)
@@ -316,9 +325,12 @@ function LecturasVehiculo({ v }) {
           { clave: 'usuarioNombreCompleto', titulo: 'Registró', render: (l) => <span className="whitespace-normal">{l.usuarioNombreCompleto}</span> },
           {
             clave: 'origen', titulo: 'Origen',
-            render: (l) => (l.idOrden
-              ? <Link to={`/ordenes/${l.idOrden}`} className="font-semibold text-primary underline-offset-4 hover:underline">{l.ordenCodigo}</Link>
-              : <span className="text-sm text-muted-foreground">Lectura registrada</span>),
+            // El Solicitante solo puede abrir sus propias órdenes: para él la orden se nombra, sin enlace
+            render: (l) => (!l.idOrden
+              ? <span className="text-sm text-muted-foreground">Lectura registrada</span>
+              : esSolicitante
+                ? <span className="text-sm">Diagnóstico de {l.ordenCodigo}</span>
+                : <Link to={`/ordenes/${l.idOrden}`} className="font-semibold text-primary underline-offset-4 hover:underline">{l.ordenCodigo}</Link>),
           },
         ]}
         pagina={pagina}

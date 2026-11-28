@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import useCarga from '@/hooks/useCarga'
 import useRol from '@/hooks/useRol'
 import { cancelarOrden, completarOrden, historialOrden, obtenerOrden, reanudarOrden, rechazarOrden } from '@/services/ordenService'
-import { avisarError, avisarExito } from '@/utils/avisos'
+import { avisarError, avisarExito, rechazoDefinitivo } from '@/utils/avisos'
 import { formatColones, formatFecha, formatFechaHora, formatHoras, formatKm, formatNumero } from '@/utils/format'
 import { DialogoAprobacion, DialogoDiagnostico, DialogoEdicion, DialogoHoras, DialogoRepuesto, DialogoTecnicos } from './DialogosOrden'
 
@@ -47,9 +47,10 @@ export default function OrdenDetalle() {
   const { id } = useParams()
   const { state } = useLocation()
   const { esSolicitante } = useRol()
-  // Si se llegó desde el detalle de un vehículo, el enlace de regreso vuelve a él y lo dice
+  // El enlace de regreso dice a dónde vuelve: al vehículo o a Preventivo si se llegó desde ahí
   const textoVolver = state?.desde?.startsWith('/vehiculos/') ? 'Volver al vehículo'
-    : esSolicitante ? 'Volver a Mis solicitudes' : 'Volver a Órdenes'
+    : state?.desde?.startsWith('/preventivo') ? 'Volver a Preventivo'
+      : esSolicitante ? 'Volver a Mis solicitudes' : 'Volver a Órdenes'
   const cargar = useCallback(() => cargarOrden(id), [id])
   const carga = useCarga(cargar)
   const [dialogo, setDialogo] = useState(null) // { accion, tecnico? }
@@ -76,6 +77,7 @@ export default function OrdenDetalle() {
       hecho()
     } catch (err) {
       avisarError(err)
+      if (rechazoDefinitivo(err)) hecho() // la orden pudo cambiar mientras tanto: se cierra y se vuelve a leer
     } finally {
       setProcesando(false)
     }

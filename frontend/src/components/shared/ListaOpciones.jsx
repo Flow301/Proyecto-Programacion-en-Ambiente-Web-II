@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils'
  * El resto de props (id, aria-invalid, aria-describedby) llega de CampoFormulario y va al botón.
  */
 export default function ListaOpciones({ value, onChange, opciones = [], placeholder = 'Elija una opción', todas, disabled, className, ...props }) {
-  const actual = value === '' || value == null ? (todas ? 'todas' : undefined) : String(value)
+  // Siempre controlado: '' (sin elegir) muestra el texto de ayuda; undefined haría que React lo tome como no controlado
+  const actual = value === '' || value == null ? (todas ? 'todas' : '') : String(value)
   return (
     <Select value={actual} onValueChange={(v) => onChange(v === 'todas' ? '' : v)} disabled={disabled}>
       <SelectTrigger className={cn('w-full', className)} {...props}>

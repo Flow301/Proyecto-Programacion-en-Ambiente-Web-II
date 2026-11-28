@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
+import { inicioDelRol } from '@/components/layout/menu'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
@@ -6,6 +7,7 @@ import CampoFormulario from '@/components/shared/CampoFormulario'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import useRol from '@/hooks/useRol'
 import { cambioClaveSchema } from '@/schemas/authSchemas'
 import { cambiarClave } from '@/services/authService'
 import { avisarError, avisarExito } from '@/utils/avisos'
@@ -20,6 +22,10 @@ const campos = [
 // Cambio de la contraseña propia, para los tres roles (plan de trabajo, semana 9)
 export default function CambiarClave() {
   const navigate = useNavigate()
+  const { key } = useLocation()
+  const { rol } = useRol()
+  // Vuelve a la pantalla anterior de la app; si se abrió directo (marcador, pestaña nueva), al inicio del rol
+  const volver = () => (key === 'default' ? navigate(inicioDelRol(rol), { replace: true }) : navigate(-1))
   const { control, handleSubmit, setError, formState: { isSubmitting } } = useForm({
     resolver: zodResolver(cambioClaveSchema),
     defaultValues: { claveActual: '', claveNueva: '', confirmacion: '' },
@@ -29,7 +35,7 @@ export default function CambiarClave() {
     try {
       await cambiarClave(claveActual, claveNueva)
       avisarExito('La contraseña se cambió correctamente.')
-      navigate(-1)
+      volver()
     } catch (err) {
       // La API responde 400 si la contraseña actual no es correcta: el error va junto a ese campo
       if (err.status === 400 && /actual/i.test(err.message)) setError('claveActual', { message: err.message }, { shouldFocus: true })
@@ -49,7 +55,7 @@ export default function CambiarClave() {
           )} />
         ))}
         <div className="flex justify-end gap-2 border-t border-border-suave pt-4">
-          <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => navigate(-1)}>Cancelar</Button>
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={volver}>Cancelar</Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="animate-spin" aria-hidden="true" />}
             {isSubmitting ? 'Guardando…' : 'Cambiar contraseña'}

@@ -68,7 +68,7 @@ export default function OrdenNueva() {
   const lista = (name, etiqueta, opciones, ayuda) => (
     <Controller name={name} control={control} render={({ field, fieldState }) => (
       <CampoFormulario id={name} etiqueta={etiqueta} requerido ayuda={ayuda} error={fieldState.error?.message}>
-        {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} opciones={opciones}
+        {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} opciones={opciones}
           disabled={catalogos.cargando} placeholder={catalogos.cargando ? 'Cargando…' : 'Elija una opción'} />}
       </CampoFormulario>
     )} />

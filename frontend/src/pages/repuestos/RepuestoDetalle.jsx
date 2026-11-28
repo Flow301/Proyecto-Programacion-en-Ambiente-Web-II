@@ -25,7 +25,7 @@ import {
   actualizarCondiciones, asociarProveedor, inactivarRepuesto, obtenerRepuesto, proveedorRecomendado,
   proveedoresDeRepuesto, quitarProveedor, registrarEntrada,
 } from '@/services/repuestoService'
-import { avisarError, avisarExito } from '@/utils/avisos'
+import { avisarError, avisarExito, rechazoDefinitivo } from '@/utils/avisos'
 import { formatColones, formatNumero } from '@/utils/format'
 import { aplicarErroresApi } from '@/utils/errores'
 
@@ -69,6 +69,7 @@ export default function RepuestoDetalle() {
       despues()
     } catch (err) {
       avisarError(err)
+      if (rechazoDefinitivo(err)) { setQuitando(null); setInactivando(false) }
     } finally {
       setProcesando(false)
     }
@@ -193,7 +194,8 @@ function FormularioEntrada({ repuesto, onCerrar, onGuardada }) {
   const enviar = async ({ cantidad }) => {
     try {
       await registrarEntrada(repuesto.idRepuesto, cantidad)
-      avisarExito(`Entrada de ${formatNumero(cantidad)} ${repuesto.unidadMedida} de ${repuesto.codigo} registrada`)
+      // Sin la unidad de medida: está en singular ("unidad", "juego") y no concuerda con cantidades mayores que 1
+      avisarExito(`Entrada de ${formatNumero(cantidad)} registrada en ${repuesto.codigo}`)
       onGuardada()
     } catch (err) {
       if (!aplicarErroresApi(err, setError, ['cantidad'])) avisarError(err)
@@ -269,7 +271,7 @@ function FormularioProveedor({ repuesto, asociado, yaAsociados, onCerrar, onGuar
       <Controller name="idProveedor" control={control} render={({ field, fieldState }) => (
         <CampoFormulario id="idProveedor" etiqueta="Proveedor" requerido error={fieldState.error?.message}
           ayuda={!asociado && !proveedores.cargando && opciones.length === 0 ? 'Todos los proveedores activos ya están asociados.' : undefined}>
-          {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} opciones={opciones}
+          {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} opciones={opciones}
             disabled={Boolean(asociado) || proveedores.cargando} placeholder={proveedores.cargando ? 'Cargando…' : 'Elija un proveedor'} />}
         </CampoFormulario>
       )} />

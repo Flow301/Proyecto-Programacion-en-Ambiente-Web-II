@@ -109,7 +109,7 @@ function Contenido({ categoria, variables, titulo, volver }) {
           {campo('idVariableControl', 'Variable de control', {
             requerido: true,
             render: (field, props) => (
-              <ListaOpciones {...props} value={field.value} onChange={field.onChange}
+              <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange}
                 opciones={variables.map((v) => ({ valor: v.idVariableControl, texto: `${v.nombre} (${v.unidad})` }))} />
             ),
           })}

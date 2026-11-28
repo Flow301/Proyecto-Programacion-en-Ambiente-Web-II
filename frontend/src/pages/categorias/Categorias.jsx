@@ -9,7 +9,7 @@ import useCarga from '@/hooks/useCarga'
 import useFiltrosUrl from '@/hooks/useFiltrosUrl'
 import useRol from '@/hooks/useRol'
 import { eliminarCategoria, listarCategoriasPagina } from '@/services/categoriaService'
-import { avisarError, avisarExito } from '@/utils/avisos'
+import { avisarError, avisarExito, rechazoDefinitivo } from '@/utils/avisos'
 import { formatNumero } from '@/utils/format'
 
 const TAMANO = 10
@@ -34,6 +34,7 @@ export default function Categorias() {
     } catch (err) {
       // 409: tiene vehículos asociados; el mensaje de la API lo explica
       avisarError(err)
+      if (rechazoDefinitivo(err)) setEliminando(null)
     } finally {
       setProcesando(false)
     }

@@ -21,7 +21,7 @@ import { correo, eleccion, texto } from '@/schemas/comunes'
 import {
   actualizarUsuario, cambiarRol, crearUsuario, desactivarUsuario, listarRoles, listarUsuariosPagina, reactivarUsuario, resetearClave,
 } from '@/services/usuarioService'
-import { avisarError, avisarExito } from '@/utils/avisos'
+import { avisarError, avisarExito, rechazoDefinitivo } from '@/utils/avisos'
 import { aplicarErroresApi } from '@/utils/errores'
 import { formatFecha, formatFechaHora } from '@/utils/format'
 
@@ -66,7 +66,7 @@ export default function Usuarios() {
       hecho()
     } catch (err) {
       avisarError(err)
-      if (err.status === 409) cerrar() // regla de negocio: el aviso explica por qué y no hay nada que corregir en la ventana
+      if (rechazoDefinitivo(err)) cerrar()
     } finally {
       setProcesando(false)
     }
@@ -186,7 +186,7 @@ function campoRol(control, roles) {
   return (
     <Controller name="idRol" control={control} render={({ field, fieldState }) => (
       <CampoFormulario id="idRol" etiqueta="Rol" requerido error={fieldState.error?.message}>
-        {(p) => <ListaOpciones {...p} value={field.value} onChange={field.onChange} opciones={roles} />}
+        {(p) => <ListaOpciones {...p} ref={field.ref} value={field.value} onChange={field.onChange} opciones={roles} />}
       </CampoFormulario>
     )} />
   )

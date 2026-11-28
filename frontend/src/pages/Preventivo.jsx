@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -34,6 +34,7 @@ const ESTADOS = ['Vencido', 'Próximo', 'Al día', 'Sin lecturas']
 export default function Preventivo() {
   const { esAdmin } = useRol()
   const navigate = useNavigate()
+  const { search } = useLocation()
   const filtros = useFiltrosUrl()
   const elegidos = filtros.valores('estado')
   const evaluacion = useCarga(esAdmin ? evaluarPreventivo : alertasPreventivo)
@@ -110,7 +111,7 @@ export default function Preventivo() {
           {
             clave: 'situacion', titulo: 'Situación',
             render: (v) => (v.situacion === 'Orden en curso'
-              ? <Link to={`/ordenes/${v.idOrdenEnCurso}`} className="font-bold text-primary underline-offset-4 hover:underline">{v.codigoOrdenEnCurso}</Link>
+              ? <Link to={`/ordenes/${v.idOrdenEnCurso}`} state={{ desde: `/preventivo${search}` }} className="font-bold text-primary underline-offset-4 hover:underline">{v.codigoOrdenEnCurso}</Link>
               : v.situacion
                 ? <BadgeEstado estado={v.situacion} />
                 : v.seSugiereOrden && esAdmin
@@ -123,7 +124,7 @@ export default function Preventivo() {
         <DialogoGenerar
           vehiculo={generando}
           onCerrar={() => setGenerando(null)}
-          onGenerada={(orden) => navigate(`/ordenes/${orden.idOrden}`, { state: { desde: '/preventivo' } })}
+          onGenerada={(orden) => navigate(`/ordenes/${orden.idOrden}`, { state: { desde: `/preventivo${search}` } })}
         />
       )}
     </>
@@ -156,7 +157,7 @@ function DialogoGenerar({ vehiculo, onCerrar, onGenerada }) {
       textoEnviar="Generar orden" procesando={isSubmitting} onEnviar={handleSubmit(enviar)} onCerrar={onCerrar}>
       <Controller name="idTipoMantenimiento" control={control} render={({ field, fieldState }) => (
         <CampoFormulario id="idTipoMantenimiento" etiqueta="Tipo de mantenimiento" requerido error={fieldState.error?.message}>
-          {(p) => <ListaOpciones {...p} value={field.value} onChange={field.onChange} disabled={tipos.cargando}
+          {(p) => <ListaOpciones {...p} ref={field.ref} value={field.value} onChange={field.onChange} disabled={tipos.cargando}
             opciones={preventivos.map((t) => ({ valor: t.idTipoMantenimiento, texto: t.nombre }))} />}
         </CampoFormulario>
       )} />

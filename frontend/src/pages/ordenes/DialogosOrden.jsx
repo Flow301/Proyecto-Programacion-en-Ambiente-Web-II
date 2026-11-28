@@ -93,13 +93,13 @@ export function DialogoDiagnostico({ orden, onCerrar, onHecho }) {
         )} />
         <Controller name="idPrioridad" control={control} render={({ field, fieldState }) => (
           <CampoFormulario id="idPrioridad" etiqueta="Prioridad" requerido error={fieldState.error?.message}>
-            {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} opciones={niveles.map((p) => ({ valor: p.idPrioridad, texto: p.nombre }))} />}
+            {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} opciones={niveles.map((p) => ({ valor: p.idPrioridad, texto: p.nombre }))} />}
           </CampoFormulario>
         )} />
       </div>
       <Controller name="idTipoMantenimiento" control={control} render={({ field, fieldState }) => (
         <CampoFormulario id="idTipoMantenimiento" etiqueta="Tipo de mantenimiento" requerido ayuda="Corríjalo si el diagnóstico muestra otro tipo de trabajo." error={fieldState.error?.message}>
-          {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} opciones={tipos.map((t) => ({ valor: t.idTipoMantenimiento, texto: `${t.nombre} (${t.naturalezaNombre})` }))} />}
+          {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} opciones={tipos.map((t) => ({ valor: t.idTipoMantenimiento, texto: `${t.nombre} (${t.naturalezaNombre})` }))} />}
         </CampoFormulario>
       )} />
       {observacionCampo(control)}
@@ -251,7 +251,7 @@ export function DialogoRepuesto({ orden, onCerrar, onHecho }) {
       <Controller name="idRepuesto" control={control} render={({ field, fieldState }) => (
         <CampoFormulario id="idRepuesto" etiqueta="Repuesto" requerido error={fieldState.error?.message}
           ayuda={elegido ? `Stock actual: ${formatNumero(elegido.stockActual)} ${elegido.unidadMedida} · ${formatColones(elegido.costoUnitario)} c/u` : undefined}>
-          {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} disabled={repuestos.cargando}
+          {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} disabled={repuestos.cargando}
             placeholder={repuestos.cargando ? 'Cargando…' : 'Elija un repuesto'}
             opciones={lista.map((r) => ({ valor: r.idRepuesto, texto: `${r.codigo} · ${r.nombre} (stock ${formatNumero(r.stockActual)})` }))} />}
         </CampoFormulario>
@@ -282,7 +282,7 @@ export function DialogoEdicion({ orden, onCerrar, onHecho }) {
       procesando={isSubmitting} onEnviar={handleSubmit(enviar)} onCerrar={onCerrar}>
       <Controller name="idTipoMantenimiento" control={control} render={({ field, fieldState }) => (
         <CampoFormulario id="idTipoMantenimiento" etiqueta="Tipo de mantenimiento" requerido error={fieldState.error?.message}>
-          {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} disabled={tipos.cargando}
+          {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} disabled={tipos.cargando}
             opciones={(tipos.datos?.data ?? []).map((t) => ({ valor: t.idTipoMantenimiento, texto: `${t.nombre} (${t.naturalezaNombre})` }))} />}
         </CampoFormulario>
       )} />

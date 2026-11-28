@@ -90,7 +90,8 @@ export default function TablaPaginada({
       {totalPaginas > 0 && (
         <nav aria-label="Paginación" className="flex flex-wrap items-center justify-between gap-3 border-t border-border-suave px-4 py-3 text-sm tabular-nums">
           <span className="text-muted-foreground">
-            {formatNumero(desde)}–{formatNumero(hasta)} de {formatNumero(totalRegistros)} {nombre}
+            {/* "nombre" viene en plural: con un solo registro no se usa ("1 de 1", no "1–1 de 1 vehículos") */}
+            {totalRegistros === 1 ? '1 de 1' : `${formatNumero(desde)}–${formatNumero(hasta)} de ${formatNumero(totalRegistros)} ${nombre}`}
           </span>
           <div className="flex items-center gap-2">
             <Button variant="outline" disabled={cargando || pagina <= 1} onClick={() => onCambiarPagina(pagina - 1)}>

@@ -16,7 +16,7 @@ import useFiltrosUrl from '@/hooks/useFiltrosUrl'
 import useRol from '@/hooks/useRol'
 import { texto, textoOpcional } from '@/schemas/comunes'
 import { actualizarEspecialidad, crearEspecialidad, eliminarEspecialidad, listarEspecialidadesPagina } from '@/services/especialidadService'
-import { avisarError, avisarExito } from '@/utils/avisos'
+import { avisarError, avisarExito, rechazoDefinitivo } from '@/utils/avisos'
 import { aplicarErroresApi } from '@/utils/errores'
 
 const TAMANO = 10
@@ -42,6 +42,7 @@ export default function Especialidades() {
       lista.recargar()
     } catch (err) {
       avisarError(err)
+      if (rechazoDefinitivo(err)) setEliminando(null)
     } finally {
       setProcesando(false)
     }

@@ -23,7 +23,7 @@ import { eleccion } from '@/schemas/comunes'
 import { nivelesCertificacion } from '@/services/catalogoService'
 import { listarEspecialidades } from '@/services/especialidadService'
 import { asociarEspecialidad, inactivarTecnico, obtenerTecnico, quitarEspecialidad } from '@/services/tecnicoService'
-import { avisarError, avisarExito } from '@/utils/avisos'
+import { avisarError, avisarExito, rechazoDefinitivo } from '@/utils/avisos'
 import { aFechaIso, formatAntiguedad, formatColones, formatFecha } from '@/utils/format'
 
 // Detalle del técnico con su tabla de especialidades (enunciado Avance 2, 5.2). El Administrador agrega y quita
@@ -57,6 +57,7 @@ export default function TecnicoDetalle() {
       return true
     } catch (err) {
       avisarError(err)
+      if (rechazoDefinitivo(err)) { setQuitando(null); setInactivando(false) }
       return false
     } finally {
       setProcesando(false)
@@ -200,14 +201,14 @@ function FormularioEspecialidad({ tecnico, onCerrar, onGuardada }) {
       {(especialidades.error || niveles.error) && <EstadoError error={especialidades.error ?? niveles.error} />}
       <Controller name="idEspecialidad" control={control} render={({ field, fieldState }) => (
         <CampoFormulario id="idEspecialidad" etiqueta="Especialidad" requerido error={fieldState.error?.message}>
-          {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} disabled={especialidades.cargando}
+          {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} disabled={especialidades.cargando}
             placeholder={especialidades.cargando ? 'Cargando…' : 'Elija una especialidad'}
             opciones={opciones.map((e) => ({ valor: e.idEspecialidad, texto: e.nombre }))} />}
         </CampoFormulario>
       )} />
       <Controller name="idNivelCertificacion" control={control} render={({ field, fieldState }) => (
         <CampoFormulario id="idNivelCertificacion" etiqueta="Nivel de certificación" requerido error={fieldState.error?.message}>
-          {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} disabled={niveles.cargando}
+          {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} disabled={niveles.cargando}
             opciones={(niveles.datos?.data ?? []).map((n) => ({ valor: n.idNivelCertificacion, texto: n.nombre }))} />}
         </CampoFormulario>
       )} />

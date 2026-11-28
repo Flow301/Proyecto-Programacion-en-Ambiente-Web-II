@@ -5,7 +5,6 @@ import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraFiltros from '@/components/shared/BarraFiltros'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import ListaOpciones from '@/components/shared/ListaOpciones'
-import Separador from '@/components/shared/Separador'
 import TablaPaginada from '@/components/shared/TablaPaginada'
 import { Button } from '@/components/ui/button'
 import useCarga from '@/hooks/useCarga'
@@ -115,7 +114,8 @@ export default function Ordenes() {
         columnas={[
           { clave: 'codigo', titulo: 'Código', fija: true, render: (o) => <Link to={`/ordenes/${o.idOrden}`} state={desde} className="font-bold text-primary underline-offset-4 hover:underline">{o.codigo}</Link> },
           { clave: 'estado', titulo: 'Estado', render: (o) => <BadgeEstado estado={o.estadoOrdenNombre} /> },
-          { clave: 'activo', titulo: 'Vehículo', recortar: true, completo: (o) => `${o.activoCodigo} · ${o.activoNombre}`, render: (o) => <><strong>{o.activoCodigo}</strong> <Separador /> {o.activoNombre}</> },
+          // Código arriba y nombre abajo: en tablet el nombre se lee completo en vez de quedar recortado a nada
+          { clave: 'activo', titulo: 'Vehículo', render: (o) => <span className="flex min-w-40 flex-col"><strong>{o.activoCodigo}</strong><span className="text-sm text-muted-foreground">{o.activoNombre}</span></span> },
           { clave: 'tipoMantenimientoNombre', titulo: 'Tipo', recortar: true },
           { clave: 'prioridadNombre', titulo: 'Prioridad' },
           { clave: 'fechaSolicitud', titulo: 'Solicitud', render: (o) => formatFecha(o.fechaSolicitud) },

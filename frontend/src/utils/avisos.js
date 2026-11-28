@@ -15,3 +15,7 @@ export function avisarError(error) {
       : error.message
   toast.error(mensaje, { duration: Infinity })
 }
+
+// La API rechazó por una regla de negocio (409) o el registro ya no existe (404): reintentar no cambia nada,
+// así que la confirmación se cierra y el aviso de error explica por qué
+export const rechazoDefinitivo = (error) => error?.status === 409 || error?.status === 404

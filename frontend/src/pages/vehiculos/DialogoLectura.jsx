@@ -31,7 +31,11 @@ export default function DialogoLectura({ vehiculo, onCerrar, onRegistrada }) {
       avisarExito(`Lectura de ${formatKm(kilometraje, unidad)} registrada para ${vehiculo.codigo}`)
       onRegistrada()
     } catch (err) {
-      if (!aplicarErroresApi(err, setError, ['kilometraje', 'fecha'])) avisarError(err)
+      if (aplicarErroresApi(err, setError, ['kilometraje', 'fecha'])) return
+      // Las reglas que dependen de la última lectura llegan como mensaje general: va junto al campo que nombra
+      const campo = err.status === 400 && (/fecha/i.test(err.message) ? 'fecha' : /kilometraje|lectura/i.test(err.message) ? 'kilometraje' : null)
+      if (campo) setError(campo, { message: err.message }, { shouldFocus: true })
+      else avisarError(err)
     }
   }
 

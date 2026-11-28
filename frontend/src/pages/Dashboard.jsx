@@ -55,7 +55,7 @@ export default function Dashboard() {
         <div className="grid gap-5 xl:grid-cols-2">
           <BloqueSeccion
             titulo="Mantenimiento preventivo"
-            detalle={datos && `${formatNumero(datos.preventivosVencidos)} vencidos y ${formatNumero(datos.preventivosProximos)} próximos. Se muestran los 10 más urgentes.`}
+            detalle={datos && `${formatNumero(datos.preventivosVencidos)} ${datos.preventivosVencidos === 1 ? 'vencido' : 'vencidos'} y ${formatNumero(datos.preventivosProximos)} ${datos.preventivosProximos === 1 ? 'próximo' : 'próximos'}. Se muestran los 10 más urgentes.`}
             acciones={(
               <Link to="/preventivo" className="inline-flex items-center gap-1.5 text-[0.9375rem] font-semibold text-primary underline-offset-4 hover:underline">
                 Ver todos
