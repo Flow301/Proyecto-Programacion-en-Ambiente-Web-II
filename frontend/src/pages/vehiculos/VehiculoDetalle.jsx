@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { Ban, ChevronLeft, ChevronRight, CircleCheckBig, Gauge, OctagonX, Pencil, Plus } from 'lucide-react'
+import { Ban, CircleCheckBig, Gauge, OctagonX, Pencil, Plus } from 'lucide-react'
 import BadgeEstado from '@/components/shared/BadgeEstado'
 import BarraPreventivo, { LeyendaPreventivo } from '@/components/shared/BarraPreventivo'
 import BloqueSeccion from '@/components/shared/BloqueSeccion'
@@ -11,6 +11,7 @@ import EstadoVacio from '@/components/shared/EstadoVacio'
 import ImagenVehiculo from '@/components/shared/ImagenVehiculo'
 import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import LineaTiempo from '@/components/shared/LineaTiempo'
+import Paginacion from '@/components/shared/Paginacion'
 import PaginaError from '@/components/shared/PaginaError'
 import Separador from '@/components/shared/Separador'
 import TablaPaginada from '@/components/shared/TablaPaginada'
@@ -340,27 +341,6 @@ function LecturasVehiculo({ v }) {
         onCambiarPagina={setPagina}
       />
     </BloqueSeccion>
-  )
-}
-
-// La misma paginación de TablaPaginada, para el historial (que es una línea de tiempo y no una tabla)
-function Paginacion({ pagina, totalPaginas, totalRegistros, nombre, cargando, onCambiar }) {
-  if (totalPaginas <= 1) return null
-  return (
-    <nav aria-label={`Paginación de ${nombre}`} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-suave pt-3 text-sm tabular-nums">
-      <span className="text-muted-foreground">{formatNumero(totalRegistros)} {nombre}</span>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" disabled={cargando || pagina <= 1} onClick={() => onCambiar(pagina - 1)}>
-          <ChevronLeft aria-hidden="true" />
-          Anterior
-        </Button>
-        <span aria-live="polite">Página {pagina} de {totalPaginas}</span>
-        <Button variant="outline" disabled={cargando || pagina >= totalPaginas} onClick={() => onCambiar(pagina + 1)}>
-          Siguiente
-          <ChevronRight aria-hidden="true" />
-        </Button>
-      </div>
-    </nav>
   )
 }
 

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { formatNumero } from '@/utils/format'
 import EstadoError from './EstadoError'
@@ -21,6 +21,7 @@ import IndicadorCarga from './IndicadorCarga'
  * - claveFila(fila): la llave de cada fila.
  * - vacio: { titulo, mensaje?, tipo?, accion? } para cuando no hay registros o el filtro no encontró nada.
  * - nombre: cómo se llaman los registros en el pie ("órdenes", "vehículos").
+ * - pie: fila de totales { [clave]: contenido } con los valores que calcula la API; la primera columna lleva la etiqueta.
  * Las acciones por fila se limitan a ver y editar; las de proceso van en el detalle.
  */
 // Columna fija a la izquierda: fondo opaco y un borde para que se note el desplazamiento por debajo
@@ -28,7 +29,7 @@ const FIJA = 'sticky left-0 z-[1] bg-card shadow-[1px_0_0_var(--border-suave)]'
 
 export default function TablaPaginada({
   titulo, columnas, filas = [], claveFila, cargando = false, error, onReintentar, vacio,
-  pagina = 1, tamano = 10, totalRegistros = 0, totalPaginas = 0, onCambiarPagina, nombre = 'registros', className,
+  pagina = 1, tamano = 10, totalRegistros = 0, totalPaginas = 0, onCambiarPagina, nombre = 'registros', pie, className,
 }) {
   // Si la página quedó vacía (se borró su último registro, o la URL pide una página que ya no existe),
   // se pasa a la última página con registros en vez de decir que no hay ninguno
@@ -84,6 +85,15 @@ export default function TablaPaginada({
               </TableRow>
             ))}
           </TableBody>
+          {pie && (
+            <TableFooter className="border-border bg-muted/40 font-semibold">
+              <TableRow className="hover:bg-transparent">
+                {columnas.map(({ clave, derecha }) => (
+                  <TableCell key={clave} className={cn('h-11 px-4', derecha && 'text-right')}>{pie[clave]}</TableCell>
+                ))}
+              </TableRow>
+            </TableFooter>
+          )}
         </Table>
       )}
 
