@@ -108,7 +108,7 @@ export default function RepuestoDetalle() {
 
         <BloqueSeccion
           titulo="Proveedores"
-          detalle="Puntaje = 60 % tiempo de entrega + 40 % precio, cada criterio comparado con el mejor. Solo participan los proveedores activos."
+          detalle="Del mayor al menor puntaje; el recomendado va destacado."
           sinRelleno
           acciones={esAdmin && <Button variant="outline" onClick={() => setDialogo({ tipo: 'proveedor' })}><Plus aria-hidden="true" />Agregar proveedor</Button>}
         >
@@ -144,6 +144,8 @@ export default function RepuestoDetalle() {
               }] : []),
             ]}
           />
+          {/* El criterio va debajo de la tabla (enunciado Avance 2, 5.6) */}
+          <p className="border-t border-border-suave px-6 py-3 text-sm text-muted-foreground">Puntaje = 60 % tiempo de entrega + 40 % precio, cada criterio comparado con el mejor. Solo participan los proveedores activos.</p>
         </BloqueSeccion>
       </div>
 
