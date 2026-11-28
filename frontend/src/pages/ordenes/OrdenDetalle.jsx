@@ -6,9 +6,11 @@ import BloqueSeccion from '@/components/shared/BloqueSeccion'
 import DialogoConfirmacion from '@/components/shared/DialogoConfirmacion'
 import EncabezadoPagina from '@/components/shared/EncabezadoPagina'
 import EstadoError from '@/components/shared/EstadoError'
+import EstadoVacio from '@/components/shared/EstadoVacio'
 import IndicadorCarga from '@/components/shared/IndicadorCarga'
 import LineaTiempo from '@/components/shared/LineaTiempo'
 import PaginaError from '@/components/shared/PaginaError'
+import Paginacion from '@/components/shared/Paginacion'
 import ProgresoOrden from '@/components/shared/ProgresoOrden'
 import Separador from '@/components/shared/Separador'
 import TablaPaginada from '@/components/shared/TablaPaginada'
@@ -30,7 +32,8 @@ const ACCIONES = {
   aprobar: { texto: 'Aprobar', Icono: BadgeCheck },
   iniciar: { texto: 'Iniciar', Icono: CirclePlay },
   reanudar: { texto: 'Reanudar', Icono: RotateCcw, confirmar: { fn: reanudarOrden, exito: 'reanudada', pregunta: '¿Reanudar la orden', mensaje: 'La orden vuelve a En Ejecución.' } },
-  completar: { texto: 'Completar', Icono: Flag, confirmar: { fn: completarOrden, exito: 'completada', pregunta: '¿Completar la orden', mensaje: 'Se cierran los costos con los repuestos y las horas registrados, y ya no se pueden modificar.' } },
+  completar: { texto: 'Completar', Icono: Flag, confirmar: { fn: completarOrden, exito: 'completada', pregunta: '¿Completar la orden',
+    mensaje: (o) => `El costo total que quedará registrado es ${formatColones(o.costoTotal)}: repuestos ${formatColones(o.costoRepuestos)} y mano de obra ${formatColones(o.costoManoObra)}. Después ya no se puede modificar.` } },
 }
 
 async function cargarOrden(id) {
@@ -55,6 +58,8 @@ export default function OrdenDetalle() {
   const carga = useCarga(cargar)
   const [dialogo, setDialogo] = useState(null) // { accion, tecnico? }
   const [procesando, setProcesando] = useState(false)
+  // Cambia con cada acción para que el historial paginado se vuelva a pedir
+  const [version, setVersion] = useState(0)
 
   const volver = { to: state?.desde ?? '/ordenes', texto: textoVolver }
   if (carga.error?.status === 404 || carga.error?.status === 403) return <PaginaError codigo={carga.error.status} />
@@ -64,10 +69,11 @@ export default function OrdenDetalle() {
   const { orden: o, historial, fechas } = carga.datos
   const puede = new Set(o.accionesDisponibles)
   const cerrar = () => setDialogo(null)
-  const hecho = () => { setDialogo(null); carga.recargar() }
+  const hecho = () => { setDialogo(null); carga.recargar(); setVersion((v) => v + 1) }
   const confirmacion = dialogo && ACCIONES[dialogo.accion]?.confirmar
   const pendientes = o.repuestos?.pendientes ?? []
   const detalleRepuestos = o.repuestos?.detalle ?? []
+  const desdeAqui = { desde: `/ordenes/${o.idOrden}` }
 
   const confirmar = async (observacion) => {
     setProcesando(true)
@@ -109,7 +115,7 @@ export default function OrdenDetalle() {
       <div className="grid items-start gap-5 2xl:grid-cols-2">
         <BloqueSeccion titulo="Solicitud">
           <Datos filas={[
-            ['Vehículo', <><strong>{o.activoCodigo}</strong> <Separador /> {o.activoNombre}</>],
+            ['Vehículo', <Link key="vehiculo" to={`/vehiculos/${o.idActivo}`} state={desdeAqui} className="text-primary underline-offset-4 hover:underline"><strong>{o.activoCodigo}</strong> <Separador /> {o.activoNombre}</Link>],
             ['Placa', o.activoPlaca],
             ['Categoría', o.activoCategoriaNombre],
             ['Estado del vehículo', <BadgeEstado key="estado" estado={o.activoEstadoActivoNombre} />],
@@ -141,9 +147,9 @@ export default function OrdenDetalle() {
             )}
           >
             <Datos filas={[
-              ['Repuestos', formatColones(o.costoRepuestos ?? detalleRepuestos.reduce((t, d) => t + d.subtotal, 0))],
-              ['Mano de obra', o.costoManoObra == null ? `${formatHoras(o.totalHoras)} registradas` : formatColones(o.costoManoObra)],
-              ...(o.costoTotal == null ? [] : [['Total', <strong key="total" className="text-lg">{formatColones(o.costoTotal)}</strong>]]),
+              ['Repuestos', formatColones(o.costoRepuestos)],
+              ['Mano de obra', `${formatColones(o.costoManoObra)} (${formatHoras(o.totalHoras)})`],
+              ['Total', <strong key="total" className="text-lg">{formatColones(o.costoTotal)}</strong>],
             ]} />
           </BloqueSeccion>
         </div>
@@ -162,11 +168,14 @@ export default function OrdenDetalle() {
           filas={o.tecnicos ?? []}
           claveFila={(t) => t.idTecnico}
           vacio={{ titulo: 'Sin técnicos asignados', mensaje: 'Se asignan al iniciar la orden.' }}
+          pie={{ tecnicoNombreCompleto: 'Total', horasTrabajadas: formatHoras(o.totalHoras), subtotal: formatColones(o.costoManoObra) }}
           columnas={[
             { clave: 'tecnicoNombreCompleto', titulo: 'Técnico', render: (t) => <strong>{t.tecnicoNombreCompleto}</strong> },
+            { clave: 'especialidad', titulo: 'Especialidad', render: () => o.tipoMantenimientoEspecialidadRequeridaNombre },
             { clave: 'fechaAsignacion', titulo: 'Asignado', render: (t) => formatFecha(t.fechaAsignacion) },
-            { clave: 'tarifaHora', titulo: 'Tarifa por hora', derecha: true, render: (t) => formatColones(t.tarifaHora) },
+            { clave: 'tarifaHora', titulo: 'Tarifa registrada', derecha: true, render: (t) => `${formatColones(t.tarifaHora)} / h` },
             { clave: 'horasTrabajadas', titulo: 'Horas', derecha: true, render: (t) => formatHoras(t.horasTrabajadas) },
+            { clave: 'subtotal', titulo: 'Mano de obra', derecha: true, render: (t) => formatColones(t.subtotal) },
             ...(puede.has('registrarHoras') ? [{
               clave: 'acciones', titulo: <span className="sr-only">Acciones</span>, derecha: true,
               render: (t) => <Button variant="ghost" size="sm" onClick={() => setDialogo({ accion: 'registrarHoras', tecnico: t })}><Clock aria-hidden="true" />Registrar horas</Button>,
@@ -178,7 +187,7 @@ export default function OrdenDetalle() {
       <BloqueSeccion
         titulo="Repuestos"
         sinRelleno
-        acciones={puede.has('registrarRepuestos') && <Button variant="outline" onClick={() => setDialogo({ accion: 'registrarRepuestos' })}><Plus aria-hidden="true" />Registrar repuesto</Button>}
+        acciones={puede.has('registrarRepuestos') && <Button variant="outline" onClick={() => setDialogo({ accion: 'registrarRepuestos' })}><Plus aria-hidden="true" />Agregar repuesto</Button>}
       >
         <TablaPaginada
           titulo={`Repuestos consumidos y pendientes de la orden ${o.codigo}`}
@@ -187,6 +196,8 @@ export default function OrdenDetalle() {
           filas={[...pendientes.map((p) => ({ ...p, pendiente: true })), ...detalleRepuestos]}
           claveFila={(r) => (r.pendiente ? `p-${r.idRepuesto}` : `d-${r.numeroLinea}`)}
           vacio={{ titulo: 'Sin repuestos registrados' }}
+          // Los pendientes no suman: todavía no salieron del inventario
+          pie={{ repuestoCodigo: 'Subtotal de repuestos', subtotal: formatColones(o.costoRepuestos) }}
           columnas={[
             { clave: 'repuestoCodigo', titulo: 'Código', render: (r) => <strong>{r.repuestoCodigo}</strong> },
             { clave: 'repuestoNombre', titulo: 'Repuesto', recortar: true },
@@ -198,12 +209,8 @@ export default function OrdenDetalle() {
         />
       </BloqueSeccion>
 
-      <BloqueSeccion titulo="Historial">
-        <LineaTiempo eventos={historial.map((h) => ({
-          id: h.idHistorial, fecha: h.fechaCambio, usuario: h.usuarioNombreCompleto,
-          anterior: h.estadoAnteriorNombre, nuevo: h.estadoNuevoNombre, observacion: h.observacion,
-        }))} />
-      </BloqueSeccion>
+      {/* key: tras cada acción el historial se vuelve a pedir desde la primera página, donde está el cambio nuevo */}
+      <HistorialOrden key={version} idOrden={o.idOrden} />
 
       {dialogo?.accion === 'diagnosticar' && <DialogoDiagnostico orden={o} onCerrar={cerrar} onHecho={hecho} />}
       {dialogo?.accion === 'aprobar' && <DialogoAprobacion orden={o} onCerrar={cerrar} onHecho={hecho} />}
@@ -215,7 +222,7 @@ export default function OrdenDetalle() {
       <DialogoConfirmacion
         abierto={Boolean(confirmacion)}
         titulo={confirmacion ? `${confirmacion.pregunta} ${o.codigo} del vehículo ${o.activoCodigo}?` : ''}
-        mensaje={confirmacion?.mensaje}
+        mensaje={typeof confirmacion?.mensaje === 'function' ? confirmacion.mensaje(o) : confirmacion?.mensaje}
         textoConfirmar={confirmacion ? ACCIONES[dialogo.accion].texto : ''}
         textoCancelar="Volver"
         conObservacion
@@ -226,6 +233,33 @@ export default function OrdenDetalle() {
       />
     </>
   )
+}
+
+// Historial de la orden (enunciado Avance 2, 5.7): del más reciente al más antiguo, paginado y de solo lectura
+const TAMANO_HISTORIAL = 10
+
+function HistorialOrden({ idOrden }) {
+  const [pagina, setPagina] = useState(1)
+  const cargar = useCallback(() => historialOrden(idOrden, pagina, TAMANO_HISTORIAL), [idOrden, pagina])
+  const historial = useCarga(cargar)
+  const datos = historial.datos
+
+  let contenido
+  if (historial.error) contenido = <EstadoError error={historial.error} onReintentar={historial.recargar} />
+  else if (historial.cargando && !datos) contenido = <IndicadorCarga forma="bloque" texto="Cargando el historial…" />
+  else if (!datos?.data.length) contenido = <EstadoVacio titulo="Sin cambios de estado registrados" />
+  else {
+    contenido = (
+      <>
+        <LineaTiempo eventos={datos.data.map((h) => ({
+          id: h.idHistorial, fecha: h.fechaCambio, usuario: h.usuarioNombreCompleto,
+          anterior: h.estadoAnteriorNombre, nuevo: h.estadoNuevoNombre, observacion: h.observacion,
+        }))} />
+        <Paginacion pagina={pagina} totalPaginas={datos.totalPages} totalRegistros={datos.totalRecords} nombre="cambios" cargando={historial.cargando} onCambiar={setPagina} />
+      </>
+    )
+  }
+  return <BloqueSeccion titulo="Historial" detalle="Cada cambio de estado, quién lo hizo y por qué.">{contenido}</BloqueSeccion>
 }
 
 function Datos({ filas }) {

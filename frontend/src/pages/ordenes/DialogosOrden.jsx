@@ -244,9 +244,9 @@ export function DialogoRepuesto({ orden, onCerrar, onHecho }) {
     // La API dice si alcanzó el stock o si la orden pasó a En Espera de Repuesto
     (respuesta) => { avisarExito(respuesta?.detail ?? 'Repuesto registrado'); onHecho() })
   return (
-    <DialogoFormulario abierto titulo={`Registrar repuesto en ${orden.codigo}`}
+    <DialogoFormulario abierto titulo={`Agregar repuesto a ${orden.codigo}`}
       descripcion="Si el stock alcanza, se descuenta y se cobra al costo unitario de hoy. Si no alcanza, la orden pasa a En Espera de Repuesto."
-      textoEnviar="Registrar repuesto" procesando={isSubmitting} onEnviar={handleSubmit(enviar)} onCerrar={onCerrar}>
+      textoEnviar="Agregar repuesto" procesando={isSubmitting} onEnviar={handleSubmit(enviar)} onCerrar={onCerrar}>
       {repuestos.error && <EstadoError error={repuestos.error} />}
       <Controller name="idRepuesto" control={control} render={({ field, fieldState }) => (
         <CampoFormulario id="idRepuesto" etiqueta="Repuesto" requerido error={fieldState.error?.message}
