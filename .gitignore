@@ -483,3 +483,10 @@ $RECYCLE.BIN/
 
 # Logs de Serilog (backend/SGMA.WebAPI/logs)
 logs/
+
+# Fotos de vehículos que suben los usuarios: son datos, no código. Solo se versiona la carpeta.
+backend/SGMA.WebAPI/wwwroot/imagenes/activos/*
+!backend/SGMA.WebAPI/wwwroot/imagenes/activos/.gitkeep
+
+# Guía personal del proyecto (no se sube)
+docs/SGMA-Guia-del-proyecto.docx
