@@ -6,7 +6,7 @@ namespace SGMA.Application.Interfaces;
 public interface IRepuestoService
 {
     Task<Result<IEnumerable<RepuestoDto>>> GetAllAsync();
-    Task<Result<IEnumerable<RepuestoDto>>> GetPaginationAsync(int pageNumber, int pageSize, bool bajoMinimo = false);
+    Task<Result<IEnumerable<RepuestoDto>>> GetPaginationAsync(int pageNumber, int pageSize, bool bajoMinimo = false, string? buscar = null);
     Task<Result<RepuestoDto>> GetByIdAsync(int id);
     Task<Result<IEnumerable<RepuestoDto>>> GetBajoMinimoAsync();
     Task<Result<RepuestoDto>> AddAsync(RepuestoCreateDto repuesto);

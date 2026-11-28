@@ -15,10 +15,10 @@ public class ActivoRepository : IActivoRepository
         _context = context;
     }
 
-    // Filtros opcionales por categoría y por estado (enunciado Avance 2, 2.3), antes del Skip/Take
-    public async Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null)
+    // Filtros opcionales por categoría, estado (enunciado Avance 2, 2.3) y texto, antes del Skip/Take
+    public async Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null, string? buscar = null)
     {
-        return await Filtrar(idCategoria, idEstadoActivo)
+        return await Filtrar(idCategoria, idEstadoActivo, buscar)
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.EstadoActivo)
@@ -28,14 +28,26 @@ public class ActivoRepository : IActivoRepository
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync(int? idCategoria = null, int? idEstadoActivo = null)
+    public async Task<int> CountAsync(int? idCategoria = null, int? idEstadoActivo = null, string? buscar = null)
     {
-        return await Filtrar(idCategoria, idEstadoActivo).CountAsync();
+        return await Filtrar(idCategoria, idEstadoActivo, buscar).CountAsync();
     }
 
-    private IQueryable<Activo> Filtrar(int? idCategoria, int? idEstadoActivo) =>
-        _context.Activo.Where(a => (idCategoria == null || a.IdCategoria == idCategoria)
+    // El texto se busca en el código, el nombre, la placa, la marca y el modelo
+    private IQueryable<Activo> Filtrar(int? idCategoria, int? idEstadoActivo, string? texto)
+    {
+        var query = _context.Activo.Where(a => (idCategoria == null || a.IdCategoria == idCategoria)
             && (idEstadoActivo == null || a.IdEstadoActivo == idEstadoActivo));
+
+        if (texto is not null)
+            query = query.Where(a => EF.Functions.Collate(a.Codigo, Intercalacion.SinTildes).Contains(texto)
+                || EF.Functions.Collate(a.Nombre, Intercalacion.SinTildes).Contains(texto)
+                || EF.Functions.Collate(a.Placa, Intercalacion.SinTildes).Contains(texto)
+                || EF.Functions.Collate(a.Marca, Intercalacion.SinTildes).Contains(texto)
+                || EF.Functions.Collate(a.Modelo, Intercalacion.SinTildes).Contains(texto));
+
+        return query;
+    }
 
     public async Task<Activo?> GetByIdAsync(int id)
     {

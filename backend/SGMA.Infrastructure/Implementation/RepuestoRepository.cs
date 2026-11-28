@@ -25,20 +25,30 @@ public class RepuestoRepository : IRepuestoRepository
     }
 
     // bajoMinimo = true: solo los que tienen stock por debajo del mínimo (filtro "Stock bajo el mínimo", con paginación)
-    public async Task<IEnumerable<Repuesto>> GetPaginationAsync(int pageNumber, int pageSize, bool bajoMinimo = false)
+    public async Task<IEnumerable<Repuesto>> GetPaginationAsync(int pageNumber, int pageSize, bool bajoMinimo = false, string? buscar = null)
     {
-        return await _context.Repuesto
+        return await Filtrar(bajoMinimo, buscar)
             .AsNoTracking()
-            .Where(p => p.Estado && (!bajoMinimo || p.StockActual < p.StockMinimo))
             .OrderBy(p => p.IdRepuesto)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync(bool bajoMinimo = false)
+    public async Task<int> CountAsync(bool bajoMinimo = false, string? buscar = null)
     {
-        return await _context.Repuesto.CountAsync(p => p.Estado && (!bajoMinimo || p.StockActual < p.StockMinimo));
+        return await Filtrar(bajoMinimo, buscar).CountAsync();
+    }
+
+    // Activos, opcionalmente bajo el mínimo; el texto se busca en el código y el nombre
+    private IQueryable<Repuesto> Filtrar(bool bajoMinimo, string? texto)
+    {
+        var query = _context.Repuesto.Where(p => p.Estado && (!bajoMinimo || p.StockActual < p.StockMinimo));
+
+        if (texto is not null)
+            query = query.Where(p => EF.Functions.Collate(p.Codigo, Intercalacion.SinTildes).Contains(texto) || EF.Functions.Collate(p.Nombre, Intercalacion.SinTildes).Contains(texto));
+
+        return query;
     }
 
     public async Task<Repuesto?> GetByIdAsync(int id)

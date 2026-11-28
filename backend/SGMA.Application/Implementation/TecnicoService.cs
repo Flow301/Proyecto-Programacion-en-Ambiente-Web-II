@@ -33,15 +33,19 @@ public class TecnicoService : ITecnicoService
     }
 
     public async Task<Result<IEnumerable<TecnicoListDto>>> GetPaginationAsync(int pageNumber, int pageSize,
-        int? idEspecialidad = null, bool? disponible = null)
+        int? idEspecialidad = null, bool? disponible = null, string? buscar = null)
     {
         // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
         if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<TecnicoListDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
-        var tecnicos = await _repository.GetPaginationAsync(pageNumber, pageSize, idEspecialidad, disponible);
-        var totalRecords = await _repository.CountAsync(idEspecialidad, disponible);
+        buscar = Busqueda.Normalizar(buscar);
+        if (buscar?.Length > Busqueda.MaxLargo)
+            return Result<IEnumerable<TecnicoListDto>>.Failure(400, "Solicitud inválida", Busqueda.MensajeLargo);
+
+        var tecnicos = await _repository.GetPaginationAsync(pageNumber, pageSize, idEspecialidad, disponible, buscar);
+        var totalRecords = await _repository.CountAsync(idEspecialidad, disponible, buscar);
 
         var data = _mapper.Map<IEnumerable<TecnicoListDto>>(tecnicos);
 

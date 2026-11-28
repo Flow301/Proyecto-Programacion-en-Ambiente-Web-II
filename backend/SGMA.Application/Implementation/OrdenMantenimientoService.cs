@@ -36,14 +36,18 @@ public class OrdenMantenimientoService : IOrdenMantenimientoService
     // Administrador y Coordinador/Técnico ven todas; el Solicitante/Consulta, solo las que él creó (el filtro va en la
     // consulta, no en la interfaz). Filtros opcionales por estado (uno o varios) y por vehículo.
     public async Task<Result<IEnumerable<OrdenMantenimientoListDto>>> GetPaginationAsync(int pageNumber, int pageSize,
-        int idUsuario, bool esSolicitante, IReadOnlyCollection<int>? idsEstado = null, int? idActivo = null)
+        int idUsuario, bool esSolicitante, IReadOnlyCollection<int>? idsEstado = null, int? idActivo = null, string? buscar = null)
     {
         // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
         if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<OrdenMantenimientoListDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
-        var filtro = new FiltroOrdenes(esSolicitante ? idUsuario : null, idsEstado, idActivo);
+        buscar = Busqueda.Normalizar(buscar);
+        if (buscar?.Length > Busqueda.MaxLargo)
+            return Result<IEnumerable<OrdenMantenimientoListDto>>.Failure(400, "Solicitud inválida", Busqueda.MensajeLargo);
+
+        var filtro = new FiltroOrdenes(esSolicitante ? idUsuario : null, idsEstado, idActivo, buscar);
 
         var ordenes = await _repository.GetPaginationAsync(pageNumber, pageSize, filtro);
         var totalRecords = await _repository.CountAsync(filtro);

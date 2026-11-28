@@ -5,8 +5,8 @@ namespace SGMA.Infrastructure.Interfaces;
 public interface IActivoRepository
 {
     // Lectura
-    Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null);
-    Task<int> CountAsync(int? idCategoria = null, int? idEstadoActivo = null);
+    Task<IEnumerable<Activo>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null, string? buscar = null);
+    Task<int> CountAsync(int? idCategoria = null, int? idEstadoActivo = null, string? buscar = null);
     Task<Activo?> GetByIdAsync(int id);
     Task<int> GetUltimoConsecutivoAsync(string prefijo);
     Task<IEnumerable<HistorialEstadoActivo>> GetHistorialAsync(int idActivo, int pageNumber, int pageSize);

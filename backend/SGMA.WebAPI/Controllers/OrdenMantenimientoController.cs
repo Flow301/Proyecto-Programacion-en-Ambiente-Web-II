@@ -33,23 +33,25 @@ public class OrdenMantenimientoController : ControllerBase
     /// <remarks>
     /// El Solicitante/Consulta ve solo las órdenes que él creó; totalRecords cuenta solo las suyas.
     /// Filtros opcionales en la query: idEstadoOrden (se puede repetir para varios estados, como la bandeja del
-    /// Coordinador: ?idEstadoOrden=1&amp;idEstadoOrden=3&amp;idEstadoOrden=5&amp;idEstadoOrden=6) e idActivo.
+    /// Coordinador: ?idEstadoOrden=1&amp;idEstadoOrden=3&amp;idEstadoOrden=5&amp;idEstadoOrden=6), idActivo y buscar
+    /// (código de la orden, código, nombre o placa del vehículo, o tipo de mantenimiento). Las más recientes van primero.
     /// Cada orden trae los días en su estado actual.
     /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
     /// <param name="idEstadoOrden" example="1">Estados a mostrar (opcional, se repite para varios).</param>
     /// <param name="idActivo" example="2">Vehículo (opcional).</param>
+    /// <param name="buscar" example="PKP-0003">Texto a buscar en el código de la orden, el código, nombre o placa del vehículo y el tipo, sin distinguir mayúsculas ni tildes (opcional, hasta 50 caracteres).</param>
     /// <response code="200">Página de órdenes con pageNumber, pageSize, totalRecords y totalPages.</response>
-    /// <response code="400">pageNumber o pageSize fuera de rango.</response>
+    /// <response code="400">pageNumber o pageSize fuera de rango, o búsqueda de más de 50 caracteres.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<OrdenMantenimientoListDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10,
-        [FromQuery] List<int>? idEstadoOrden = null, [FromQuery] int? idActivo = null)
+        [FromQuery] List<int>? idEstadoOrden = null, [FromQuery] int? idActivo = null, [FromQuery] string? buscar = null)
     {
         var result = await _service.GetPaginationAsync(pageNumber, pageSize,
-            User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta), idEstadoOrden, idActivo);
+            User.GetIdUsuario(), User.IsInRole(Roles.SolicitanteConsulta), idEstadoOrden, idActivo, buscar);
         return StatusCode(result.Status, result);
     }
 

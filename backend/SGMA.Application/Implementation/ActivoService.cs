@@ -46,15 +46,19 @@ public class ActivoService : IActivoService
     }
 
     public async Task<Result<IEnumerable<ActivoListDto>>> GetPaginationAsync(int pageNumber, int pageSize,
-        int? idCategoria = null, int? idEstadoActivo = null)
+        int? idCategoria = null, int? idEstadoActivo = null, string? buscar = null)
     {
         // El último límite evita que (pageNumber - 1) * pageSize desborde el int al calcular el Skip
         if (pageNumber < 1 || pageSize < 1 || pageSize > Paginacion.MaxPageSize || pageNumber > int.MaxValue / pageSize)
             return Result<IEnumerable<ActivoListDto>>.Failure(400, "Solicitud inválida",
                 $"La página debe ser 1 o mayor y el tamaño de página debe estar entre 1 y {Paginacion.MaxPageSize}.");
 
-        var activos = await _repository.GetPaginationAsync(pageNumber, pageSize, idCategoria, idEstadoActivo);
-        var totalRecords = await _repository.CountAsync(idCategoria, idEstadoActivo);
+        buscar = Busqueda.Normalizar(buscar);
+        if (buscar?.Length > Busqueda.MaxLargo)
+            return Result<IEnumerable<ActivoListDto>>.Failure(400, "Solicitud inválida", Busqueda.MensajeLargo);
+
+        var activos = await _repository.GetPaginationAsync(pageNumber, pageSize, idCategoria, idEstadoActivo, buscar);
+        var totalRecords = await _repository.CountAsync(idCategoria, idEstadoActivo, buscar);
 
         var data = _mapper.Map<List<ActivoListDto>>(activos);
 

@@ -7,7 +7,7 @@ public interface IOrdenMantenimientoService
 {
     // idUsuario y esSolicitante salen del token: el Solicitante/Consulta ve solo sus órdenes
     Task<Result<IEnumerable<OrdenMantenimientoListDto>>> GetPaginationAsync(int pageNumber, int pageSize, int idUsuario, bool esSolicitante,
-        IReadOnlyCollection<int>? idsEstado = null, int? idActivo = null);
+        IReadOnlyCollection<int>? idsEstado = null, int? idActivo = null, string? buscar = null);
     Task<Result<OrdenMantenimientoDetailDto>> GetByIdAsync(int id, int idUsuario, bool esSolicitante);
     Task<Result<IEnumerable<HistorialEstadoOrdenDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante, int pageNumber, int pageSize);
     Task<Result<OrdenMantenimientoDetailDto>> AddAsync(OrdenMantenimientoCreateDto orden, int idUsuario);

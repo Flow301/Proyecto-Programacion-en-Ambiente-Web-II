@@ -26,7 +26,9 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
             .Include(o => o.Prioridad)
             .Include(o => o.EstadoOrden)
             .Include(o => o.UsuarioSolicitante)
-            .OrderBy(o => o.IdOrden)
+            // Las más recientes primero: con cientos de órdenes, lo que se está atendiendo hoy queda en la primera página
+            .OrderByDescending(o => o.FechaSolicitud)
+            .ThenByDescending(o => o.IdOrden)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -37,7 +39,8 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
         return await Filtrar(filtro).CountAsync();
     }
 
-    // Estado (uno o varios: la bandeja del Coordinador abre con los que requieren su gestión), vehículo y solicitante
+    // Estado (uno o varios: la bandeja del Coordinador abre con los que requieren su gestión), vehículo, solicitante
+    // y texto: código de la orden, código, nombre o placa del vehículo y tipo de mantenimiento
     private IQueryable<OrdenMantenimiento> Filtrar(FiltroOrdenes filtro)
     {
         var query = _context.OrdenMantenimiento.AsQueryable();
@@ -50,6 +53,13 @@ public class OrdenMantenimientoRepository : IOrdenMantenimientoRepository
 
         if (filtro.IdActivo is int idActivo)
             query = query.Where(o => o.IdActivo == idActivo);
+
+        if (filtro.Buscar is string texto)
+            query = query.Where(o => EF.Functions.Collate(o.Codigo, Intercalacion.SinTildes).Contains(texto)
+                || EF.Functions.Collate(o.Activo.Codigo, Intercalacion.SinTildes).Contains(texto)
+                || EF.Functions.Collate(o.Activo.Nombre, Intercalacion.SinTildes).Contains(texto)
+                || EF.Functions.Collate(o.Activo.Placa, Intercalacion.SinTildes).Contains(texto)
+                || EF.Functions.Collate(o.TipoMantenimiento.Nombre, Intercalacion.SinTildes).Contains(texto));
 
         return query;
     }

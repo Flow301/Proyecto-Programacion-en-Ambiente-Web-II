@@ -43,21 +43,23 @@ public class TecnicoController : ControllerBase
     /// Lista los técnicos activos por páginas.
     /// </summary>
     /// <remarks>
-    /// Filtros opcionales en la query: idEspecialidad y disponible. Cada técnico trae su cantidad de especialidades.
+    /// Filtros opcionales en la query: idEspecialidad, disponible y buscar (nombre o identificación).
+    /// Cada técnico trae su cantidad de especialidades.
     /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
     /// <param name="idEspecialidad" example="4">Especialidad (opcional).</param>
     /// <param name="disponible" example="true">Disponibilidad (opcional).</param>
+    /// <param name="buscar" example="Navarro">Texto a buscar en el nombre y la identificación, sin distinguir mayúsculas ni tildes (opcional, hasta 50 caracteres).</param>
     /// <response code="200">Página de técnicos con pageNumber, pageSize, totalRecords y totalPages.</response>
-    /// <response code="400">pageNumber o pageSize fuera de rango.</response>
+    /// <response code="400">pageNumber o pageSize fuera de rango, o búsqueda de más de 50 caracteres.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<TecnicoListDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10,
-        [FromQuery] int? idEspecialidad = null, [FromQuery] bool? disponible = null)
+        [FromQuery] int? idEspecialidad = null, [FromQuery] bool? disponible = null, [FromQuery] string? buscar = null)
     {
-        var result = await _service.GetPaginationAsync(pageNumber, pageSize, idEspecialidad, disponible);
+        var result = await _service.GetPaginationAsync(pageNumber, pageSize, idEspecialidad, disponible, buscar);
         return StatusCode(result.Status, result);
     }
 

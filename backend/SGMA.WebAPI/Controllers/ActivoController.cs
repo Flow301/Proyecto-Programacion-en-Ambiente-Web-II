@@ -33,22 +33,24 @@ public class ActivoController : ControllerBase
     /// Lista los vehículos por páginas.
     /// </summary>
     /// <remarks>
-    /// Filtros opcionales en la query: idCategoria e idEstadoActivo. Cada vehículo trae su estado preventivo
+    /// Filtros opcionales en la query: idCategoria, idEstadoActivo y buscar (código, nombre, placa, marca o modelo).
+    /// Cada vehículo trae su estado preventivo
     /// (Vencido, Próximo, Al día o Sin lecturas; null si está Fuera de Servicio o Dado de Baja).
     /// </remarks>
     /// <param name="pageNumber" example="1">Número de página (desde 1).</param>
     /// <param name="pageSize" example="10">Registros por página (1 a 50).</param>
     /// <param name="idCategoria" example="1">Categoría (opcional).</param>
     /// <param name="idEstadoActivo" example="1">Estado del vehículo (opcional).</param>
+    /// <param name="buscar" example="Hilux">Texto a buscar en el código, el nombre, la placa, la marca y el modelo, sin distinguir mayúsculas ni tildes (opcional, hasta 50 caracteres).</param>
     /// <response code="200">Página de vehículos con pageNumber, pageSize, totalRecords y totalPages.</response>
-    /// <response code="400">pageNumber o pageSize fuera de rango.</response>
+    /// <response code="400">pageNumber o pageSize fuera de rango, o búsqueda de más de 50 caracteres.</response>
     [HttpGet("{pageNumber:int}/{pageSize:int}")]
     [ProducesResponseType<Result<IEnumerable<ActivoListDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Result<object>>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetPaginationAsync(int pageNumber = 1, int pageSize = 10,
-        [FromQuery] int? idCategoria = null, [FromQuery] int? idEstadoActivo = null)
+        [FromQuery] int? idCategoria = null, [FromQuery] int? idEstadoActivo = null, [FromQuery] string? buscar = null)
     {
-        var result = await _service.GetPaginationAsync(pageNumber, pageSize, idCategoria, idEstadoActivo);
+        var result = await _service.GetPaginationAsync(pageNumber, pageSize, idCategoria, idEstadoActivo, buscar);
         return StatusCode(result.Status, result);
     }
 

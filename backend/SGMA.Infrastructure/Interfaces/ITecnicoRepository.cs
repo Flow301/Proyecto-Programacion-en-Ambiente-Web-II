@@ -6,8 +6,8 @@ public interface ITecnicoRepository
 {
     // Lectura (solo técnicos activos)
     Task<IEnumerable<Tecnico>> GetAllAsync();
-    Task<IEnumerable<Tecnico>> GetPaginationAsync(int pageNumber, int pageSize, int? idEspecialidad = null, bool? disponible = null);
-    Task<int> CountAsync(int? idEspecialidad = null, bool? disponible = null);
+    Task<IEnumerable<Tecnico>> GetPaginationAsync(int pageNumber, int pageSize, int? idEspecialidad = null, bool? disponible = null, string? buscar = null);
+    Task<int> CountAsync(int? idEspecialidad = null, bool? disponible = null, string? buscar = null);
     Task<Tecnico?> GetByIdAsync(int id);
     Task<IEnumerable<TecnicoEspecialidad>> GetDisponiblesPorEspecialidadAsync(int idEspecialidad);
     Task<IEnumerable<Tecnico>> GetInactivosAsync();

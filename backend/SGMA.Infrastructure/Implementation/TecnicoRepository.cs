@@ -26,10 +26,10 @@ public class TecnicoRepository : ITecnicoRepository
             .ToListAsync();
     }
 
-    // Filtros opcionales por especialidad y por disponibilidad (enunciado Avance 2, 2.3), antes del Skip/Take
-    public async Task<IEnumerable<Tecnico>> GetPaginationAsync(int pageNumber, int pageSize, int? idEspecialidad = null, bool? disponible = null)
+    // Filtros opcionales por especialidad, disponibilidad (enunciado Avance 2, 2.3) y texto, antes del Skip/Take
+    public async Task<IEnumerable<Tecnico>> GetPaginationAsync(int pageNumber, int pageSize, int? idEspecialidad = null, bool? disponible = null, string? buscar = null)
     {
-        return await Filtrar(idEspecialidad, disponible)
+        return await Filtrar(idEspecialidad, disponible, buscar)
             .AsNoTracking()
             .Include(t => t.TecnicoEspecialidades)      // para CantidadEspecialidades
             .OrderBy(t => t.IdTecnico)
@@ -38,15 +38,23 @@ public class TecnicoRepository : ITecnicoRepository
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync(int? idEspecialidad = null, bool? disponible = null)
+    public async Task<int> CountAsync(int? idEspecialidad = null, bool? disponible = null, string? buscar = null)
     {
-        return await Filtrar(idEspecialidad, disponible).CountAsync();
+        return await Filtrar(idEspecialidad, disponible, buscar).CountAsync();
     }
 
-    private IQueryable<Tecnico> Filtrar(int? idEspecialidad, bool? disponible) =>
-        _context.Tecnico.Where(t => t.Estado
+    // El texto se busca en el nombre y en la identificación
+    private IQueryable<Tecnico> Filtrar(int? idEspecialidad, bool? disponible, string? texto)
+    {
+        var query = _context.Tecnico.Where(t => t.Estado
             && (disponible == null || t.Disponible == disponible)
             && (idEspecialidad == null || t.TecnicoEspecialidades.Any(te => te.IdEspecialidad == idEspecialidad)));
+
+        if (texto is not null)
+            query = query.Where(t => EF.Functions.Collate(t.NombreCompleto, Intercalacion.SinTildes).Contains(texto) || EF.Functions.Collate(t.Identificacion, Intercalacion.SinTildes).Contains(texto));
+
+        return query;
+    }
 
     // El detalle incluye sus especialidades con el nombre de la especialidad y del nivel
     public async Task<Tecnico?> GetByIdAsync(int id)

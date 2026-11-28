@@ -5,7 +5,7 @@ namespace SGMA.Application.Interfaces;
 
 public interface IActivoService
 {
-    Task<Result<IEnumerable<ActivoListDto>>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null);
+    Task<Result<IEnumerable<ActivoListDto>>> GetPaginationAsync(int pageNumber, int pageSize, int? idCategoria = null, int? idEstadoActivo = null, string? buscar = null);
     Task<Result<ActivoDetailDto>> GetByIdAsync(int id);
     // idUsuario y esSolicitante salen del token: el Solicitante/Consulta ve solo vehículos con órdenes suyas
     Task<Result<IEnumerable<HistorialEstadoActivoDto>>> GetHistorialAsync(int id, int idUsuario, bool esSolicitante, int pageNumber, int pageSize);
