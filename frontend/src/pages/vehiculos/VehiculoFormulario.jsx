@@ -47,7 +47,7 @@ const base = {
     .transform((v) => v.toUpperCase()),
   marca: texto('la marca', 40),
   modelo: texto('el modelo', 40),
-  anio: numero('el año de fabricación', { min: 1950, max: 2100 }),
+  anio: numero('el año de fabricación', { min: 1950, max: new Date().getFullYear() }),
   intervaloKmPropio: enteroOpcional(1),
 }
 // La empresa no puede comprar un vehículo antes de que se fabrique (la API valida lo mismo en el DTO)
@@ -160,7 +160,7 @@ function Contenido({ vehiculo, categorias, titulo }) {
           <Controller name="idCategoria" control={control} render={({ field, fieldState }) => (
             <CampoFormulario id="idCategoria" etiqueta="Categoría" requerido error={fieldState.error?.message}
               ayuda={categoria && `Preventivo cada ${formatKm(categoria.intervaloKm, categoria.variableControlUnidad)}.`}>
-              {(props) => <ListaOpciones {...props} value={field.value} onChange={field.onChange} placeholder="Elija la categoría"
+              {(props) => <ListaOpciones {...props} ref={field.ref} value={field.value} onChange={field.onChange} placeholder="Elija la categoría"
                 opciones={categorias.map((c) => ({ valor: c.idCategoria, texto: c.nombre }))} />}
             </CampoFormulario>
           )} />

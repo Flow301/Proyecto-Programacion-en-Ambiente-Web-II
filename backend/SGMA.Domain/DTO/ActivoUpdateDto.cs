@@ -75,8 +75,11 @@ public record class ActivoUpdateDto : IValidatableObject
         if (FechaAdquisicion?.Date > DateTime.Today)
             yield return new ValidationResult("La fecha de adquisición no puede ser futura.", [nameof(FechaAdquisicion)]);
 
+        if (Anio > DateTime.Today.Year)
+            yield return new ValidationResult($"El año de fabricación no puede ser posterior a {DateTime.Today.Year}.", [nameof(Anio)]);
+
         // La empresa no puede comprar un vehículo antes de que se fabrique
-        if (FechaAdquisicion?.Year < Anio)
+        else if (FechaAdquisicion?.Year < Anio)
             yield return new ValidationResult(
                 $"La fecha de adquisición no puede ser anterior al año de fabricación ({Anio}).",
                 [nameof(FechaAdquisicion)]);
